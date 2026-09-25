@@ -1,0 +1,12 @@
+# Normalize text to LF in the repo; binaries are never touched.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.db binary
