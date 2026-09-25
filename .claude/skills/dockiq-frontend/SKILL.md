@@ -6,8 +6,10 @@ description: Use for ANY change to frontend/src — components, pages, styles, l
 # DockIQ Frontend
 
 You are working on a tablet interface for a **cold-storage warehouse dock floor**. Gloved hands,
-dim light, glare, food-safety decisions. The product owner chose **Apple's design language** for it
-(2026-09-25): design as Apple would for this job, and never let the style weaken the safety rules.
+dim light, glare, food-safety decisions. The product owner chose **Botanical / Organic Serif** for it
+(2026-09-25) and wants it kept exactly: refine within it, in harmony with what is on screen, never
+replace it — and never let the style weaken the safety rules. Every colour sits naturally on the
+rice paper; variety comes from meaning (zone tints, product hues, tonal depth), not decoration.
 
 ## Read first
 

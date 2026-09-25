@@ -1,11 +1,12 @@
 """ORM models. The schema itself is owned by Alembic migrations in `backend/migrations/`."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     Float,
     ForeignKey,
     Integer,
@@ -24,6 +25,7 @@ from app.domain.enums import (
     DockStatus,
     IssueStatus,
     LifecyclePhase,
+    MovementKind,
     OrderStatus,
     OrderType,
     ProductCategory,
@@ -31,6 +33,10 @@ from app.domain.enums import (
     Role,
     ScanResult,
     Severity,
+    ShipmentStatus,
+    TaskKind,
+    TaskStatus,
+    YardEventKind,
 )
 
 Money = Numeric(12, 2, asdecimal=False)
@@ -303,6 +309,10 @@ class SimState(Base):
     anchor_real: Mapped[datetime] = mapped_column(UTCDateTime)
     anchor_minutes: Mapped[float] = mapped_column(Float)
     outage_until_minute: Mapped[float | None] = mapped_column(Float)
+    # The warehouse ledger (business-rules §12.7): applied up to this simulated minute; None = not
+    # opened yet. `next_lpn` is the serial of the next licence plate a receipt creates.
+    ledger_minute: Mapped[float | None] = mapped_column(Float)
+    next_lpn: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class SimEvent(Base):
@@ -317,3 +327,120 @@ class SimEvent(Base):
     message: Mapped[str] = mapped_column(Text)
     issue_id: Mapped[int | None] = mapped_column(ForeignKey("issues.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+
+# ── The warehouse behind the WMS (business-rules §12.7–§12.11). Everything here is simulated. ──
+
+
+class WmsStock(Base):
+    """On hand: one row per licence plate per location. Always equal to the sum of its movements."""
+
+    __tablename__ = "wms_stock"
+    __table_args__ = (UniqueConstraint("lpn", "location"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lpn: Mapped[str] = mapped_column(String(24), index=True)
+    location: Mapped[str] = mapped_column(String(32), index=True)
+    area: Mapped[str] = mapped_column(String(16), index=True)
+    room: Mapped[str | None] = mapped_column(String(4))
+    sku: Mapped[str] = mapped_column(String(32), index=True)
+    lot: Mapped[str] = mapped_column(String(16))
+    best_before: Mapped[date] = mapped_column(Date)
+    cases: Mapped[int] = mapped_column(Integer)
+
+
+class WmsTransaction(Base):
+    """The movement ledger: every receipt, put-away, replenishment, pick, load, shipment and
+    adjustment, in the order it happened. `key` makes each happen exactly once."""
+
+    __tablename__ = "wms_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(96), unique=True)
+    kind: Mapped[MovementKind] = mapped_column(enum_column(MovementKind), index=True)
+    minute: Mapped[float] = mapped_column(Float, index=True)
+    lpn: Mapped[str] = mapped_column(String(24), index=True)
+    sku: Mapped[str] = mapped_column(String(32), index=True)
+    lot: Mapped[str] = mapped_column(String(16))
+    best_before: Mapped[date] = mapped_column(Date)
+    from_location: Mapped[str | None] = mapped_column(String(32))
+    to_location: Mapped[str | None] = mapped_column(String(32))
+    cases: Mapped[int] = mapped_column(Integer)
+    actor: Mapped[str] = mapped_column(String(32), index=True)
+    ref: Mapped[str | None] = mapped_column(String(96))
+    simulated: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class WmsTask(Base):
+    """The task queue: put-away, pick, replenishment and cycle count, each with its crew member and
+    its simulated minutes (queued, started, finished)."""
+
+    __tablename__ = "wms_tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(96), unique=True)
+    kind: Mapped[TaskKind] = mapped_column(enum_column(TaskKind), index=True)
+    status: Mapped[TaskStatus] = mapped_column(enum_column(TaskStatus), index=True)
+    sku: Mapped[str] = mapped_column(String(32), index=True)
+    lpn: Mapped[str | None] = mapped_column(String(24))
+    from_location: Mapped[str | None] = mapped_column(String(32))
+    to_location: Mapped[str | None] = mapped_column(String(32))
+    cases: Mapped[int] = mapped_column(Integer)
+    assignee: Mapped[str] = mapped_column(String(32), index=True)
+    created_minute: Mapped[float] = mapped_column(Float)
+    assigned_minute: Mapped[float] = mapped_column(Float)
+    done_minute: Mapped[float] = mapped_column(Float, index=True)
+    ref: Mapped[str | None] = mapped_column(String(96), index=True)
+    counted_cases: Mapped[int | None] = mapped_column(Integer)
+    cleared_minute: Mapped[float | None] = mapped_column(Float)
+    note: Mapped[str | None] = mapped_column(String(120))
+    simulated: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class WmsShipment(Base):
+    """An inbound advance ship notice and its receipt, or an outbound wave line and its ship
+    confirmation. `key` is the appointment."""
+
+    __tablename__ = "wms_shipments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(64), unique=True)
+    direction: Mapped[OrderType] = mapped_column(enum_column(OrderType), index=True)
+    order_number: Mapped[str] = mapped_column(String(32))
+    customer: Mapped[str] = mapped_column(String(120))
+    carrier: Mapped[str] = mapped_column(String(8))
+    trailer: Mapped[str] = mapped_column(String(32))
+    door: Mapped[int] = mapped_column(Integer)
+    wave: Mapped[str | None] = mapped_column(String(16))
+    status: Mapped[ShipmentStatus] = mapped_column(enum_column(ShipmentStatus), index=True)
+    created_minute: Mapped[float] = mapped_column(Float, index=True)
+    arrived_minute: Mapped[float | None] = mapped_column(Float)
+    completed_minute: Mapped[float | None] = mapped_column(Float)
+    seal: Mapped[str | None] = mapped_column(String(64))
+    confirmation: Mapped[str | None] = mapped_column(String(32))
+    pallets: Mapped[int] = mapped_column(Integer, default=0)
+    lines: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    simulated: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class WmsYardEvent(Base):
+    """The gate and the yard: check-in (seal, reefer reading), the move to a door, check-out."""
+
+    __tablename__ = "wms_yard_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(96), unique=True)
+    ref: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[YardEventKind] = mapped_column(enum_column(YardEventKind), index=True)
+    minute: Mapped[float] = mapped_column(Float, index=True)
+    trailer: Mapped[str] = mapped_column(String(32))
+    carrier: Mapped[str] = mapped_column(String(8))
+    door: Mapped[int | None] = mapped_column(Integer)
+    yard_spot: Mapped[str | None] = mapped_column(String(8))
+    seal: Mapped[str | None] = mapped_column(String(64))
+    reefer_temp: Mapped[float | None] = mapped_column(Float)
+    dwell_minutes: Mapped[float | None] = mapped_column(Float)
+    late: Mapped[bool] = mapped_column(Boolean, default=False)
+    detention: Mapped[bool] = mapped_column(Boolean, default=False)
+    simulated: Mapped[bool] = mapped_column(Boolean, default=True)

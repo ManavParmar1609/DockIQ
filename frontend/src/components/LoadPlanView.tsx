@@ -434,12 +434,6 @@ function TrailerView({
       corner(-HALF_WIDTH, HEIGHT, length),
     ],
   };
-  const reefer: Point[] = [
-    [-0.75, HEIGHT - 0.2, length],
-    [0.75, HEIGHT - 0.2, length],
-    [0.75, HEIGHT - 0.75, length],
-    [-0.75, HEIGHT - 0.75, length],
-  ];
   const [noseLabelX, noseLabelY] = project(camera, [0, HEIGHT - 0.95, length]);
   const [reeferLeft, reeferTop] = project(camera, [-0.75, HEIGHT - 0.2, length]);
   const [reeferRight, reeferBottom] = project(camera, [0.75, HEIGHT - 0.75, length]);
@@ -468,6 +462,11 @@ function TrailerView({
       className="lp-view block h-auto w-full"
     >
       <Patterns prefix={prefix} />
+      <defs>
+        <filter id="lp-soft" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+      </defs>
       {/* The dock building behind the door */}
       <rect width={VIEW_W} height={VIEW_H} fill="var(--color-paper-sunk)" />
       {onDock && (
@@ -483,32 +482,70 @@ function TrailerView({
       <polygon points={polygon(camera, shell.right)} fill="var(--color-surface)" />
       <polygon points={polygon(camera, shell.left)} fill="var(--color-black)" fillOpacity="0.04" />
       <polygon points={polygon(camera, shell.floor)} fill="var(--color-paper-deep)" />
+      {/* The reefer's grooved aluminium floor runs the length of the trailer */}
+      {[-1.0, -0.6, -0.2, 0.2, 0.6, 1.0].map((x) => (
+        <polyline
+          key={`groove${x}`}
+          points={polygon(camera, [
+            [x, 0.005, start],
+            [x, 0.005, length],
+          ])}
+          stroke="var(--color-ink-mute)"
+          strokeOpacity="0.14"
+          strokeWidth="1"
+        />
+      ))}
+      {/* The air chute along the ceiling */}
+      <polygon
+        points={polygon(camera, [
+          [-0.34, HEIGHT - 0.01, start],
+          [0.34, HEIGHT - 0.01, start],
+          [0.34, HEIGHT - 0.01, length],
+          [-0.34, HEIGHT - 0.01, length],
+        ])}
+        fill="var(--color-paper-deep)"
+        fillOpacity="0.45"
+      />
       <polygon
         points={polygon(camera, shell.nose)}
         fill="var(--color-paper-sunk)"
         stroke="var(--color-hairline)"
       />
-      <polygon
-        points={polygon(camera, reefer)}
+      <rect
+        x={reeferLeft}
+        y={reeferTop}
+        width={Math.max(reeferRight - reeferLeft, 1)}
+        height={Math.max(reeferBottom - reeferTop, 1)}
+        rx={Math.min(8, (reeferBottom - reeferTop) / 4)}
         fill="var(--color-paper-deep)"
         stroke="var(--color-ink-mute)"
+        strokeOpacity="0.6"
         strokeWidth="1"
       />
-      {[0.3, 0.5, 0.7].map((at) => {
+      {[0.26, 0.42, 0.58, 0.74].map((at) => {
         const y = reeferTop + (reeferBottom - reeferTop) * at;
         return (
           <line
             key={at}
-            x1={reeferLeft + 6}
-            x2={reeferRight - 6}
+            x1={reeferLeft + (reeferRight - reeferLeft) * 0.08}
+            x2={reeferRight - (reeferRight - reeferLeft) * 0.3}
             y1={y}
             y2={y}
             stroke="var(--color-ink-mute)"
+            strokeOpacity="0.7"
             strokeWidth="1"
             strokeLinecap="round"
           />
         );
       })}
+      <rect
+        x={reeferRight - (reeferRight - reeferLeft) * 0.22}
+        y={reeferTop + (reeferBottom - reeferTop) * 0.24}
+        width={(reeferRight - reeferLeft) * 0.14}
+        height={(reeferBottom - reeferTop) * 0.26}
+        rx="2"
+        fill="var(--color-sage)"
+      />
       <text
         x={noseLabelX}
         y={noseLabelY}
@@ -527,11 +564,30 @@ function TrailerView({
         if (zFar < start) return null;
         const rib = Math.max(zNear, start);
         const middle = (Math.max(zNear, start) + zFar) / 2;
-        const [numberX, numberY] = project(camera, [-HALF_WIDTH, HEIGHT - 0.3, middle]);
+        const [numberX, numberY] = project(camera, [-HALF_WIDTH, HEIGHT - 0.1, middle]);
         const size = (FOCAL * 0.3) / Math.max(middle - camera, NEAR);
         const onRow = current?.row === row;
         return (
           <g key={row}>
+            {(['left', 'right'] as const).map((side) => {
+              const x = side === 'left' ? -HALF_WIDTH : HALF_WIDTH;
+              const half = zNear + ROW_DEPTH / 2;
+              if (half <= start) return null;
+              const [x1, y1] = project(camera, [x, 0, half]);
+              const [x2, y2] = project(camera, [x, HEIGHT, half]);
+              return (
+                <line
+                  key={`half-${side}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="var(--color-hairline)"
+                  strokeOpacity="0.55"
+                  strokeWidth="1"
+                />
+              );
+            })}
             {(['left', 'right'] as const).map((side) => {
               const x = side === 'left' ? -HALF_WIDTH : HALF_WIDTH;
               const [x1, y1] = project(camera, [x, 0, rib]);
@@ -559,7 +615,7 @@ function TrailerView({
             />
             {size >= 11 && (
               <text
-                x={numberX + size * 0.4}
+                x={numberX + size * 0.25}
                 y={numberY + size * 0.35}
                 textAnchor="start"
                 fontSize={Math.min(size, 28)}
@@ -568,7 +624,7 @@ function TrailerView({
                 fill={onRow ? 'var(--color-ink)' : 'var(--color-ink-mute)'}
                 opacity={onRow ? 1 : 0.7}
               >
-                {row + 1}
+                {onRow ? `Row ${String(row + 1)}` : row + 1}
               </text>
             )}
           </g>
@@ -593,6 +649,29 @@ function TrailerView({
             strokeDasharray="5 5"
           />
         ))}
+      {/* Soft contact shadows, so pallets stand on the floor */}
+      <g filter="url(#lp-soft)">
+        {boxes
+          .filter(
+            (box) =>
+              box.pallet.level === 0 &&
+              box.zNear > start &&
+              (box.pallet.load_sequence < step || box.pallet.load_sequence === current?.load_sequence),
+          )
+          .map((box) => (
+            <polygon
+              key={`shadow-${box.pallet.load_sequence}`}
+              points={polygon(camera, [
+                [box.x0 - 0.05, 0.004, box.zNear - 0.07],
+                [box.x1 + 0.05, 0.004, box.zNear - 0.07],
+                [box.x1 + 0.05, 0.004, box.zFar],
+                [box.x0 - 0.05, 0.004, box.zFar],
+              ])}
+              fill="var(--color-ink)"
+              fillOpacity={box.pallet.load_sequence === current?.load_sequence ? 0.08 : 0.16}
+            />
+          ))}
+      </g>
       {/* Pallets already on, far to near, then the one being placed */}
       {boxes
         .filter((box) => box.pallet.load_sequence < step && box.zNear > start)
@@ -653,23 +732,39 @@ function TrailerView({
           </text>
         </g>
       )}
-      {(['left', 'right'] as const).map((side) => (
-        <text
-          key={side}
-          x={side === 'left' ? 18 : VIEW_W - 18}
-          y={VIEW_H - 16}
-          textAnchor={side === 'left' ? 'start' : 'end'}
-          fontSize="17"
-          fontWeight="600"
-          fontFamily="var(--font-sans)"
-          fill="var(--color-ink)"
-          stroke="var(--color-paper-sunk)"
-          strokeWidth="5"
-          paintOrder="stroke"
-        >
-          {side === 'left' ? '← Your left' : 'Your right →'}
-        </text>
-      ))}
+      {(['left', 'right'] as const).map((side) => {
+        const width = 124;
+        const x = side === 'left' ? 14 : VIEW_W - 14 - width;
+        const y = VIEW_H - 50;
+        return (
+          <g key={side} transform={`translate(${x} ${y})`}>
+            <rect width={width} height="36" rx="18" className="lp-side-pill" />
+            <path
+              d={
+                side === 'left'
+                  ? 'M24 11 L17 18 L24 25'
+                  : `M${width - 24} 11 L${width - 17} 18 L${width - 24} 25`
+              }
+              fill="none"
+              stroke="var(--color-ink)"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <text
+              x={side === 'left' ? 32 : width - 32}
+              y="23.5"
+              textAnchor={side === 'left' ? 'start' : 'end'}
+              fontSize="16"
+              fontWeight="600"
+              fontFamily="var(--font-sans)"
+              fill="var(--color-ink)"
+            >
+              {side === 'left' ? 'Your left' : 'Your right'}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -733,7 +828,7 @@ function TrailerMap({
         y={top - 4}
         width={width - MAP_LABEL}
         height={plan.rows * MAP_ROW + 8}
-        rx="10"
+        rx="14"
         fill="var(--color-paper)"
         stroke="var(--color-hairline)"
         strokeWidth="2"
@@ -785,7 +880,7 @@ function TrailerMap({
                     y={y + 3}
                     width={MAP_LANE}
                     height={MAP_ROW - 6}
-                    rx="6"
+                    rx="8"
                     fill={state === 'todo' ? 'var(--color-surface)' : fillFor(prefix, fill)}
                     stroke={state === 'current' ? 'var(--color-ink)' : HUE[fill].ink}
                     strokeWidth={state === 'current' ? 3.5 : 1.5}
@@ -841,7 +936,7 @@ function TrailerMap({
 
 function Fact({ label, note, children }: { label: string; note?: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg bg-paper-sunk px-3 py-3 sm:px-4">
+    <div className="lp-fact rounded-2xl bg-paper-sunk px-3.5 py-3.5 sm:px-5">
       <dt className="label">{label}</dt>
       <dd className="num mt-0.5 text-2xl leading-tight sm:text-3xl">{children}</dd>
       {note && <dd className="text-sm font-semibold text-ink-soft">{note}</dd>}
@@ -924,7 +1019,7 @@ function NowLoading({
         </div>
       )}
 
-      <div className="-mx-5 sm:mx-0 sm:overflow-hidden sm:rounded-2xl">
+      <div className="lp-frame -mx-5 sm:mx-0 sm:overflow-hidden sm:rounded-2xl">
         <TrailerView plan={plan} step={step} fills={fills} current={current} />
       </div>
 

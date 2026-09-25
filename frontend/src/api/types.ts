@@ -37,6 +37,14 @@ export type SimSpeed = Schemas['SimSpeed']['speed'];
 export type WmsStatus = Schemas['WmsStatusOut'];
 export type YardEntry = Schemas['YardEntryOut'];
 export type Pallet = Schemas['PalletOut'];
+export type StockRow = Schemas['StockOut'];
+export type LedgerEntry = Schemas['LedgerEntryOut'];
+export type WarehouseTask = Schemas['WarehouseTaskOut'];
+export type CrewProductivity = Schemas['CrewProductivityOut'];
+export type Shipment = Schemas['ShipmentOut'];
+export type GateEvent = Schemas['GateEventOut'];
+export type ColdRoom = Schemas['ColdRoomOut'];
+export type RoomCode = ColdRoom['code'];
 
 export interface AiResolution {
   found: boolean;

@@ -11,6 +11,7 @@ from app.domain.enums import (
     DockStatus,
     IssueStatus,
     LifecyclePhase,
+    MovementKind,
     OrderStatus,
     OrderType,
     ProductCategory,
@@ -18,6 +19,10 @@ from app.domain.enums import (
     Role,
     ScanResult,
     Severity,
+    ShipmentStatus,
+    TaskKind,
+    TaskStatus,
+    YardEventKind,
 )
 
 
@@ -196,6 +201,8 @@ class DockOut(Schema):
     trailer_number: str | None
     company_name: str | None
     order_type: OrderType | None
+    cases_done: int | None  # on the current order; None when the door has no order
+    cases_expected: int | None
 
 
 class OrderItemOut(Schema):
@@ -737,3 +744,142 @@ class PalletOut(BaseModel):
     cases: int
     lot: str
     best_before: date
+
+
+# ── The warehouse behind the WMS (business-rules §12.7–§12.10) ──
+
+StockArea = Literal["storage", "hold", "dock", "stage", "trailer"]
+
+
+class StockOut(BaseModel):
+    pallet_id: str
+    sku: str
+    location: str
+    area: StockArea
+    room: str | None
+    cases: int
+    lot: str
+    best_before: date
+    simulated: bool
+
+
+class LedgerEntryOut(BaseModel):
+    id: int
+    kind: MovementKind
+    minute: float
+    time: str
+    pallet_id: str
+    sku: str
+    lot: str
+    best_before: date
+    from_location: str | None
+    to_location: str | None
+    cases: int
+    actor: str
+    actor_name: str
+    order_number: str | None
+    simulated: bool
+
+
+class WarehouseTaskOut(BaseModel):
+    key: str
+    kind: TaskKind
+    status: TaskStatus
+    sku: str
+    pallet_id: str | None
+    from_location: str | None
+    to_location: str | None
+    cases: int
+    assignee: str
+    assignee_name: str
+    queued_at: str
+    started_at: str
+    finished_at: str
+    standard_minutes: float
+    order_number: str | None
+    counted_cases: int | None
+    note: str | None
+    simulated: bool
+
+
+class CrewProductivityOut(BaseModel):
+    code: str
+    name: str
+    role: Literal["warehouse", "dock"]
+    tasks_done: int
+    cases: int
+    tasks_per_hour: float
+    cases_per_hour: float
+    busy_percent: float | None
+    simulated: bool
+
+
+class ShipmentLineOut(BaseModel):
+    sku: str
+    expected: int
+    allocated: int
+    done: int
+
+
+class ShipmentOut(BaseModel):
+    ref: str
+    direction: OrderType
+    order_number: str
+    customer: str
+    carrier: str
+    trailer: str
+    door: int
+    wave: str | None
+    status: ShipmentStatus
+    created_at: str
+    arrived_at: str | None
+    completed_at: str | None
+    seal: str | None
+    confirmation: str | None
+    pallets: int
+    cases_expected: int
+    cases_allocated: int
+    cases_done: int
+    lines: list[ShipmentLineOut]
+    simulated: bool
+
+
+class GateEventOut(BaseModel):
+    id: int
+    kind: YardEventKind
+    minute: float
+    time: str
+    order_number: str | None
+    trailer: str
+    carrier: str
+    door: int | None
+    yard_spot: str | None
+    seal: str | None
+    reefer_temp: float | None
+    dwell_minutes: float | None
+    late: bool
+    detention: bool
+    simulated: bool
+
+
+class RoomReadingOut(BaseModel):
+    minute: float
+    time: str
+    temp: float
+
+
+class ColdRoomOut(BaseModel):
+    code: Literal["F", "C", "P", "D"]
+    name: str
+    setpoint: float
+    limit: float
+    temp: float
+    over_limit: bool
+    alarm: bool
+    readings: list[RoomReadingOut]
+    slots: int
+    occupied: int
+    pallets: int
+    cases: int
+    on_hold_cases: int
+    simulated: bool

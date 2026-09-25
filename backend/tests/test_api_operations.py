@@ -115,6 +115,22 @@ def test_reference_data_is_fictional_and_complete(client: TestClient, login: Log
     assert len(client.get("/api/docks", headers=headers).json()) == 12
 
 
+def test_each_door_carries_its_orders_case_progress(client: TestClient, login: Login) -> None:
+    headers = login("SUP-001")
+    docks = client.get("/api/docks", headers=headers).json()
+    for dock in docks:
+        if dock["current_order_id"] is None:
+            assert (dock["cases_done"], dock["cases_expected"]) == (None, None)
+            continue
+        order = client.get(f"/api/orders/{dock['current_order_id']}", headers=headers)
+        if order.status_code != 200:  # another team's order
+            continue
+        items = order.json()["items"]
+        assert dock["cases_done"] == sum(item["actual_quantity"] for item in items)
+        assert dock["cases_expected"] == sum(item["expected_quantity"] for item in items)
+    assert any(dock["cases_expected"] for dock in docks)
+
+
 # ── Orders, scanning, load plans ──
 
 

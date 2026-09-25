@@ -37,6 +37,8 @@ const ACTIVE: Dock = {
   trailer_number: 'TR-4410',
   company_name: 'Crestline Markets',
   order_type: 'outbound',
+  cases_done: 12,
+  cases_expected: 20,
 };
 
 const IDLE: Dock = {
@@ -164,7 +166,9 @@ describe('DockSheet', () => {
     const user = userEvent.setup();
     renderFloor([ACTIVE, IDLE]);
 
-    const tile = screen.getByRole('button', { name: 'Dock 4, issue, open details' });
+    const tile = screen.getByRole('button', {
+      name: /^Dock 4, issue, Maria Lopez, 60% counted, open details$/,
+    });
     await user.click(tile);
 
     const sheet = screen.getByRole('dialog', { name: 'Dock 4' });
@@ -183,7 +187,7 @@ describe('DockSheet', () => {
     const user = userEvent.setup();
     renderFloor([ACTIVE, IDLE]);
 
-    await user.click(screen.getByRole('button', { name: 'Dock 5, idle, open details' }));
+    await user.click(screen.getByRole('button', { name: /^Dock 5, idle.*open details$/ }));
     expect(screen.getByRole('dialog', { name: 'Dock 5' })).toBeInTheDocument();
     expect(screen.getByText('This door is idle')).toBeInTheDocument();
 

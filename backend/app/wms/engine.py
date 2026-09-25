@@ -41,7 +41,8 @@ from app.models import (
 from app.queries import issue_select
 from app.realtime import ConnectionManager
 from app.schemas import IssueCreate, IssueOut
-from app.services.issue_filing import file_issue
+from app.services.issue_filing import SystemFiling, file_issue
+from app.wms import ledger
 from app.wms.clock import SHIFT_MINUTES, Clock, clock_label, shift_of
 from app.wms.plan import (
     Appointment,
@@ -51,14 +52,17 @@ from app.wms.plan import (
     Visit,
     plan_shift,
     shift_kpis,
-    work_minutes,
+    work_window,
 )
+from app.wms.warehouse import IssueRequest, Trailer, Warehouse
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_SEED = 42
 DEFAULT_SPEED = 15.0
 INJECTED_OUTAGE_MINUTES = 8.0
+WAREHOUSE_FOLLOW_UP_MINUTES = 8.0  # a warehouse problem is settled or escalated this long after filing
+WAREHOUSE_EVENTS = ("stock_exception", "room_excursion")
 NEVER = float("-inf")  # "free since before the simulation began"
 
 # What an operator records when a simulated, non-serious issue is handled at the dock.
@@ -303,11 +307,176 @@ class SimulationEngine:
             if order.sim_managed and order.status is OrderStatus.IN_PROGRESS:
                 await self._progress(session, reference, appointment, order, minute, applied, online, notices)
 
+        await self._run_warehouse(session, reference, clock, plan, carried, minute, notices)
+        await self._settle_warehouse_issues(session, shifts, applied, minute, notices)
+
         queued = Order.status == OrderStatus.COMPLETE, Order.wms_synced.is_(False)
         if online and await session.scalar(select(Order.id).where(*queued).limit(1)) is not None:
             # write back every completion the outage queued, simulated or not
             await session.execute(update(Order).where(*queued).values(wms_synced=True))
         return notices
+
+    # ── The warehouse behind the WMS (business-rules §12.7–§12.11) ──
+
+    @staticmethod
+    def products(reference: Reference) -> dict[str, ProductRef]:
+        return {
+            sku: ProductRef(p.sku, p.name, p.category.value, p.cases_per_pallet, p.temp_max)
+            for sku, p in reference.products.items()
+        }
+
+    async def _run_warehouse(
+        self,
+        session: AsyncSession,
+        reference: Reference,
+        clock: Clock,
+        plan: ShiftPlan,
+        carried: list[Order],
+        minute: float,
+        notices: Notices,
+    ) -> None:
+        """Bring the stock, the tasks, the shipments and the gate up to `minute`. The trailers'
+        timelines come from the orders materialised above; the warehouse never feeds back into them."""
+        state = await self._state(session)
+        loaded = await ledger.load(session, state, self.products(reference))
+        warehouse = loaded.warehouse
+        if not loaded.opened:
+            warehouse.open(shift_of(minute) * SHIFT_MINUTES)
+        appointments = {appointment.key: appointment for appointment in plan.appointments}
+        for ref in [*warehouse.shipments, *(order.external_ref or "" for order in carried)]:
+            if ref and ref not in appointments:
+                earlier = self.plan(reference, clock.seed, shift_from_ref(ref))
+                found = next((a for a in earlier.appointments if a.key == ref), None)
+                if found is not None:
+                    appointments[ref] = found
+        trailers = await self._trailers(session, reference, list(appointments.values()), warehouse, minute)
+        warehouse.run(trailers, minute)
+        await ledger.save(session, loaded, state)
+        for request in warehouse.issues:
+            issue = await self._file_warehouse_issue(session, reference, request)
+            self._record(session, request.key, request.kind, request.minute, request.description[:200], issue)
+            if issue is not None:
+                notices.new_issues.append(issue)
+        if warehouse.changed:
+            notices.floor_changed = True
+
+    async def _file_warehouse_issue(
+        self, session: AsyncSession, reference: Reference, request: IssueRequest
+    ) -> Issue | None:
+        """A problem the warehouse found, filed by a simulated crew member of the zone it concerns
+        through the ordinary path, so it is scored by the same formula (§12.13). It names no dock: the
+        warehouse never changes a door's state."""
+        zone = reference.doors[request.door].zone if request.door in reference.doors else None
+        crew = reference.team(zone) if zone else []
+        crew = crew or sorted(reference.operators, key=lambda op: op.employee_id)
+        if not crew:
+            return None
+        product = reference.products.get(request.sku) if request.sku else None
+        order = (
+            await session.scalar(select(Order).where(Order.external_ref == request.ref))
+            if request.ref
+            else None
+        )
+        company_id = order.company_id if order else product.company_id if product else None
+        return await file_issue(
+            session,
+            crew[0].id,
+            SystemFiling(
+                order_id=order.id if order else None,
+                issue_type=request.issue_type,
+                issue_subtype=request.subtype,
+                description=request.description,
+                product_id=product.id if product else None,
+                company_id=company_id,
+                carrier_id=order.carrier_id if order else None,
+                quantity_affected=request.quantity,
+                temp_reading=request.temp_reading,
+                temp_threshold_max=request.temp_limit,
+                count_expected=request.count_expected,
+                count_actual=request.count_actual,
+            ),
+            simulated=True,
+        )
+
+    async def _settle_warehouse_issues(
+        self, session: AsyncSession, shifts: set[int], applied: set[str], minute: float, notices: Notices
+    ) -> None:
+        """The crew settles a warehouse problem a few minutes after filing it, by the §12.3 rule."""
+        filed = await session.scalars(
+            select(SimEvent).where(
+                SimEvent.kind.in_(WAREHOUSE_EVENTS),
+                or_(*(SimEvent.key.like(f"s{s}-%") for s in shifts)),
+                SimEvent.minute <= minute - WAREHOUSE_FOLLOW_UP_MINUTES,
+            )
+        )
+        for event in list(filed):
+            if f"{event.key}:fu" in applied or event.issue_id is None:
+                continue
+            issue = await session.get(Issue, event.issue_id)
+            if issue is None:
+                continue
+            self._settle(issue, notices)
+            self._record(
+                session,
+                f"{event.key}:fu",
+                "follow_up",
+                event.minute + WAREHOUSE_FOLLOW_UP_MINUTES,
+                f"Issue #{issue.id} {issue.status.value.replace('_', ' ')}",
+                issue,
+            )
+
+    async def _trailers(
+        self,
+        session: AsyncSession,
+        reference: Reference,
+        appointments: list[Appointment],
+        warehouse: Warehouse,
+        minute: float,
+    ) -> list[Trailer]:
+        orders = {
+            order.external_ref: order
+            for order in await session.scalars(
+                select(Order).where(Order.external_ref.in_([a.key for a in appointments]))
+            )
+        }
+        door_numbers = {door.id: number for number, door in reference.doors.items()}
+        trailers: list[Trailer] = []
+        for appointment in appointments:
+            order = orders.get(appointment.key)
+            if order is None or order.sim_arrived_minute is None:
+                trailers.append(Trailer(appointment))
+                continue
+            operator = await session.get(User, order.operator_id) if order.operator_id else None
+            start, duration = work_window(
+                appointment, order.sim_arrived_minute, operator.experience_level if operator else None
+            )
+            departed = order.sim_departed_minute
+            signed_off = order.status is OrderStatus.COMPLETE and appointment.key in warehouse.shipments
+            if departed is None and signed_off:
+                departed = minute  # a person signed it off: it leaves when the warehouse sees it
+            exception = appointment.exception
+            trailers.append(
+                Trailer(
+                    appointment,
+                    at_door=order.sim_arrived_minute,
+                    door=door_numbers.get(order.dock_door_id or -1),
+                    work_start=start,
+                    work_minutes=duration,
+                    departed=departed,
+                    operator=operator.employee_id if operator else None,
+                    managed=order.sim_managed,
+                    exception_at=start + exception.at_fraction * duration if exception else None,
+                )
+            )
+        return trailers
+
+    async def ensure_ledger(self) -> None:
+        """The warehouse opens on the first advance; a read before any advance opens it first."""
+        async with self._database.sessionmaker() as session:
+            state = await session.get(SimState, 1)
+            if state is not None and state.ledger_minute is not None:
+                return
+        await self.advance()
 
     def _record(
         self,
@@ -435,8 +604,11 @@ class SimulationEngine:
     ) -> None:
         dock = await session.get(DockDoor, order.dock_door_id) if order.dock_door_id else None
         operator = await session.get(User, order.operator_id) if order.operator_id else None
-        start = (order.sim_arrived_minute or appointment.arrival) + appointment.inspection_minutes
-        duration = work_minutes(appointment.pallets, operator.experience_level if operator else None)
+        start, duration = work_window(
+            appointment,
+            order.sim_arrived_minute or appointment.arrival,
+            operator.experience_level if operator else None,
+        )
         end = start + duration
         if appointment.exception is not None:  # the operator settles the problem before the trailer leaves
             exc = appointment.exception
@@ -559,9 +731,10 @@ class SimulationEngine:
         issue_id = await session.scalar(select(SimEvent.issue_id).where(SimEvent.key == key))
         return await session.get(Issue, issue_id) if issue_id else None
 
-    def _follow_up(self, issue: Issue, dock: DockDoor, notices: Notices) -> None:
+    def _settle(self, issue: Issue, notices: Notices) -> IssueStatus | None:
+        """Escalate a serious issue, self-resolve the rest with the suggested procedure (§12.3)."""
         if issue.status is not IssueStatus.RESOLUTION_IN_PROGRESS:
-            return  # someone already acted on it
+            return None  # someone already acted on it
         now = utcnow()
         serious = (
             issue.severity in (Severity.HIGH, Severity.CRITICAL) or issue.issue_type not in SELF_RESOLUTION
@@ -569,19 +742,26 @@ class SimulationEngine:
         if serious:
             issue.status = IssueStatus.ESCALATED
             issue.escalated_at = now
-            dock.status, dock.lifecycle_phase = transition(
-                dock.status, dock.lifecycle_phase, DockEvent.ISSUE_ESCALATED, severity=issue.severity
-            )
             notices.escalated.append(issue)
         else:
             issue.status = IssueStatus.SELF_RESOLVED
             issue.resolution_type = SELF_RESOLUTION[issue.issue_type]
-            issue.resolution_notes = "Resolved at the dock with the suggested procedure (simulated)"
+            issue.resolution_notes = "Resolved with the suggested procedure (simulated)"
             issue.resolved_at = now
-            dock.status, dock.lifecycle_phase = transition(
-                dock.status, dock.lifecycle_phase, DockEvent.ISSUE_RESOLVED
-            )
             notices.resolved.append(issue)
+        return issue.status
+
+    def _follow_up(self, issue: Issue, dock: DockDoor, notices: Notices) -> None:
+        match self._settle(issue, notices):
+            case IssueStatus.ESCALATED:
+                dock.status, dock.lifecycle_phase = transition(
+                    dock.status, dock.lifecycle_phase, DockEvent.ISSUE_ESCALATED, severity=issue.severity
+                )
+            case IssueStatus.SELF_RESOLVED:
+                issue.resolution_notes = "Resolved at the dock with the suggested procedure (simulated)"
+                dock.status, dock.lifecycle_phase = transition(
+                    dock.status, dock.lifecycle_phase, DockEvent.ISSUE_RESOLVED
+                )
 
     async def _report_outage(self, session: AsyncSession) -> Issue | None:
         """A simulated crew member at a door reports the WMS as offline, as they would on the floor."""
@@ -685,6 +865,7 @@ class SimulationEngine:
             state = await session.get(SimState, 1)
             if state is not None:
                 state.outage_until_minute = None
+            await ledger.clear(session)
             await self.save_clock(
                 session, Clock(seed if seed is not None else clock.seed, clock.speed, False, now, 0.0)
             )

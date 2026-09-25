@@ -70,7 +70,7 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/docks` | All 12 doors, joined with current operator, order and customer |
+| GET | `/api/docks` | All 12 doors, joined with current operator, order and customer, and the order's `cases_done` / `cases_expected` (null with no order) |
 | GET | `/api/docks/{dock_id}` | Single door with the same joins |
 
 ### 2.3 Orders
@@ -194,8 +194,16 @@ simulator; `WMS_MODE=none` answers every lookup 503 and hides the simulator (404
 |---|---|---|---|
 | GET | `/api/wms/status` | everyone | `{mode, online, message}`; drives the shell's *WMS offline* banner |
 | GET | `/api/wms/appointments` | staff | Yard board: scheduled (next 90 min), in yard, at door, recently left — each with booked and gate-arrival times, minutes late, reefer set-point, yard spot, dwell and a detention flag. 503 when offline |
-| GET | `/api/wms/inventory?sku=` | everyone | Pallet locations for a SKU with lot and best-before, first-expiring first (*Where is it stored* on an outbound line; the first is marked *Pick first*). 503 when offline |
-| GET | `/api/wms/pallets/{id}` | everyone | One pallet by ID. 404 unknown, 503 offline |
+| GET | `/api/wms/inventory?sku=` | everyone | Pickable pallets of a SKU (racking and overflow, from the stock ledger) with lot and best-before, first-expiring first (*Where is it stored* on an outbound line; the first is marked *Pick first*). 503 when offline |
+| GET | `/api/wms/pallets/{id}` | everyone | One pallet by licence plate — its storage location if it has one, else wherever it is (dock lane, staging lane, trailer). 404 unknown, 503 offline |
+| GET | `/api/wms/stock?room=&sku=&limit=` | everyone | On hand by licence plate and location in every area (storage, hold, dock, stage, trailer), first-expiring first. `room` ∈ F, C, P, D; `limit` 1–500 (default 200). 422 out of range, 503 offline |
+| GET | `/api/wms/tasks?status=&kind=&limit=` | staff | The task queue (put-away, pick, replenish, cycle count), newest first: crew member, queued/started/finished times, standard minutes, the order it serves, count results. `limit` 1–200 (default 60). 422 unknown status/kind, 503 offline |
+| GET | `/api/wms/productivity` | staff | This shift so far per crew member: tasks (or dock pallet moves) done, cases, tasks/hour, cases/hour, % busy (warehouse crew). 503 offline |
+| GET | `/api/wms/transactions?limit=&before_id=&sku=&pallet_id=` | staff | The movement ledger, newest first — kind, licence plate, SKU, lot, best-before, from → to, cases, who, the order. Page back with `before_id`. `limit` 1–200 (default 50). 422 out of range, 503 offline |
+| GET | `/api/wms/shipments?direction=&limit=` | staff | Inbound ASNs and receipts; outbound loads from wave release to ship confirmation — status, wave, seal, confirmation, cases expected/allocated/received-or-shipped per line. `limit` 1–100 (default 40). 503 offline |
+| GET | `/api/wms/shipments/{ref}` | staff | One shipment by appointment reference or order number. 404 unknown, 503 offline |
+| GET | `/api/wms/gate?limit=` | staff | The gate log, newest first: check-in (seal, reefer reading, late flag, yard spot), the move from the yard to a door (wait), check-out (seal, dwell, detention). `limit` 1–200 (default 60). 422 out of range, 503 offline |
+| GET | `/api/wms/rooms?readings=` | staff | The four temperature rooms: set-point, alarm limit, the latest `readings` samples (1–96, default 12), over-limit and alarm flags, racking positions, positions occupied, pallets, cases, cases on quality hold. 422 out of range, 503 offline |
 | GET | `/api/sim/status` | staff | Clock, seed, speed, WMS state, trailer counts, the last 15 events |
 | POST | `/api/sim/play`, `/pause`, `/next-shift` | staff | Clock control; each returns the new status |
 | POST | `/api/sim/speed` `{speed}` | staff | 1, 5, 15 or 60 |

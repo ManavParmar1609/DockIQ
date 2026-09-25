@@ -9,8 +9,11 @@ import type {
   Analytics,
   Broadcast,
   ChatMessage,
+  ColdRoom,
+  CrewProductivity,
   DemoAccount,
   Dock,
+  GateEvent,
   Handoff,
   InspectionCreate,
   InspectionResult,
@@ -18,19 +21,24 @@ import type {
   IssueCreate,
   IssueCreated,
   IssueStatus,
+  LedgerEntry,
   LoadPlan,
   Order,
   OrderDetail,
   Pallet,
   Photo,
   QuickRequest,
+  RoomCode,
   ScanResult,
   Severity,
+  Shipment,
   SimScenario,
   SimSpeed,
   SimStatus,
+  StockRow,
   Taxonomy,
   TemperatureCheck,
+  WarehouseTask,
   WmsStatus,
   YardEntry,
 } from './types';
@@ -69,6 +77,13 @@ export const keys = {
   wms: ['wms'] as const,
   yard: ['wms', 'yard'] as const,
   inventory: (sku: string) => ['wms', 'inventory', sku] as const,
+  stock: (room: string) => ['wms', 'stock', room] as const,
+  tasks: ['wms', 'tasks'] as const,
+  productivity: ['wms', 'productivity'] as const,
+  ledger: (before: number | null) => ['wms', 'transactions', before] as const,
+  shipments: ['wms', 'shipments'] as const,
+  gate: ['wms', 'gate'] as const,
+  rooms: ['wms', 'rooms'] as const,
 };
 
 // ── Reference ──
@@ -537,6 +552,73 @@ export function useInventory(sku: string | null) {
     queryKey: keys.inventory(sku ?? ''),
     queryFn: () => unwrap(api.GET('/api/wms/inventory', { params: { query: { sku: sku ?? '' } } })),
     enabled: Boolean(sku),
+    retry: false,
+  });
+}
+
+// ── The warehouse behind the WMS. Refreshed by `floor_update`; a 503 is the WMS down, not retried. ──
+
+export function useStock(room: RoomCode, enabled = true) {
+  return useQuery<StockRow[]>({
+    queryKey: keys.stock(room),
+    enabled,
+    queryFn: () => unwrap(api.GET('/api/wms/stock', { params: { query: { room, limit: 500 } } })),
+    retry: false,
+  });
+}
+
+export function useWarehouseTasks(enabled = true) {
+  return useQuery<WarehouseTask[]>({
+    queryKey: keys.tasks,
+    enabled,
+    queryFn: () => unwrap(api.GET('/api/wms/tasks', { params: { query: { limit: 80 } } })),
+    retry: false,
+  });
+}
+
+export function useCrewProductivity(enabled = true) {
+  return useQuery<CrewProductivity[]>({
+    queryKey: keys.productivity,
+    enabled,
+    queryFn: () => unwrap(api.GET('/api/wms/productivity')),
+    retry: false,
+  });
+}
+
+/** The movement ledger, newest first; `before` pages back (null = the latest). */
+export function useLedger(before: number | null, enabled = true) {
+  return useQuery<LedgerEntry[]>({
+    queryKey: keys.ledger(before),
+    enabled,
+    queryFn: () =>
+      unwrap(api.GET('/api/wms/transactions', { params: { query: { limit: 50, before_id: before } } })),
+    retry: false,
+  });
+}
+
+export function useShipments(enabled = true) {
+  return useQuery<Shipment[]>({
+    queryKey: keys.shipments,
+    enabled,
+    queryFn: () => unwrap(api.GET('/api/wms/shipments', { params: { query: { limit: 40 } } })),
+    retry: false,
+  });
+}
+
+export function useGateLog(enabled = true) {
+  return useQuery<GateEvent[]>({
+    queryKey: keys.gate,
+    enabled,
+    queryFn: () => unwrap(api.GET('/api/wms/gate', { params: { query: { limit: 40 } } })),
+    retry: false,
+  });
+}
+
+export function useColdRooms(enabled = true) {
+  return useQuery<ColdRoom[]>({
+    queryKey: keys.rooms,
+    enabled,
+    queryFn: () => unwrap(api.GET('/api/wms/rooms', { params: { query: { readings: 12 } } })),
     retry: false,
   });
 }

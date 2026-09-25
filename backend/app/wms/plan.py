@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from app.wms.clock import SHIFT_MINUTES
+from app.wms.layout import nearest_free, pick_faces
 
 # Minutes of work per pallet by operator experience (the seeded `experience_level`).
 MINUTES_PER_PALLET: dict[str, float] = {"senior": 2.0, "experienced": 2.6, "new": 3.4}
@@ -306,7 +307,10 @@ def plan_shift(
     )
 
 
-# ── Inventory: a per-seed snapshot the simulated WMS serves ──
+# ── Inventory: the opening stock the ledger starts from (§12.7) ──
+
+OPENING_PALLETS = (6, 10)  # per SKU
+OPENING_SERIALS = 1_000_000  # opening licence plates use serials below this; receipts count up from it
 
 
 @dataclass(frozen=True, slots=True)
@@ -319,27 +323,54 @@ class PalletRecord:
     best_before: date
 
 
+def lpn(seed: int, serial: int) -> str:
+    """A licence plate: a fictional GS1-style prefix, the seed, then a serial."""
+    return f"00286{seed % 1000:03d}{serial:07d}"
+
+
+def calendar_day(shift: int) -> date:
+    """The simulated date of a shift: one day shift per day, the first on INVENTORY_DATE."""
+    return INVENTORY_DATE + timedelta(days=shift)
+
+
 def inventory(seed: int, products: Sequence[ProductRef]) -> tuple[PalletRecord, ...]:
-    """Pallets on hand, stored in their temperature room and listed first-expiring-first (FEFO)."""
+    """The opening stock: full pallets in their temperature room, listed first-expiring-first (FEFO).
+    Each SKU's earliest-expiring pallet sits on its pick face; the rest fill the nearest free reserve
+    slots."""
     rng = random.Random(f"dockiq-inventory:{seed}")
+    by_room: dict[str, list[str]] = {}
+    for product in products:
+        by_room.setdefault(STORAGE_ZONE.get(product.category, "D"), []).append(product.sku)
+    faces = pick_faces(by_room)
+    taken: set[str] = set()
     records: list[PalletRecord] = []
     for index, product in enumerate(sorted(products, key=lambda p: p.sku)):
-        room = STORAGE_ZONE.get(product.category, "D")
         shortest, longest = SHELF_LIFE_DAYS.get(product.category, (90, 365))
-        pallets: list[PalletRecord] = []
-        for n in range(rng.randint(2, 5)):
-            pallets.append(
+        dated = sorted(
+            (INVENTORY_DATE + timedelta(days=rng.randint(shortest, longest)), n)
+            for n in range(rng.randint(*OPENING_PALLETS))
+        )
+        face = faces[product.sku]
+        for position, (best_before, n) in enumerate(dated):
+            location = face.code if position == 0 else nearest_free(face, taken)
+            taken.add(location)
+            records.append(
                 PalletRecord(
-                    pallet_id=f"00286{seed % 1000:03d}{index:04d}{n:03d}",
+                    pallet_id=lpn(seed, index * 1000 + n),
                     sku=product.sku,
-                    location=f"{room}-{10 + index % 16:02d}-B{rng.randint(1, 24):02d}-{rng.randint(1, 4)}",
+                    location=location,
                     cases=product.cases_per_pallet,
                     lot=f"L{rng.randint(2600, 2699)}{chr(65 + n)}",
-                    best_before=INVENTORY_DATE + timedelta(days=rng.randint(shortest, longest)),
+                    best_before=best_before,
                 )
             )
-        records.extend(sorted(pallets, key=lambda pallet: pallet.best_before))
     return tuple(records)
+
+
+def work_window(appointment: Appointment, at_door: float, experience: str | None) -> tuple[float, float]:
+    """(start, duration) of the work on a trailer that reached its door at `at_door`: the inspection
+    first, then the pallets at the crew member's rate."""
+    return at_door + appointment.inspection_minutes, work_minutes(appointment.pallets, experience)
 
 
 # ── Shift KPIs: what a WMS reports about the dock, from the plan and what happened ──

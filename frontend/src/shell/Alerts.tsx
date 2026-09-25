@@ -31,7 +31,9 @@ function alertFor(event: RealtimeEvent, role: Role): Omit<Alert, 'key'> | null {
       kicker:
         event.type === 'issue_escalated' || issue.status === 'escalated' ? 'Escalated to you' : 'New issue',
       title: issue.issue_type,
-      detail: `Dock ${String(issue.door_number ?? '—')} · ${issue.operator_name ?? ''}`,
+      detail: [issue.door_number == null ? null : `Dock ${String(issue.door_number)}`, issue.operator_name]
+        .filter(Boolean)
+        .join(' · '),
       severity: issue.severity,
     };
   }

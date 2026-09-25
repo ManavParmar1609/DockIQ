@@ -528,14 +528,118 @@ All in `app/wms/plan.py`, pinned in `tests/test_simulation.py`.
 | Detention | on site (gate to departure, or to now) longer than **120 min** |
 | Reefer set-point | **5 °F** under the strictest product limit on the load; none for a load with no limit |
 | Yard spots | `Y-01` … `Y-40`, where a trailer waits while its door is busy |
-| Storage rooms | Frozen `F`, Refrigerated `C`, Produce `P`, Dry `D`; location `{room}-{aisle}-B{bay}-{level}` |
-| Shelf life at receipt (days, uniform) | Frozen 120–365 · Refrigerated 6–21 · Produce 3–12 · Dry 90–540, from 2026-09-25 |
-| Pick order | first-expiring first (FEFO): the pallet with the earliest best-before is listed first |
+| Storage rooms | Frozen `F`, Refrigerated `C`, Produce `P`, Dry `D`; location `{room}-{aisle}-B{bay}-{level}` (layout: §12.7) |
+| Shelf life at receipt (days, uniform) | Frozen 120–365 · Refrigerated 6–21 · Produce 3–12 · Dry 90–540, from the shift's date (shift 1 = 2026-09-25, one day per shift) |
+| Pick order | first-expiring first (FEFO): the pallet with the earliest best-before is listed first — and allocated first (§12.9) |
 
 **Shift KPIs** (`shift_kpis`, on `GET /api/sim/status`): trailers arrived; on-time % of those;
 average turn (gate to departure, trailers that have left); trailers on detention now; pallets per
 hour (pallets on departed trailers ÷ elapsed shift hours, at least a quarter hour); door utilisation
 (door-minutes occupied ÷ doors × elapsed minutes, capped at 100 %).
+
+### 12.7 The warehouse: layout, licence plates and the stock ledger
+
+`app/wms/layout.py` and `app/wms/warehouse.py` (pure); `app/wms/ledger.py` persists. Pinned in
+`tests/test_warehouse.py`.
+
+| Rule | Value |
+|---|---|
+| Racking per room | aisles **10–17**, bays **1–12**, levels **1–4**: 384 positions, of which level 1 (96) are pick positions and levels 2–4 (**288**) reserve slots |
+| Pick face | one level-1 position per SKU: the room's SKUs in SKU order, across the aisles, then along them |
+| Other locations | quality hold `{room}-HOLD` (on hand, not pickable) · overflow floor `{room}-OVF` (when the racking is full; pickable) · dock lane `DOCK-{door}` · staging lane `STAGE-{door}` · a loaded trailer (its trailer number) |
+| Licence plate (LPN) | `00286` + seed (3 digits) + serial (7 digits); opening stock uses serials below **1,000,000**, receipts count up from it |
+| Opening stock | **6–10** full pallets per SKU; the earliest-expiring on the pick face, the rest in the nearest free reserve slots. Recorded at the start of the first shift as a *receive* to `DOCK-00` and a *put-away* per pallet, by `system` |
+| Movements | *receive* (nowhere → dock lane) · *put-away* · *replenish* (reserve → pick face) · *pick* (→ staging lane) · *load* (→ trailer) · *ship* (trailer → nowhere) · *adjust*; each with licence plate, SKU, lot, best-before, from, to, cases, simulated minute and actor (crew code, dock crew employee ID, or `system`) |
+| Invariant | on hand per licence plate per location **equals** the sum of its movements in minus out; a test asserts it |
+| Exactly once | every movement, task, shipment and gate event has a unique key; the ledger keeps a watermark minute and applies events in (watermark, now] **in time order**, so one jump and many small steps write the same ledger (tested) |
+| Warehouse → trailers | one way: the warehouse reads the trailers' timelines; nothing in it moves a trailer |
+
+### 12.8 Inbound: ASN → gate → unload → receipt → put-away
+
+| Rule | Value |
+|---|---|
+| Advance ship notice | **120 min** before the appointment (never before the shift starts), one line per SKU |
+| Gate check-in | at the gate arrival: the shipper's seal number, a reefer reading of set-point **± 1.5 °F**, a yard spot, a *late* flag (> 15 min, §12.6) |
+| Receipt | pallet *k* of *N* comes off at (*k*+1)/*N* of the unloading (the §12.2 work window, after inspection) onto the door's dock lane as a new licence plate; full pallets first, the last partial |
+| Planned exceptions | a *short count* arrives short; a *damage* or *temperature* exception's cases are received at the moment it surfaces onto a separate licence plate bound for `{room}-HOLD` |
+| Lot and best-before | one lot per SKU per trailer; best-before = the shift's date + the §12.6 shelf life |
+| Put-away | a task to the free reserve slot nearest the SKU's pick face — same aisle first, then the nearest bay, lowest level — or the room's overflow; the slot is reserved while the task is queued |
+| Receipt confirmation | when the trailer leaves: `RC-` + the order's number |
+
+### 12.9 Outbound: wave → pick (FEFO) → stage → load → ship
+
+| Rule | Value |
+|---|---|
+| Waves | released every **30 min** from the start of the shift; each carries the loads booked **60–90 min** after it (never before the shift starts); loads in a wave are allocated in appointment order |
+| Allocation | first-expiring first over pickable stock not already promised to a task (the pick face before reserve on the same date); a whole licence plate is a *pallet pick*, part of one a *case pick*. Out of stock → the line is short-allocated, and shipped short |
+| Pick | a task from the location to the booked door's staging lane |
+| Replenishment | when a pick face's free cases fall below **25 %** of a full pallet, a task brings the first-expiring untouched reserve pallet of that SKU to it (one at a time per SKU) |
+| Load | the dock crew loads staged pallets in the order they were staged: pallet *j* at (*j*+1)/*P* of the work window (*P* = the planned pallets), never before it is staged |
+| Ship | when the trailer leaves: everything on it ships; the seal is recorded at gate check-out; ship confirmation `SC-` + the order's number, with cases shipped per line. Picks still queued are cancelled |
+| No-show | at the next shift's start, a load whose trailer never reached a door is cancelled and its staged pallets are put away again |
+
+### 12.10 The task queue and crew productivity
+
+| Rule | Value |
+|---|---|
+| Crew (fictional) | WH-01 Ines Albescu (senior, reach truck) · WH-02 Kofi Mensah (experienced, reach truck) · WH-03 Rosa Delgado (experienced, pallet jack) · WH-04 Stellan Berg (new, pallet jack) |
+| Assignment | a task goes to whoever can start it first (ties: the lower code); each crew member works their queue in order |
+| Standard minutes | put-away **3.0** · pallet pick **2.5** · case pick **1.5 + 0.05 per case** · replenish **3.0** · cycle count **4.0** |
+| Room factor | Freezer ×**1.3** · Cooler ×**1.1** · Produce ×**1.1** · Dry ×**1.0** |
+| Crew factor | senior ×**0.85** · experienced ×**1.0** · new ×**1.2** |
+| Statuses | *open* (queued) → *assigned* (started) → *done*, or *cancelled*; each with its simulated minute |
+| Cycle count | every **30 min** of the shift, one occupied storage location chosen by the seed; the count is recorded on the task |
+| Productivity (this shift) | tasks done ÷ elapsed hours, cases moved (not counted) ÷ elapsed hours, and % of the elapsed shift busy; for the dock crew, pallets received or loaded. At least a quarter hour |
+
+### 12.11 The yard and the gate
+
+Every trailer leaves three gate-log entries (`GET /api/wms/gate`), timed by the same simulated minutes
+as the yard board:
+
+| Entry | When | Records |
+|---|---|---|
+| Check-in | the gate arrival (§12.6 punctuality) | trailer, carrier, the yard spot it is given, the seal (inbound; an outbound trailer arrives empty), a reefer reading (§12.8), *late* if more than **15 min** after the appointment |
+| Yard move | when it reaches a door (§12.3: the door and a crew member both free) | the spot it left, the door, minutes waited in the yard (0 when the door was free) |
+| Check-out | when it leaves | the seal (outbound), dwell from gate to gate, and *detention* when the dwell exceeds **120 min** (§12.6) |
+
+### 12.12 Cold rooms
+
+`app/wms/rooms.py` (pure). Each room is sampled every **5 min**; a reading is the set-point plus
+uniform noise of **± 0.8 °F**, plus any excursion in progress.
+
+| Room | Set-point | Alarm limit | Excursion chance per shift |
+|---|---|---|---|
+| Freezer `F` | −10 °F | 0 °F | 0.25 |
+| Cooler `C` | 34 °F | 40 °F | 0.25 |
+| Produce `P` | 38 °F | 45 °F | 0.20 |
+| Dry `D` | 65 °F | 80 °F | 0 (monitored, never alarms) |
+
+An excursion starts **60–400 min** into the shift, climbs over **10 min** to **3–9 °F above the
+limit**, holds **10–40 min**, and recovers over 10 min; its cause is a door left open, an overrunning
+defrost cycle, or a tripped compressor. When readings stay over the limit for **15 min** the alarm is
+raised — **once per excursion** — and filed as a *Temperature Deviation* (*Freezer door left open too
+long* for a door, otherwise *Cold chain compromised*) against the most temperature-sensitive product
+stored in the room, with the reading and the room's limit, through the ordinary scoring path.
+
+### 12.13 Organic exceptions
+
+Drawn from the seed and the event's own key, so the same run always has the same problems.
+
+| Exception | Chance | What happens | Filed as |
+|---|---|---|---|
+| Short pick | **0.02** per pick | 1–**6** cases fewer than the ledger (never the whole pick) are written off (*adjust*); the pick takes what is there; the line is allocated again | Count Discrepancy · Short count (expected, found) |
+| Pallet not at location | **0.01** per pick or replenishment | the pallet is written off as missing, every task relying on it is cancelled and its line allocated again, and the location is queued for a recount | WMS/System Issue · WMS shows a different location |
+| Receiving damage | **0.02** per pallet received | 1–**6** damaged cases (never the whole pallet) go onto a separate licence plate bound for quality hold | Damaged Pallet · Damaged cartons or packaging |
+| Cycle-count variance | **0.05** per count | 1–**4** cases short on the first pallet at the location, adjusted and noted on the count | — |
+| Late carrier | §12.6 punctuality | the *late* flag at check-in; the yard board shows minutes late | — |
+| Room excursion | §12.12 | the alarm | Temperature Deviation |
+
+A warehouse problem is filed by the simulated crew member of the zone it concerns (the booked door's
+team; the first crew member for a room), names **no dock** (the warehouse never changes a door's
+state), and is linked to the order when the trailer is already at a door. **8 min** later the crew
+settles it by the §12.3 rule — escalated if it scored high or critical or its type has no dock-level
+resolution, otherwise self-resolved with the suggested procedure. The on-cue scenarios (§12.4) are
+unchanged.
 
 ---
 
@@ -544,6 +648,8 @@ hour (pallets on departed trailers ÷ elapsed shift hours, at least a quarter ho
 | Date | Change |
 |---|---|
 | 2026-09-25 | Initial extraction from code and source documents. |
+| 2026-09-25 | §12.11–§12.13: the gate log, cold-room temperatures and excursion alarms, organic warehouse exceptions (short pick, pallet not at location, receiving damage, count variance). |
+| 2026-09-25 | §12.7–§12.10 the warehouse behind the WMS: layout, licence plates, the stock ledger, inbound, outbound waves and FEFO, the task queue, crew productivity. Opening stock 2–5 → 6–10 pallets per SKU, placed on pick faces and reserve slots. |
 | 2026-09-25 | §12.6 simulator realism: carrier punctuality, on-time window, detention, reefer set-points, yard spots, storage rooms, shelf life, FEFO, shift KPIs. |
 | 2026-09-25 | §7.1 guardrails: critical issues escalate on filing and cannot be self-resolved; sign-off waits on open critical issues and on a failed inspection a supervisor has not cleared. |
 | 2026-09-25 | Phase 3: §12, the shift simulation: clock, plan, materialisation, scenarios, marking. |

@@ -758,6 +758,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wms/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stock
+         * @description On hand by licence plate and location — racking, quality hold, dock and staging lanes, and
+         *     trailers at a door — first-expiring first.
+         */
+        get: operations["stock_api_wms_stock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tasks */
+        get: operations["tasks_api_wms_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/productivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Crew Productivity */
+        get: operations["crew_productivity_api_wms_productivity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Transactions
+         * @description The movement ledger, newest first. Page back with `before_id` = the last `id` you have.
+         */
+        get: operations["transactions_api_wms_transactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/shipments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shipments
+         * @description Inbound advance ship notices and receipts; outbound loads from wave release to ship
+         *     confirmation. Most recent first.
+         */
+        get: operations["shipments_api_wms_shipments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/shipments/{ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shipment
+         * @description One shipment by appointment reference or order number.
+         */
+        get: operations["shipment_api_wms_shipments__ref__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gate Log
+         * @description Gate check-ins (seal, reefer reading, late flag), yard moves to a door, and check-outs (seal,
+         *     dwell, detention), newest first.
+         */
+        get: operations["gate_log_api_wms_gate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cold Rooms
+         * @description Each temperature room: set-point, alarm limit, the latest `readings` samples, whether it is
+         *     over its limit or in alarm, and its occupancy.
+         */
+        get: operations["cold_rooms_api_wms_rooms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sim/status": {
         parameters: {
             query?: never;
@@ -1090,6 +1248,40 @@ export interface components {
          * @enum {string}
          */
         ChatRole: "user" | "assistant";
+        /** ColdRoomOut */
+        ColdRoomOut: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "F" | "C" | "P" | "D";
+            /** Name */
+            name: string;
+            /** Setpoint */
+            setpoint: number;
+            /** Limit */
+            limit: number;
+            /** Temp */
+            temp: number;
+            /** Over Limit */
+            over_limit: boolean;
+            /** Alarm */
+            alarm: boolean;
+            /** Readings */
+            readings: components["schemas"]["RoomReadingOut"][];
+            /** Slots */
+            slots: number;
+            /** Occupied */
+            occupied: number;
+            /** Pallets */
+            pallets: number;
+            /** Cases */
+            cases: number;
+            /** On Hold Cases */
+            on_hold_cases: number;
+            /** Simulated */
+            simulated: boolean;
+        };
         /** CompanyOut */
         CompanyOut: {
             /** Id */
@@ -1113,6 +1305,30 @@ export interface components {
         Created: {
             /** Id */
             id: number;
+        };
+        /** CrewProductivityOut */
+        CrewProductivityOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "warehouse" | "dock";
+            /** Tasks Done */
+            tasks_done: number;
+            /** Cases */
+            cases: number;
+            /** Tasks Per Hour */
+            tasks_per_hour: number;
+            /** Cases Per Hour */
+            cases_per_hour: number;
+            /** Busy Percent */
+            busy_percent: number | null;
+            /** Simulated */
+            simulated: boolean;
         };
         /** DateCount */
         DateCount: {
@@ -1171,6 +1387,10 @@ export interface components {
             /** Company Name */
             company_name: string | null;
             order_type: components["schemas"]["OrderType"] | null;
+            /** Cases Done */
+            cases_done: number | null;
+            /** Cases Expected */
+            cases_expected: number | null;
         };
         /**
          * DockRepeat
@@ -1189,6 +1409,38 @@ export interface components {
          * @enum {string}
          */
         DockStatus: "idle" | "active" | "issue" | "critical";
+        /** GateEventOut */
+        GateEventOut: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["YardEventKind"];
+            /** Minute */
+            minute: number;
+            /** Time */
+            time: string;
+            /** Order Number */
+            order_number: string | null;
+            /** Trailer */
+            trailer: string;
+            /** Carrier */
+            carrier: string;
+            /** Door */
+            door: number | null;
+            /** Yard Spot */
+            yard_spot: string | null;
+            /** Seal */
+            seal: string | null;
+            /** Reefer Temp */
+            reefer_temp: number | null;
+            /** Dwell Minutes */
+            dwell_minutes: number | null;
+            /** Late */
+            late: boolean;
+            /** Detention */
+            detention: boolean;
+            /** Simulated */
+            simulated: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1467,6 +1719,41 @@ export interface components {
             /** Issues */
             issues: components["schemas"]["IssueLine"][];
         };
+        /** LedgerEntryOut */
+        LedgerEntryOut: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["MovementKind"];
+            /** Minute */
+            minute: number;
+            /** Time */
+            time: string;
+            /** Pallet Id */
+            pallet_id: string;
+            /** Sku */
+            sku: string;
+            /** Lot */
+            lot: string;
+            /**
+             * Best Before
+             * Format: date
+             */
+            best_before: string;
+            /** From Location */
+            from_location: string | null;
+            /** To Location */
+            to_location: string | null;
+            /** Cases */
+            cases: number;
+            /** Actor */
+            actor: string;
+            /** Actor Name */
+            actor_name: string;
+            /** Order Number */
+            order_number: string | null;
+            /** Simulated */
+            simulated: boolean;
+        };
         /**
          * LifecyclePhase
          * @enum {string}
@@ -1538,6 +1825,11 @@ export interface components {
             /** Supervisor Name */
             supervisor_name: string | null;
         };
+        /**
+         * MovementKind
+         * @enum {string}
+         */
+        MovementKind: "receive" | "putaway" | "replenish" | "pick" | "load" | "ship" | "adjust";
         /** NameCount */
         NameCount: {
             /** Count */
@@ -1965,6 +2257,15 @@ export interface components {
          * @enum {string}
          */
         Role: "operator" | "supervisor" | "quality";
+        /** RoomReadingOut */
+        RoomReadingOut: {
+            /** Minute */
+            minute: number;
+            /** Time */
+            time: string;
+            /** Temp */
+            temp: number;
+        };
         /** ScanCreate */
         ScanCreate: {
             /** Code */
@@ -2043,6 +2344,63 @@ export interface components {
             /** Door Utilization Percent */
             door_utilization_percent: number;
         };
+        /** ShipmentLineOut */
+        ShipmentLineOut: {
+            /** Sku */
+            sku: string;
+            /** Expected */
+            expected: number;
+            /** Allocated */
+            allocated: number;
+            /** Done */
+            done: number;
+        };
+        /** ShipmentOut */
+        ShipmentOut: {
+            /** Ref */
+            ref: string;
+            direction: components["schemas"]["OrderType"];
+            /** Order Number */
+            order_number: string;
+            /** Customer */
+            customer: string;
+            /** Carrier */
+            carrier: string;
+            /** Trailer */
+            trailer: string;
+            /** Door */
+            door: number;
+            /** Wave */
+            wave: string | null;
+            status: components["schemas"]["ShipmentStatus"];
+            /** Created At */
+            created_at: string;
+            /** Arrived At */
+            arrived_at: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /** Seal */
+            seal: string | null;
+            /** Confirmation */
+            confirmation: string | null;
+            /** Pallets */
+            pallets: number;
+            /** Cases Expected */
+            cases_expected: number;
+            /** Cases Allocated */
+            cases_allocated: number;
+            /** Cases Done */
+            cases_done: number;
+            /** Lines */
+            lines: components["schemas"]["ShipmentLineOut"][];
+            /** Simulated */
+            simulated: boolean;
+        };
+        /**
+         * ShipmentStatus
+         * @enum {string}
+         */
+        ShipmentStatus: "expected" | "arrived" | "receiving" | "received" | "released" | "staged" | "loading" | "shipped" | "cancelled";
         /** SimEventOut */
         SimEventOut: {
             /** Minute */
@@ -2147,6 +2505,33 @@ export interface components {
             /** Wms Online */
             wms_online: boolean;
         };
+        /** StockOut */
+        StockOut: {
+            /** Pallet Id */
+            pallet_id: string;
+            /** Sku */
+            sku: string;
+            /** Location */
+            location: string;
+            /**
+             * Area
+             * @enum {string}
+             */
+            area: "storage" | "hold" | "dock" | "stage" | "trailer";
+            /** Room */
+            room: string | null;
+            /** Cases */
+            cases: number;
+            /** Lot */
+            lot: string;
+            /**
+             * Best Before
+             * Format: date
+             */
+            best_before: string;
+            /** Simulated */
+            simulated: boolean;
+        };
         /** StockPallet */
         StockPallet: {
             /** Pallet Id */
@@ -2163,6 +2548,16 @@ export interface components {
              */
             best_before: string;
         };
+        /**
+         * TaskKind
+         * @enum {string}
+         */
+        TaskKind: "putaway" | "pick" | "replenish" | "cycle_count";
+        /**
+         * TaskStatus
+         * @enum {string}
+         */
+        TaskStatus: "open" | "assigned" | "done" | "cancelled";
         /** TaxonomyOut */
         TaxonomyOut: {
             /** Issue Types */
@@ -2278,6 +2673,43 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** WarehouseTaskOut */
+        WarehouseTaskOut: {
+            /** Key */
+            key: string;
+            kind: components["schemas"]["TaskKind"];
+            status: components["schemas"]["TaskStatus"];
+            /** Sku */
+            sku: string;
+            /** Pallet Id */
+            pallet_id: string | null;
+            /** From Location */
+            from_location: string | null;
+            /** To Location */
+            to_location: string | null;
+            /** Cases */
+            cases: number;
+            /** Assignee */
+            assignee: string;
+            /** Assignee Name */
+            assignee_name: string;
+            /** Queued At */
+            queued_at: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Standard Minutes */
+            standard_minutes: number;
+            /** Order Number */
+            order_number: string | null;
+            /** Counted Cases */
+            counted_cases: number | null;
+            /** Note */
+            note: string | null;
+            /** Simulated */
+            simulated: boolean;
+        };
         /** WmsStatusOut */
         WmsStatusOut: {
             /** Mode */
@@ -2327,6 +2759,11 @@ export interface components {
             /** Detention */
             detention: boolean;
         };
+        /**
+         * YardEventKind
+         * @enum {string}
+         */
+        YardEventKind: "gate_in" | "yard_move" | "gate_out";
     };
     responses: never;
     parameters: never;
@@ -3655,6 +4092,251 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PalletOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stock_api_wms_stock_get: {
+        parameters: {
+            query?: {
+                room?: ("F" | "C" | "P" | "D") | null;
+                sku?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tasks_api_wms_tasks_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["TaskStatus"] | null;
+                kind?: components["schemas"]["TaskKind"] | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseTaskOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crew_productivity_api_wms_productivity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrewProductivityOut"][];
+                };
+            };
+        };
+    };
+    transactions_api_wms_transactions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before_id?: number | null;
+                sku?: string | null;
+                pallet_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerEntryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shipments_api_wms_shipments_get: {
+        parameters: {
+            query?: {
+                direction?: components["schemas"]["OrderType"] | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shipment_api_wms_shipments__ref__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gate_log_api_wms_gate_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateEventOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cold_rooms_api_wms_rooms_get: {
+        parameters: {
+            query?: {
+                readings?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ColdRoomOut"][];
                 };
             };
             /** @description Validation Error */

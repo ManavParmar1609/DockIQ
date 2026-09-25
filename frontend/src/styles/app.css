@@ -824,3 +824,236 @@
     --chart-plum: var(--color-indigo);
   }
 }
+
+/* ── The dock wall: zones, door bays, trailers ──
+   Each zone carries one quiet tint family drawn from the garden hues, mixed toward the paper so it
+   never competes with status. Critical is the one solid brick-red tile, and nothing on it moves. */
+@layer components {
+  .zone-sage {
+    --zone: var(--color-sage);
+    --zone-ink: var(--color-sage-ink);
+    --zone-soft: var(--color-accent-soft);
+  }
+  .zone-slate {
+    --zone: var(--color-teal);
+    --zone-ink: var(--color-teal);
+    --zone-soft: var(--color-teal-soft);
+  }
+  .zone-clay {
+    --zone: var(--color-purple);
+    --zone-ink: var(--color-purple);
+    --zone-soft: var(--color-purple-soft);
+  }
+  .zone-swatch {
+    background: var(--zone);
+    box-shadow: 0 0 0 3px var(--zone-soft);
+  }
+  /* The concrete apron in front of the doors, washed with the zone's tint. */
+  .zone-apron {
+    background: color-mix(in srgb, var(--zone-soft) 60%, var(--color-paper-sunk));
+  }
+
+  .door-tile {
+    color: var(--color-ink);
+    background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    box-shadow: var(--shadow-card);
+  }
+  .door-plate {
+    min-width: 2.75rem;
+    padding: 0.4rem 0.55rem 0.35rem;
+    border-radius: var(--radius-md);
+    text-align: center;
+    color: var(--zone-ink);
+    background: var(--zone-soft);
+  }
+  .door-avatar {
+    color: var(--zone-ink);
+    background: var(--zone-soft);
+  }
+  .door-sub {
+    color: var(--color-ink-mute);
+  }
+  .door-progress {
+    background: var(--color-paper-sunk);
+  }
+  .door-progress-fill {
+    background: var(--zone-ink);
+    transition: width 700ms var(--ease-organic);
+  }
+
+  .bay-opening {
+    fill: color-mix(in srgb, var(--zone-soft) 45%, var(--color-paper-sunk));
+    stroke: var(--color-ink-mute);
+    stroke-opacity: 0.45;
+    stroke-width: 1.5;
+  }
+  .bay-bumper {
+    fill: var(--color-ink-soft);
+  }
+  .bay-trailer-body {
+    fill: color-mix(in srgb, var(--color-surface) 70%, var(--color-paper-sunk));
+    stroke: var(--color-ink-soft);
+    stroke-width: 1.5;
+  }
+  .bay-lamp {
+    fill: var(--color-terracotta);
+  }
+  .bay-leveler {
+    fill: var(--color-paper-deep);
+  }
+  /* A trailer that has just pulled up backs into the bay. */
+  .bay-trailer {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: back-in 0.7s var(--ease-organic) both;
+  }
+
+  /* Idle doors recede; issues ring in ochre; critical is solid brick. */
+  .door-idle {
+    background: color-mix(in srgb, var(--color-surface) 45%, var(--color-paper-sunk));
+    box-shadow: none;
+  }
+  .door-issue {
+    box-shadow:
+      inset 0 0 0 2px var(--color-orange-bright),
+      var(--shadow-card);
+  }
+  .door-critical {
+    color: var(--color-white);
+    background: var(--color-hazard);
+    border-color: var(--color-hazard);
+  }
+  .door-critical .door-sub {
+    color: color-mix(in srgb, var(--color-white) 88%, var(--color-hazard));
+  }
+  .door-critical .door-plate,
+  .door-critical .door-avatar {
+    color: var(--color-white);
+    background: color-mix(in srgb, var(--color-white) 18%, var(--color-hazard));
+  }
+  .door-critical .door-progress {
+    background: color-mix(in srgb, var(--color-white) 25%, var(--color-hazard));
+  }
+  .door-critical .door-progress-fill {
+    background: var(--color-white);
+    transition: none;
+  }
+  .door-critical .bay-opening {
+    fill: color-mix(in srgb, var(--color-black) 18%, var(--color-hazard));
+    stroke: var(--color-white);
+  }
+  .door-critical .bay-trailer-body {
+    fill: color-mix(in srgb, var(--color-white) 14%, var(--color-hazard));
+    stroke: var(--color-white);
+  }
+  .door-critical .bay-trailer {
+    animation: none;
+  }
+  .door-critical.lift:hover {
+    transform: none;
+  }
+}
+
+@keyframes back-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.94);
+  }
+}
+
+/* ── Load guide finish ── */
+@layer components {
+  .lp-side-pill {
+    fill: var(--color-surface);
+    stroke: var(--color-hairline);
+    stroke-width: 1;
+  }
+  .lp-frame {
+    box-shadow: inset 0 0 0 1px var(--color-hairline);
+  }
+  .lp-fact dd:first-of-type {
+    letter-spacing: -0.015em;
+  }
+}
+
+/* The trailer interior in a door bay: the load takes the zone's tint. */
+@layer components {
+  .bay-interior {
+    fill: color-mix(in srgb, var(--color-ink) 7%, var(--color-paper-sunk));
+  }
+  .bay-floor {
+    fill: var(--color-paper-deep);
+  }
+  .bay-backwall {
+    fill: color-mix(in srgb, var(--color-ink) 12%, var(--color-paper-sunk));
+  }
+  .bay-load {
+    fill: var(--zone-soft);
+    stroke: var(--zone-ink);
+    stroke-width: 1;
+  }
+  .bay-load-deck {
+    fill: var(--color-paper-deep);
+  }
+  .bay-door {
+    fill: var(--color-ink-soft);
+    fill-opacity: 0.55;
+  }
+  .door-critical .bay-interior {
+    fill: color-mix(in srgb, var(--color-black) 22%, var(--color-hazard));
+  }
+  .door-critical .bay-floor,
+  .door-critical .bay-backwall {
+    fill: color-mix(in srgb, var(--color-white) 22%, var(--color-hazard));
+  }
+  .door-critical .bay-load {
+    fill: color-mix(in srgb, var(--color-white) 80%, var(--color-hazard));
+    stroke: var(--color-white);
+  }
+  .door-critical .bay-door {
+    fill: var(--color-white);
+  }
+}
+
+/* Cold-room traces: each room keeps a hue of its own; the alarm line is the one dashed rule. */
+@layer components {
+  .room-F {
+    --room: var(--color-teal);
+  }
+  .room-C {
+    --room: var(--color-sage-ink);
+  }
+  .room-P {
+    --room: var(--color-mint);
+  }
+  .room-D {
+    --room: var(--color-brown);
+  }
+  .room-line {
+    fill: none;
+    stroke: var(--room);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .room-wash {
+    fill: var(--room);
+    fill-opacity: 0.1;
+  }
+  .room-limit {
+    stroke: var(--color-orange-bright);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 5;
+  }
+  .room-setpoint {
+    stroke: var(--color-ink-mute);
+    stroke-opacity: 0.35;
+    stroke-width: 1;
+  }
+  .room-over {
+    fill: var(--color-orange-bright);
+    stroke: var(--color-surface);
+    stroke-width: 1.5;
+  }
+}

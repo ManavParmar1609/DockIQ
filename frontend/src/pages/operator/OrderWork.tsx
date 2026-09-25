@@ -18,6 +18,7 @@ import { Barcode } from '../../components/Barcode';
 import { LoadPlanView } from '../../components/LoadPlanView';
 import { PalletList } from '../../components/PalletList';
 import { ScanField } from '../../components/ScanField';
+import { Tabs } from '../../components/Tabs';
 import {
   EmptyState,
   ErrorBlock,
@@ -30,52 +31,11 @@ import {
   QueryBoundary,
 } from '../../components/ui';
 import { formatTemp, percent } from '../../lib/format';
-import { rovingKeyDown, rovingTabIndex } from '../../lib/roving';
 import { reportLink } from './reportLink';
 
 type Tab = 'plan' | 'temperature' | 'checks' | 'count' | 'signoff';
 
 const PANEL_ID = 'order-step';
-
-function Tabs({
-  tabs,
-  active,
-  onChange,
-}: {
-  tabs: { id: Tab; label: string }[];
-  active: Tab;
-  onChange: (tab: Tab) => void;
-}) {
-  const current = tabs.findIndex((tab) => tab.id === active);
-  return (
-    <div
-      role="tablist"
-      aria-label="Order steps"
-      className="grid grid-flow-col gap-1 overflow-x-auto rounded-xl bg-paper-sunk p-1"
-      onKeyDown={rovingKeyDown('tab', current, tabs.length, (index) => {
-        const tab = tabs[index];
-        if (tab) onChange(tab.id);
-      })}
-    >
-      {tabs.map((tab, index) => (
-        <button
-          key={tab.id}
-          id={`${PANEL_ID}-tab-${tab.id}`}
-          role="tab"
-          type="button"
-          aria-selected={active === tab.id}
-          aria-controls={active === tab.id ? PANEL_ID : undefined}
-          tabIndex={rovingTabIndex(index, current)}
-          onClick={() => onChange(tab.id)}
-          className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 whitespace-nowrap transition-colors ${active === tab.id ? 'bg-surface text-ink shadow-card' : 'text-ink-mute hover:text-ink'}`}
-        >
-          <span className="telemetry text-sm">{index + 1}</span>
-          <span className="text-base font-semibold">{tab.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function ProgressBar({ done, total, label }: { done: number; total: number; label: string }) {
   const value = percent(done, total);
@@ -638,7 +598,14 @@ function Work({
               </Link>
             }
           />
-          <Tabs tabs={tabs} active={active} onChange={setTab} />
+          <Tabs
+            tabs={tabs}
+            active={active}
+            onChange={setTab}
+            label="Order steps"
+            panelId={PANEL_ID}
+            numbered
+          />
           <div role="tabpanel" id={PANEL_ID} aria-labelledby={`${PANEL_ID}-tab-${active}`}>
             {active === 'plan' && (
               <QueryBoundary query={plan} loading="Planning the load">

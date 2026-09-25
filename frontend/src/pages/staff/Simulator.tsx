@@ -30,6 +30,7 @@ import {
   Tag,
 } from '../../components/ui';
 import { duration, formatTemp } from '../../lib/format';
+import { WarehouseTabs } from './WarehouseTabs';
 
 const SPEEDS: readonly { value: `${SimSpeed}`; label: string }[] = [
   { value: '1', label: '1× real time' },
@@ -86,6 +87,8 @@ const EVENT_KIND: Record<string, string> = {
   departure: 'Left',
   outage: 'WMS',
   injected: 'Injected',
+  stock_exception: 'Warehouse',
+  room_excursion: 'Cold room',
 };
 
 function Controls({ status }: { status: SimStatus }) {
@@ -436,7 +439,7 @@ export default function Simulator() {
                 <Scenarios />
               </div>
             </div>
-            <YardBoard online={sim.wms_online} />
+            <WarehouseTabs online={sim.wms_online} yard={<YardBoard online={sim.wms_online} />} />
             <EventFeed status={sim} />
           </div>
         );

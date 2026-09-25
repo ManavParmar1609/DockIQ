@@ -94,6 +94,16 @@ def order_items_select(order_id: int) -> Select[Any]:
 
 
 def dock_select() -> Select[Any]:
+    # Cases counted against cases expected on the door's current order: the floor's progress bar.
+    cases = (
+        select(
+            OrderItem.order_id,
+            func.sum(OrderItem.actual_quantity).label("cases_done"),
+            func.sum(OrderItem.expected_quantity).label("cases_expected"),
+        )
+        .group_by(OrderItem.order_id)
+        .subquery()
+    )
     return (
         select(
             *DockDoor.__table__.c,
@@ -102,10 +112,13 @@ def dock_select() -> Select[Any]:
             Order.trailer_number,
             Company.name.label("company_name"),
             Order.type.label("order_type"),
+            cases.c.cases_done,
+            cases.c.cases_expected,
         )
         .outerjoin(User, DockDoor.current_operator_id == User.id)
         .outerjoin(Order, DockDoor.current_order_id == Order.id)
         .outerjoin(Company, Order.company_id == Company.id)
+        .outerjoin(cases, cases.c.order_id == Order.id)
         .order_by(DockDoor.door_number)
     )
 

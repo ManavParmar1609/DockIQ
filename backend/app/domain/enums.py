@@ -76,3 +76,48 @@ class ScanResult(StrEnum):
     MATCH = "match"
     MISMATCH = "mismatch"
     UNKNOWN = "unknown"
+
+
+# ── The warehouse behind the WMS (business-rules §12.7–§12.10) ──
+
+
+class MovementKind(StrEnum):
+    RECEIVE = "receive"
+    PUTAWAY = "putaway"
+    REPLENISH = "replenish"
+    PICK = "pick"
+    LOAD = "load"
+    SHIP = "ship"
+    ADJUST = "adjust"
+
+
+class TaskKind(StrEnum):
+    PUTAWAY = "putaway"
+    PICK = "pick"
+    REPLENISH = "replenish"
+    CYCLE_COUNT = "cycle_count"
+
+
+class TaskStatus(StrEnum):
+    OPEN = "open"
+    ASSIGNED = "assigned"
+    DONE = "done"
+    CANCELLED = "cancelled"
+
+
+class ShipmentStatus(StrEnum):
+    EXPECTED = "expected"  # inbound: advance ship notice received
+    ARRIVED = "arrived"  # inbound: through the gate
+    RECEIVING = "receiving"
+    RECEIVED = "received"
+    RELEASED = "released"  # outbound: wave released, picks queued
+    STAGED = "staged"  # every allocated pallet is at the door lane
+    LOADING = "loading"
+    SHIPPED = "shipped"
+    CANCELLED = "cancelled"  # the trailer never reached a door in its shift
+
+
+class YardEventKind(StrEnum):
+    GATE_IN = "gate_in"
+    YARD_MOVE = "yard_move"
+    GATE_OUT = "gate_out"
