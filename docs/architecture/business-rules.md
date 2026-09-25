@@ -516,6 +516,27 @@ all of it and rewinds to 06:00.
 *Known limitation:* the dwell modifier (§1.3) reads wall-clock time since the trailer arrived, so at
 15× a simulated trailer's dwell counts slower than its simulated time.
 
+### 12.6 Realism: punctuality, yard, reefers, stock and dock KPIs
+
+All in `app/wms/plan.py`, pinned in `tests/test_simulation.py`.
+
+| Rule | Value |
+|---|---|
+| Carrier punctuality profile, fixed per carrier for a seed's run | *reliable* 4 : *average* 4 : *late* 2 (weights) |
+| Arrival against the appointment, triangular (earliest, most likely, latest) minutes | reliable (−15, −3, +15) · average (−10, +5, +40) · late (−5, +18, +75); never before the shift starts |
+| On time | arrives no more than **15 min** after the appointment |
+| Detention | on site (gate to departure, or to now) longer than **120 min** |
+| Reefer set-point | **5 °F** under the strictest product limit on the load; none for a load with no limit |
+| Yard spots | `Y-01` … `Y-40`, where a trailer waits while its door is busy |
+| Storage rooms | Frozen `F`, Refrigerated `C`, Produce `P`, Dry `D`; location `{room}-{aisle}-B{bay}-{level}` |
+| Shelf life at receipt (days, uniform) | Frozen 120–365 · Refrigerated 6–21 · Produce 3–12 · Dry 90–540, from 2026-09-25 |
+| Pick order | first-expiring first (FEFO): the pallet with the earliest best-before is listed first |
+
+**Shift KPIs** (`shift_kpis`, on `GET /api/sim/status`): trailers arrived; on-time % of those;
+average turn (gate to departure, trailers that have left); trailers on detention now; pallets per
+hour (pallets on departed trailers ÷ elapsed shift hours, at least a quarter hour); door utilisation
+(door-minutes occupied ÷ doors × elapsed minutes, capped at 100 %).
+
 ---
 
 ## Change log
@@ -523,6 +544,7 @@ all of it and rewinds to 06:00.
 | Date | Change |
 |---|---|
 | 2026-09-25 | Initial extraction from code and source documents. |
+| 2026-09-25 | §12.6 simulator realism: carrier punctuality, on-time window, detention, reefer set-points, yard spots, storage rooms, shelf life, FEFO, shift KPIs. |
 | 2026-09-25 | §7.1 guardrails: critical issues escalate on filing and cannot be self-resolved; sign-off waits on open critical issues and on a failed inspection a supervisor has not cleared. |
 | 2026-09-25 | Phase 3: §12, the shift simulation: clock, plan, materialisation, scenarios, marking. |
 | 2026-09-25 | Phase 2: Safety and WMS types, 87 subtypes, severity floors and people risk, zero-count and dwell fixes, company bonus reaches retrieval, load-aware inspection gate, persisted recurrence, lifecycle guard, photo evidence, load plans. |

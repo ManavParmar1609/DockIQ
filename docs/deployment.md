@@ -193,6 +193,9 @@ the root `README.md`. Sign in locally with password `dockiq-demo`.
 - **CORS:** `CORS_ORIGINS` (explicit list) plus `CORS_ORIGIN_REGEX`, which defaults to the project's
   own Vercel sites, `https://dockiq(-…)?.vercel.app`. Set it to an empty value to allow only the
   list.
+- **Login rate limit:** uvicorn trusts `X-Forwarded-For` from any peer (`--forwarded-allow-ips='*'`,
+  because Render's proxy addresses are not fixed), so the per-address limit can be dodged with a
+  forged header; the second limit, 10 attempts a minute per employee ID, still holds.
 - **Reset the demo data** (it ages: timestamps are relative to when it was seeded), from a machine
   with the repo — it refuses when `ENVIRONMENT=production`:
   ```powershell

@@ -213,6 +213,9 @@ QUALITY_ISSUE_TYPES: frozenset[str] = frozenset(
     {"Temperature Deviation", "Product Quality Concern", "Lot/Expiry Issue"}
 )
 
+# A cold-chain break: product found outside its temperature range. Counted separately in analytics.
+COLD_CHAIN_ISSUE_TYPES: frozenset[str] = frozenset({"Temperature Deviation"})
+
 OPERATOR_RESOLUTIONS: tuple[str, ...] = (
     "Partial Accept",
     "Full Reject",

@@ -13,12 +13,14 @@ import {
   useTemperatureCheck,
 } from '../../api/hooks';
 import { ApiError } from '../../api/client';
-import type { OrderDetail, OrderItem, ScanResult, TemperatureCheck } from '../../api/types';
+import type { OrderCompleted, OrderDetail, OrderItem, ScanResult, TemperatureCheck } from '../../api/types';
 import { Barcode } from '../../components/Barcode';
 import { LoadPlanView } from '../../components/LoadPlanView';
+import { PalletList } from '../../components/PalletList';
 import { ScanField } from '../../components/ScanField';
 import {
   EmptyState,
+  ErrorBlock,
   FieldLabel,
   LoadingBlock,
   MutationError,
@@ -28,9 +30,12 @@ import {
   QueryBoundary,
 } from '../../components/ui';
 import { formatTemp, percent } from '../../lib/format';
+import { rovingKeyDown, rovingTabIndex } from '../../lib/roving';
 import { reportLink } from './reportLink';
 
 type Tab = 'plan' | 'temperature' | 'checks' | 'count' | 'signoff';
+
+const PANEL_ID = 'order-step';
 
 function Tabs({
   tabs,
@@ -41,18 +46,26 @@ function Tabs({
   active: Tab;
   onChange: (tab: Tab) => void;
 }) {
+  const current = tabs.findIndex((tab) => tab.id === active);
   return (
     <div
       role="tablist"
       aria-label="Order steps"
       className="grid grid-flow-col gap-1 overflow-x-auto rounded-xl bg-paper-sunk p-1"
+      onKeyDown={rovingKeyDown('tab', current, tabs.length, (index) => {
+        const tab = tabs[index];
+        if (tab) onChange(tab.id);
+      })}
     >
       {tabs.map((tab, index) => (
         <button
           key={tab.id}
+          id={`${PANEL_ID}-tab-${tab.id}`}
           role="tab"
           type="button"
           aria-selected={active === tab.id}
+          aria-controls={active === tab.id ? PANEL_ID : undefined}
+          tabIndex={rovingTabIndex(index, current)}
           onClick={() => onChange(tab.id)}
           className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 whitespace-nowrap transition-colors ${active === tab.id ? 'bg-surface text-ink shadow-card' : 'text-ink-mute hover:text-ink'}`}
         >
@@ -64,7 +77,7 @@ function Tabs({
   );
 }
 
-function ProgressBar({ done, total }: { done: number; total: number }) {
+function ProgressBar({ done, total, label }: { done: number; total: number; label: string }) {
   const value = percent(done, total);
   return (
     <div>
@@ -78,6 +91,8 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
       <div
         className="mt-2 h-3 card"
         role="progressbar"
+        aria-label={label}
+        aria-valuetext={`${done} of ${total} cases, ${value}%`}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={value}
@@ -105,21 +120,7 @@ function StockLocations({ sku }: { sku: string }) {
     );
   }
   if (stock.data.length === 0) return <p className="text-base">No stock on hand in the WMS.</p>;
-  return (
-    <ul className="grid gap-2 sm:grid-cols-2">
-      {stock.data.map((pallet) => (
-        <li
-          key={pallet.pallet_id}
-          className="flex items-baseline justify-between gap-3 rounded-md bg-paper px-3 py-2"
-        >
-          <span className="telemetry text-lg">{pallet.location}</span>
-          <span className="telemetry text-sm text-ink-mute">
-            {pallet.cases} cs · {pallet.pallet_id.slice(-6)}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+  return <PalletList pallets={stock.data} />;
 }
 
 function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
@@ -189,8 +190,12 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
         </div>
       )}
       <div className="p-4">
-        <ProgressBar done={item.actual_quantity} total={item.expected_quantity} />
-        {!outbound && over !== 0 && item.actual_quantity > 0 && (
+        <ProgressBar
+          done={item.actual_quantity}
+          total={item.expected_quantity}
+          label={`${item.product_name} counted`}
+        />
+        {!outbound && over !== 0 && item.verified && (
           <p className="label mt-2 text-ink">{over > 0 ? `Over by ${over}` : `Short by ${-over}`}</p>
         )}
         <div className="mt-4 flex flex-wrap gap-2">
@@ -303,7 +308,11 @@ function CountTab({ order }: { order: OrderDetail }) {
         </div>
       </Panel>
       <Panel title={order.type === 'outbound' ? 'Loaded' : 'Received'}>
-        <ProgressBar done={counted} total={expected} />
+        <ProgressBar
+          done={counted}
+          total={expected}
+          label={order.type === 'outbound' ? 'Cases loaded' : 'Cases received'}
+        />
       </Panel>
       <ul className="flex flex-col gap-4">
         {order.items.map((item) => (
@@ -454,17 +463,16 @@ function ChecksTab() {
 
 // ── Sign-off ──
 
-function SignOffTab({ order }: { order: OrderDetail }) {
-  const complete = useCompleteOrder(order.id);
+/** The completion result, held by the page: the finished order leaves the active list at once. */
+function OrderDone({ order, result }: { order: OrderDetail; result: OrderCompleted }) {
   const navigate = useNavigate();
-  const [seal, setSeal] = useState('');
-  const outbound = order.type === 'outbound';
-  const uncounted = order.items.filter((item) => item.actual_quantity === 0);
-  const blockers = order.completion_blockers ?? [];
-
-  if (complete.data) {
-    const filed = complete.data.discrepancy_issue_ids;
-    return (
+  const filed = result.discrepancy_issue_ids;
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        kicker={`${order.type === 'outbound' ? 'Loading' : 'Receiving'} · ${order.company_name}`}
+        title={`Dock ${order.door_number ?? '—'}`}
+      />
       <Panel title="Order complete">
         <p className="text-lg">The dock is released.</p>
         {filed.length > 0 && (
@@ -481,8 +489,23 @@ function SignOffTab({ order }: { order: OrderDetail }) {
           Back to shift
         </button>
       </Panel>
-    );
-  }
+    </div>
+  );
+}
+
+function SignOffTab({
+  order,
+  onComplete,
+}: {
+  order: OrderDetail;
+  onComplete: (result: OrderCompleted) => void;
+}) {
+  const complete = useCompleteOrder(order.id);
+  const [seal, setSeal] = useState('');
+  const outbound = order.type === 'outbound';
+  // `verified`, not a zero count: counting a line as 0 (nothing arrived) is a count.
+  const uncounted = order.items.filter((item) => !item.verified);
+  const blockers = order.completion_blockers ?? [];
 
   return (
     <Panel title="Sign-off">
@@ -522,6 +545,7 @@ function SignOffTab({ order }: { order: OrderDetail }) {
           <FieldLabel htmlFor="seal">Outbound seal number</FieldLabel>
           <input
             id="seal"
+            maxLength={64}
             className="field telemetry text-lg uppercase"
             value={seal}
             onChange={(event) => setSeal(event.target.value)}
@@ -547,7 +571,13 @@ function SignOffTab({ order }: { order: OrderDetail }) {
           disabled={
             complete.isPending || uncounted.length > 0 || blockers.length > 0 || (outbound && !seal.trim())
           }
-          onClick={() => complete.mutate({ seal_number: seal.trim() || null, notes: '' })}
+          onClick={() =>
+            // The promise, not a mutate() callback: it resolves even if the refetched active order has
+            // already unmounted this tab. A failure shows through `complete.error`.
+            void complete
+              .mutateAsync({ seal_number: seal.trim() || null, notes: '' })
+              .then(onComplete, () => undefined)
+          }
         >
           {complete.isPending
             ? 'Completing…'
@@ -562,7 +592,13 @@ function SignOffTab({ order }: { order: OrderDetail }) {
 
 // ── Page ──
 
-function Work({ orderId }: { orderId: number }) {
+function Work({
+  orderId,
+  onComplete,
+}: {
+  orderId: number;
+  onComplete: (order: OrderDetail, result: OrderCompleted) => void;
+}) {
   const order = useOrder(orderId);
   const outbound = order.data?.type === 'outbound';
   const plan = useLoadPlan(outbound ? orderId : undefined);
@@ -603,7 +639,7 @@ function Work({ orderId }: { orderId: number }) {
             }
           />
           <Tabs tabs={tabs} active={active} onChange={setTab} />
-          <div role="tabpanel">
+          <div role="tabpanel" id={PANEL_ID} aria-labelledby={`${PANEL_ID}-tab-${active}`}>
             {active === 'plan' && (
               <QueryBoundary query={plan} loading="Planning the load">
                 {(data) => <LoadPlanView plan={data} />}
@@ -612,7 +648,9 @@ function Work({ orderId }: { orderId: number }) {
             {active === 'temperature' && <TemperatureTab order={detail} />}
             {active === 'checks' && <ChecksTab />}
             {active === 'count' && <CountTab order={detail} />}
-            {active === 'signoff' && <SignOffTab order={detail} />}
+            {active === 'signoff' && (
+              <SignOffTab order={detail} onComplete={(result) => onComplete(detail, result)} />
+            )}
           </div>
         </div>
       )}
@@ -622,7 +660,12 @@ function Work({ orderId }: { orderId: number }) {
 
 export default function OrderWork() {
   const order = useActiveOrder();
+  const [done, setDone] = useState<{ order: OrderDetail; result: OrderCompleted } | null>(null);
+  if (done) return <OrderDone order={done.order} result={done.result} />;
   if (order.isPending) return <LoadingBlock label="Finding your assignment" />;
+  if (order.isError && !order.data) {
+    return <ErrorBlock error={order.error} onRetry={() => void order.refetch()} />;
+  }
   if (!order.data) {
     return (
       <div className="flex flex-col gap-6">
@@ -633,5 +676,5 @@ export default function OrderWork() {
       </div>
     );
   }
-  return <Work orderId={order.data.id} />;
+  return <Work orderId={order.data.id} onComplete={(detail, result) => setDone({ order: detail, result })} />;
 }

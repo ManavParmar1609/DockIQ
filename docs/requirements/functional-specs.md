@@ -35,7 +35,10 @@ mirrors this list 1:1; no `fetch` call exists elsewhere in the frontend.
 - Every response is an explicit Pydantic model — a column rename cannot leak a new field.
 - Timestamps are ISO-8601 **UTC with an offset** (`2026-09-25T14:03:11.52+00:00`).
 - A referenced id that does not exist (dock, operator, product, order, issue …) returns **404**, not
-  a 500. Invalid enum values in query strings return **422**.
+  a 500. Invalid enum values in query strings return **422**, and so does an id outside 1…2³¹−1 in
+  a path, query or body (the range of a Postgres `INTEGER`).
+- Free text a person types (`description`, notes, `details`) is at most **2000** characters;
+  `quick_tags` is at most 10 tags of at most 32 characters. Longer is **422**.
 - Each request runs in one database transaction, committed once. WebSocket events are emitted only
   after the commit succeeds.
 
@@ -80,7 +83,7 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 | POST | `/api/orders/{id}/temperature-check` | assigned operator | `{reading}` → status, limit, delta and guidance (business-rules §11.1) | — |
 | POST | `/api/orders/{id}/scan` | assigned operator | `{code}` — GTIN-14/13, UPC-A, or SKU. Returns `match` (case counted), `mismatch` (a real product **not on this order — do not load**), or `unknown`. Every scan is logged in `scan_events` | `order_items`, `scan_events` |
 | PUT | `/api/orders/{id}/items` | assigned operator | Record `actual_quantity` for a line | `order_items` |
-| POST | `/api/orders/{id}/complete` | assigned operator | Sign off, capture seal number. **409** while a critical issue is open or a failed inspection is uncleared (business-rules §7.1; `GET` returns `completion_blockers`). Inbound: lines outside tolerance are filed as Count Discrepancy issues (returned as `discrepancy_issue_ids`). A complete order is closed to further counting (403) | `orders`, `issues`, dock → `idle`/`complete`; emits `new_issue` per discrepancy and `order_complete` |
+| POST | `/api/orders/{id}/complete` | assigned operator | Sign off, capture seal number. **409** while a critical issue is open or a failed inspection is uncleared (business-rules §7.1; `GET` returns `completion_blockers`). Inbound: lines outside tolerance are filed as Count Discrepancy issues (returned as `discrepancy_issue_ids`) — without a dock if the order was never given one. A complete order is closed to further counting (403) | `orders`, `issues`, dock → `idle`/`complete`; emits `new_issue` per discrepancy and `order_complete` |
 
 ### 2.4 Issues — the core entity
 
@@ -88,13 +91,13 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 |---|---|---|---|---|
 | GET | `/api/issues` | scoped | Filters: `status` (or `active`), `operator_id`, `severity`, `limit` | — |
 | GET | `/api/issues/{id}` | scoped | Full issue with joined context, `issue_subtype`, `recurring_patterns`, `photo_count` | — |
-| POST | `/api/issues` | operator | **Create and classify** — see below. `issue_type` and `issue_subtype` must come from the taxonomy (422) | `issues`, dock → `issue`; emits `new_issue` |
+| POST | `/api/issues` | operator | **Create and classify** — see below. `issue_type` and `issue_subtype` must come from the taxonomy (422). An `order_id` must be one of the caller's orders (**404** otherwise) and at `dock_door_id` (**422** otherwise); naming a simulated order takes it over from the simulator | `issues`, dock → `issue`; emits `new_issue` |
 | PUT | `/api/issues/{id}/self-resolve` | the reporter | `resolution_type` must be an operator resolution (422). A critical issue answers 409: its supervisor decides | `status='self_resolved'`, dock → `active`; emits `issue_resolved` |
 | PUT | `/api/issues/{id}/acknowledge` | the team supervisor | "On my way": stamps `acknowledged_at` and `supervisor_id`. 409 once resolved | emits `issue_acknowledged` (who is coming, to which door) |
 | PUT | `/api/issues/{id}/escalate` | the reporter or their supervisor | Hand to the supervisor. No body. Critical issues arrive already escalated (business-rules §7.1) | `status='escalated'`; dock → `critical` if severity is critical; emits `issue_escalated` |
 | PUT | `/api/issues/{id}/supervisor-resolve` | the reporter's supervisor | `resolution_type` must be a supervisor decision (422) | `status='supervisor_resolved'`; emits `issue_resolved` |
 | POST | `/api/issues/{id}/photos` | reporter or their supervisor | Multipart `file`. ≤ 600 kB, ≤ 4 per issue, JPEG/PNG/WebP by content | `issue_photos` |
-| GET | `/api/issues/{id}/photos` | scoped | Photo metadata | — |
+| GET | `/api/issues/{id}/photos` | scoped | Photo metadata (the image bytes are never read; `GET /api/photos/{id}` serves one) | — |
 | GET | `/api/photos/{id}` | scoped | The image bytes (`Cache-Control: private`) | — |
 
 An illegal status move (e.g. escalating a resolved issue) is **409 Conflict**.
@@ -128,7 +131,8 @@ temperature-controlled product). See [business-rules.md §4.6](../architecture/b
 **An agent over your own data** (`app/services/agent.py`, tools in `agent_tools.py`). The model picks
 tools; tools read only what the person's own screens could show (the same row scope as the API) and
 take every number from a deterministic rule. At most 5 tool rounds per question; a tool error goes
-back to the model so it can correct itself.
+back to the model so it can correct itself. An unexpected failure inside a tool is logged (never its
+arguments), rolled back, and reported as a failed step; the conversation continues.
 
 | Tool | Who | Does |
 |---|---|---|
@@ -162,7 +166,7 @@ next", shift summaries) and falls back to the knowledge-base keyword answer.
 |---|---|---|---|
 | GET | `/api/requests` | scoped | Quick requests. Optional `?status=` |
 | POST | `/api/requests` | operator | `request_type` from the taxonomy; emits `new_request` to the supervisor |
-| PUT | `/api/requests/{id}/fulfill` | the requester's supervisor | Mark fulfilled |
+| PUT | `/api/requests/{id}/fulfill` | the requester's supervisor | Mark fulfilled. **409** if already fulfilled (the first `fulfilled_at` stands) |
 | GET | `/api/broadcasts` | any | Operators see their supervisor's; supervisors their own; quality all |
 | POST | `/api/broadcasts` | supervisor | Announcement to **their team**; emits `broadcast` |
 | GET | `/api/shift-handoffs` | any | Handoffs for your zone (quality: all) |
@@ -172,7 +176,7 @@ next", shift summaries) and falls back to the knowledge-base keyword answer.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/analytics/summary` | Supervisor: their team. Quality: the whole facility. Operators: 403 |
+| GET | `/api/analytics/summary` | Supervisor: their team. Quality: the whole facility. Operators: 403. Totals, open-now counts (open, open critical, cost at risk, cold-chain breaks), breakdowns by type (with cost), severity (open + average resolution), type × severity, door (open), operator, customer, carrier, the 30-day trend, and repeats (same type at one door / from one carrier, more than once in 30 days) |
 
 Returns: totals, self-resolution rate, cost impact, average resolution minutes, and breakdowns by
 type, severity, dock, operator, company and carrier, plus a 30-day time series.
@@ -189,8 +193,8 @@ simulator; `WMS_MODE=none` answers every lookup 503 and hides the simulator (404
 | Method | Path | Who | Purpose |
 |---|---|---|---|
 | GET | `/api/wms/status` | everyone | `{mode, online, message}`; drives the shell's *WMS offline* banner |
-| GET | `/api/wms/appointments` | staff | Yard board: scheduled (next 90 min), in yard, at door, recently left. 503 when offline |
-| GET | `/api/wms/inventory?sku=` | everyone | Pallet locations for a SKU (*Where is it stored* on an outbound line). 503 when offline |
+| GET | `/api/wms/appointments` | staff | Yard board: scheduled (next 90 min), in yard, at door, recently left — each with booked and gate-arrival times, minutes late, reefer set-point, yard spot, dwell and a detention flag. 503 when offline |
+| GET | `/api/wms/inventory?sku=` | everyone | Pallet locations for a SKU with lot and best-before, first-expiring first (*Where is it stored* on an outbound line; the first is marked *Pick first*). 503 when offline |
 | GET | `/api/wms/pallets/{id}` | everyone | One pallet by ID. 404 unknown, 503 offline |
 | GET | `/api/sim/status` | staff | Clock, seed, speed, WMS state, trailer counts, the last 15 events |
 | POST | `/api/sim/play`, `/pause`, `/next-shift` | staff | Clock control; each returns the new status |
@@ -273,7 +277,9 @@ That is preserved behaviour, now visible in one table instead of five handlers.
   re-loaded on every request, so deactivating an account (`is_active=false`) takes effect at once.
 - **Authorization:** role dependencies (`Operator`, `Supervisor`, `Staff`) on every mutating route,
   plus row scoping in `app/api/access.py` — the single place those rules live.
-- **Rate limits:** 10 login attempts per minute per client; 12 chat messages per minute per user.
+- **Rate limits:** 10 login attempts per minute per client address **and** 10 per employee ID (the
+  address can be forged through `X-Forwarded-For`; the ID cannot); 12 chat messages per minute per
+  user. The limiter forgets keys that have been quiet for a full window.
 - **Demo accounts** share one password, `DEMO_PASSWORD`. In development it defaults to `dockiq-demo`;
   in production nothing is seeded with a password unless it is set.
 - **Still true:** CORS is an explicit origin list; tokens live in the browser's `sessionStorage`

@@ -6,9 +6,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import realtime
-from app.api.access import ensure, issue_audience, issue_scope, supervisor_of, visible_issue
-from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, Supervisor, get_or_404
-from app.db import utcnow
+from app.api.access import ensure, issue_audience, issue_scope, supervisor_of, visible_issue, visible_order
+from app.api.deps import CurrentUser, Operator, PathId, RealtimeDep, SessionDep, Supervisor, get_or_404
+from app.db import MAX_ID, utcnow
 from app.domain.dock import DockEvent, transition
 from app.domain.enums import IssueStatus, Role, Severity
 from app.domain.evidence import MAX_PHOTO_BYTES, MAX_PHOTOS_PER_ISSUE, sniff_image_type
@@ -54,7 +54,7 @@ async def list_issues(
     user: CurrentUser,
     session: SessionDep,
     status: Annotated[str | None, Query(description="An issue status, or 'active' for open issues")] = None,
-    operator_id: int | None = None,
+    operator_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
     severity: Severity | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> list[IssueOut]:
@@ -79,7 +79,7 @@ async def list_issues(
 
 
 @router.get("/issues/{issue_id}")
-async def get_issue(issue_id: int, user: CurrentUser, session: SessionDep) -> IssueOut:
+async def get_issue(issue_id: PathId, user: CurrentUser, session: SessionDep) -> IssueOut:
     await visible_issue(session, user, issue_id)
     return await _issue_out(session, issue_id)
 
@@ -88,7 +88,13 @@ async def get_issue(issue_id: int, user: CurrentUser, session: SessionDep) -> Is
 async def create_issue(
     body: IssueCreate, user: Operator, session: SessionDep, events: RealtimeDep
 ) -> IssueCreated:
+    # The order must be one the operator may see (404 otherwise), and the report must be at its dock.
+    order = await visible_order(session, user, body.order_id) if body.order_id is not None else None
+    if order is not None and order.dock_door_id != body.dock_door_id:
+        raise unprocessable("That order is not at this dock")
     issue = await file_issue(session, user.id, body)
+    if order is not None:
+        order.sim_managed = False  # a person reporting on a simulated trailer takes it over (§12)
     await session.commit()
     created = await _issue_out(session, issue.id)
     await events.send(await issue_audience(session, issue), realtime.new_issue(created.model_dump()))
@@ -115,7 +121,7 @@ async def _reopen_dock(session: AsyncSession, issue: Issue) -> None:
 
 @router.put("/issues/{issue_id}/self-resolve")
 async def self_resolve_issue(
-    issue_id: int, body: IssueSelfResolve, user: Operator, session: SessionDep, events: RealtimeDep
+    issue_id: PathId, body: IssueSelfResolve, user: Operator, session: SessionDep, events: RealtimeDep
 ) -> StatusOut:
     issue = await visible_issue(session, user, issue_id)
     if body.resolution_type not in OPERATOR_RESOLUTIONS:
@@ -137,7 +143,7 @@ async def self_resolve_issue(
 
 @router.put("/issues/{issue_id}/escalate")
 async def escalate_issue(
-    issue_id: int, user: CurrentUser, session: SessionDep, events: RealtimeDep
+    issue_id: PathId, user: CurrentUser, session: SessionDep, events: RealtimeDep
 ) -> StatusOut:
     """The reporting operator (or their supervisor) hands the issue to the supervisor's queue."""
     ensure(user.role in (Role.OPERATOR, Role.SUPERVISOR))
@@ -157,7 +163,7 @@ async def escalate_issue(
 
 @router.put("/issues/{issue_id}/acknowledge")
 async def acknowledge_issue(
-    issue_id: int, user: Supervisor, session: SessionDep, events: RealtimeDep
+    issue_id: PathId, user: Supervisor, session: SessionDep, events: RealtimeDep
 ) -> StatusOut:
     """ "On my way": the supervisor takes the issue and the operator is told who is coming."""
     issue = await visible_issue(session, user, issue_id)  # scoped: only this supervisor's team
@@ -178,7 +184,7 @@ async def acknowledge_issue(
 
 @router.put("/issues/{issue_id}/supervisor-resolve")
 async def supervisor_resolve_issue(
-    issue_id: int, body: IssueSupervisorResolve, user: Supervisor, session: SessionDep, events: RealtimeDep
+    issue_id: PathId, body: IssueSupervisorResolve, user: Supervisor, session: SessionDep, events: RealtimeDep
 ) -> StatusOut:
     issue = await visible_issue(session, user, issue_id)  # scoped: only this supervisor's team
     if body.resolution_type not in SUPERVISOR_DECISIONS:
@@ -203,7 +209,9 @@ async def supervisor_resolve_issue(
 
 
 @router.post("/issues/{issue_id}/photos", status_code=http.HTTP_201_CREATED)
-async def upload_photo(issue_id: int, file: UploadFile, user: CurrentUser, session: SessionDep) -> PhotoOut:
+async def upload_photo(
+    issue_id: PathId, file: UploadFile, user: CurrentUser, session: SessionDep
+) -> PhotoOut:
     issue = await visible_issue(session, user, issue_id)
     ensure(user.id == issue.operator_id or user.id == await supervisor_of(session, issue.operator_id))
     existing = await session.scalar(select(func.count(IssuePhoto.id)).where(IssuePhoto.issue_id == issue.id))
@@ -233,16 +241,19 @@ async def upload_photo(issue_id: int, file: UploadFile, user: CurrentUser, sessi
 
 
 @router.get("/issues/{issue_id}/photos")
-async def list_photos(issue_id: int, user: CurrentUser, session: SessionDep) -> list[PhotoOut]:
+async def list_photos(issue_id: PathId, user: CurrentUser, session: SessionDep) -> list[PhotoOut]:
     await visible_issue(session, user, issue_id)
-    photos = await session.scalars(
-        select(IssuePhoto).where(IssuePhoto.issue_id == issue_id).order_by(IssuePhoto.id)
+    # Metadata only: the image bytes are served one at a time by GET /photos/{id}.
+    rows = await session.execute(
+        select(*(IssuePhoto.__table__.c[name] for name in PhotoOut.model_fields))
+        .where(IssuePhoto.issue_id == issue_id)
+        .order_by(IssuePhoto.id)
     )
-    return [PhotoOut.model_validate(photo) for photo in photos]
+    return [PhotoOut.model_validate(dict(row._mapping)) for row in rows]
 
 
 @router.get("/photos/{photo_id}", response_class=Response)
-async def get_photo(photo_id: int, user: CurrentUser, session: SessionDep) -> Response:
+async def get_photo(photo_id: PathId, user: CurrentUser, session: SessionDep) -> Response:
     photo = await get_or_404(session, IssuePhoto, photo_id, "Photo")
     await visible_issue(session, user, photo.issue_id)
     return Response(

@@ -14,6 +14,9 @@ from sqlalchemy.types import TypeDecorator
 
 from app.config import Settings
 
+# Primary keys are Postgres INTEGER: a larger bind fails in the driver (a 500), so inputs stop here.
+MAX_ID = 2**31 - 1
+
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
@@ -87,7 +90,8 @@ def engine_options(settings: Settings) -> dict[str, Any]:
 
 
 def create_engine(settings: Settings) -> AsyncEngine:
-    engine = create_async_engine(settings.database_url, **engine_options(settings))
+    # hide_parameters: a failed statement's log line must not carry what a person typed.
+    engine = create_async_engine(settings.database_url, hide_parameters=True, **engine_options(settings))
     if settings.is_sqlite:
         event.listen(engine.sync_engine, "connect", _sqlite_pragmas)
     return engine

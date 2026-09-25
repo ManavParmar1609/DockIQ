@@ -29,6 +29,7 @@ import {
   StatGrid,
   Tag,
 } from '../../components/ui';
+import { duration, formatTemp } from '../../lib/format';
 
 const SPEEDS: readonly { value: `${SimSpeed}`; label: string }[] = [
   { value: '1', label: '1× real time' },
@@ -221,6 +222,42 @@ function Scenarios() {
   );
 }
 
+/** "On time", "22 min late" or "8 min early", against the booked appointment. */
+function punctualityOf(entry: YardEntry): string {
+  if (entry.arrived_at == null || entry.late_minutes == null) return 'Not arrived';
+  const late = Math.round(entry.late_minutes);
+  if (late > 15) return `Arrived ${entry.arrived_at} · ${String(late)} min late`;
+  if (late < -5) return `Arrived ${entry.arrived_at} · ${String(-late)} min early`;
+  return `Arrived ${entry.arrived_at} · on time`;
+}
+
+function Kpis({ status }: { status: SimStatus }) {
+  const { kpis } = status;
+  return (
+    <StatGrid>
+      <Stat
+        label="On time"
+        value={kpis.on_time_percent == null ? '—' : `${String(kpis.on_time_percent)}%`}
+        sub={`${String(kpis.arrived)} trailers arrived`}
+        index={4}
+      />
+      <Stat
+        label="Turn time"
+        value={kpis.average_turn_minutes == null ? '—' : duration(kpis.average_turn_minutes)}
+        sub="Gate to departure"
+        index={5}
+      />
+      <Stat
+        label="Door use"
+        value={`${String(Math.round(kpis.door_utilization_percent))}%`}
+        sub={`${String(kpis.pallets_per_hour)} pallets an hour`}
+        index={6}
+      />
+      <Stat label="Detention" value={kpis.on_detention} sub="On site over two hours" index={7} />
+    </StatGrid>
+  );
+}
+
 function YardBoard({ online }: { online: boolean }) {
   const yard = useYard(online);
   const offline = !online || (yard.error instanceof ApiError && yard.error.status === 503);
@@ -246,7 +283,7 @@ function YardBoard({ online }: { online: boolean }) {
                 <table className="w-full min-w-xl border-collapse text-left">
                   <thead>
                     <tr className="border-b border-hairline">
-                      {['Door', 'Trailer', 'Customer', 'Type', 'State'].map((heading) => (
+                      {['Door', 'Trailer', 'Customer', 'Booked', 'Reefer', 'State'].map((heading) => (
                         <th key={heading} scope="col" className="label px-4 py-2 font-normal">
                           {heading}
                         </th>
@@ -256,23 +293,42 @@ function YardBoard({ online }: { online: boolean }) {
                   <tbody>
                     {entries.map((entry) => (
                       <tr key={entry.ref} className="border-b border-hairline">
-                        <td className="telemetry px-4 py-2.5 text-lg">
-                          {String(entry.door).padStart(2, '0')}
+                        <td className="px-4 py-2.5">
+                          <p className="telemetry text-lg">{String(entry.door).padStart(2, '0')}</p>
+                          {entry.yard_spot && (
+                            <p className="telemetry text-sm text-ink-mute">{entry.yard_spot}</p>
+                          )}
                         </td>
                         <td className="px-4 py-2.5">
                           <p className="telemetry whitespace-nowrap">{entry.trailer}</p>
-                          <p className="telemetry text-sm text-ink-mute">{entry.order_number}</p>
+                          <p className="telemetry whitespace-nowrap text-sm text-ink-mute">
+                            {entry.order_number} · {entry.type === 'inbound' ? 'In' : 'Out'}
+                          </p>
                         </td>
                         <td className="px-4 py-2.5">
                           <p className="font-semibold">{entry.customer}</p>
                           <p className="text-sm text-ink-mute">{entry.carrier}</p>
                         </td>
-                        <td className="px-4 py-2.5 capitalize">{entry.type}</td>
                         <td className="px-4 py-2.5">
-                          <Tag tone={entry.state === 'at_door' ? 'ink' : 'plain'}>
-                            {YARD_STATE[entry.state]}
-                            {entry.due_in_minutes != null && ` · ${Math.round(entry.due_in_minutes)}m`}
-                          </Tag>
+                          <p className="telemetry text-lg">{entry.scheduled_at}</p>
+                          <p className="whitespace-nowrap text-sm text-ink-mute">{punctualityOf(entry)}</p>
+                        </td>
+                        <td className="telemetry whitespace-nowrap px-4 py-2.5">
+                          {entry.reefer_setpoint == null ? '—' : formatTemp(entry.reefer_setpoint)}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Tag tone={entry.state === 'at_door' ? 'ink' : 'plain'}>
+                              {YARD_STATE[entry.state]}
+                              {entry.due_in_minutes != null && ` · ${Math.round(entry.due_in_minutes)}m`}
+                            </Tag>
+                            {entry.detention && <Tag tone="accent">Detention</Tag>}
+                          </div>
+                          {entry.dwell_minutes != null && (
+                            <p className="mt-1 whitespace-nowrap text-sm text-ink-mute">
+                              {duration(entry.dwell_minutes)} on site
+                            </p>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -370,17 +426,18 @@ export default function Simulator() {
               <Stat label="At door" value={sim.trailers.at_door} sub="Being worked" index={2} />
               <Stat label="Left" value={sim.trailers.departed} sub="This shift" index={3} />
             </StatGrid>
+            <Kpis status={sim} />
 
-            <div className="grid gap-6 xl:grid-cols-5">
-              <div className="flex flex-col gap-6 xl:col-span-3">
+            <div className="grid items-start gap-6 xl:grid-cols-5">
+              <div className="xl:col-span-3">
                 <Controls status={sim} />
-                <YardBoard online={sim.wms_online} />
               </div>
-              <div className="flex flex-col gap-6 xl:col-span-2">
+              <div className="xl:col-span-2">
                 <Scenarios />
-                <EventFeed status={sim} />
               </div>
             </div>
+            <YardBoard online={sim.wms_online} />
+            <EventFeed status={sim} />
           </div>
         );
       }}

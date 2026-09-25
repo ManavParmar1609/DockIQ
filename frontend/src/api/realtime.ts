@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { session, wsUrl } from './client';
-import { keys } from './hooks';
+import { invalidateOrders, isSettledQuery, keys } from './hooks';
 import type { Issue } from './types';
 
 export type RealtimeEvent =
@@ -65,6 +65,7 @@ export function useRealtime(onEvent: (event: RealtimeEvent) => void): Connection
     let retry: number | undefined;
     let attempt = 0;
     let closed = false;
+    let connectedBefore = false;
 
     const invalidate = (event: RealtimeEvent) => {
       switch (event.type) {
@@ -73,6 +74,8 @@ export function useRealtime(onEvent: (event: RealtimeEvent) => void): Connection
           void client.invalidateQueries({ queryKey: keys.issues });
           void client.invalidateQueries({ queryKey: keys.docks });
           void client.invalidateQueries({ queryKey: keys.analytics });
+          // An open issue can block an order's sign-off (completion_blockers).
+          void invalidateOrders(client);
           break;
         case 'issue_acknowledged':
           void client.invalidateQueries({ queryKey: keys.issues });
@@ -80,6 +83,7 @@ export function useRealtime(onEvent: (event: RealtimeEvent) => void): Connection
         case 'issue_resolved':
           void client.invalidateQueries({ queryKey: keys.issues });
           void client.invalidateQueries({ queryKey: keys.docks });
+          void invalidateOrders(client);
           break;
         case 'order_complete':
           void client.invalidateQueries({ queryKey: keys.orders });
@@ -94,7 +98,7 @@ export function useRealtime(onEvent: (event: RealtimeEvent) => void): Connection
         case 'floor_update':
           // Trailers moved (usually the simulator): refetch what the floor shows, through your own scope.
           void client.invalidateQueries({ queryKey: keys.docks });
-          void client.invalidateQueries({ queryKey: keys.orders });
+          void invalidateOrders(client);
           void client.invalidateQueries({ queryKey: keys.sim });
           void client.invalidateQueries({ queryKey: keys.wms });
           break;
@@ -109,6 +113,10 @@ export function useRealtime(onEvent: (event: RealtimeEvent) => void): Connection
       socket.onopen = () => {
         attempt = 0;
         setConnection('live');
+        // Events sent while the socket was down are lost: catch up on everything after a reconnect.
+        if (connectedBefore)
+          void client.invalidateQueries({ predicate: (query) => isSettledQuery(client, query) });
+        connectedBefore = true;
       };
       socket.onmessage = (message) => {
         const event = parse(message.data);

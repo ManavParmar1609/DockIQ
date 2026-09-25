@@ -50,6 +50,17 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+/** A calendar date ("2026-10-12") as "12 Oct 2026", without a timezone shift. */
+export function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 export function greeting(hour: number = new Date().getHours()): string {
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';

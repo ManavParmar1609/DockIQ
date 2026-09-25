@@ -11,6 +11,7 @@ import type { AgentAction, AgentCard, BroadcastDraft, HandoffDraft, IssueDraft }
 import { useReportIssue, useSendBroadcast } from '../api/hooks';
 import { duration, formatTemp } from '../lib/format';
 import { parseSeverityReason } from '../lib/vocab';
+import { PalletList } from './PalletList';
 import { ConfidenceMeter, SeverityBadge } from './Severity';
 import { MutationError, SimulatedTag, Tag } from './ui';
 
@@ -113,17 +114,7 @@ function StockView({ card }: { card: Extract<AgentCard, { kind: 'stock' }> }) {
       ) : card.pallets.length === 0 ? (
         <p className="text-base">No stock on hand.</p>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {card.pallets.map((pallet) => (
-            <li
-              key={pallet.pallet_id}
-              className="flex items-baseline justify-between gap-3 rounded-md bg-paper px-3 py-2"
-            >
-              <span className="telemetry text-lg">{pallet.location}</span>
-              <span className="telemetry text-sm text-ink-mute">{pallet.cases} cs</span>
-            </li>
-          ))}
-        </ul>
+        <PalletList pallets={card.pallets} />
       )}
     </CardFrame>
   );

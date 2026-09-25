@@ -220,7 +220,7 @@ export default function Landing() {
         >
           <Link to="/" className="display flex items-center gap-2.5 text-2xl">
             <Leaf size={22} aria-hidden="true" className="text-sage-ink" />
-            Dock<em>IQ</em>
+            Dock<span className="wordmark-iq">IQ</span>
           </Link>
           <div className="hidden items-center gap-9 md:flex">
             {NAV_LINKS.map(([href, label]) => (
@@ -243,8 +243,7 @@ export default function Landing() {
         {/* Hero: words on the left, the product framed in an arch on the right */}
         <section className="mx-auto grid max-w-7xl items-center gap-16 px-5 pt-16 pb-12 sm:px-8 lg:grid-cols-2 lg:pt-24">
           <div className="enter in">
-            <p className="eyebrow">Dock-door intelligence for cold storage</p>
-            <h1 className="display mt-5 text-5xl sm:text-6xl">
+            <h1 className="display text-5xl sm:text-6xl">
               Every dock door, <em>calmly</em> triaged.
             </h1>
             <p className="mt-7 max-w-xl text-xl text-ink-soft">
@@ -289,8 +288,7 @@ export default function Landing() {
         <section id="scoring" className="mx-auto max-w-7xl px-5 py-24 sm:px-8 sm:py-32">
           <div className="grid items-center gap-16 lg:grid-cols-2">
             <div className="enter">
-              <p className="eyebrow">Explainable, not magic</p>
-              <h2 className="display mt-4 text-4xl sm:text-5xl">
+              <h2 className="display text-4xl sm:text-5xl">
                 A formula <em>you can read.</em>
               </h2>
               <p className="mt-7 text-xl text-ink-soft">
@@ -313,8 +311,7 @@ export default function Landing() {
         {/* Load plans */}
         <section id="load-plans" className="mx-auto max-w-7xl px-5 py-24 sm:px-8 sm:py-32">
           <div className="enter mx-auto max-w-3xl text-center">
-            <p className="eyebrow">For each customer</p>
-            <h2 className="display mt-4 text-4xl sm:text-5xl">
+            <h2 className="display text-4xl sm:text-5xl">
               The load, <em>drawn</em> before it is lifted.
             </h2>
             <p className="mt-7 text-xl text-ink-soft">
@@ -325,7 +322,7 @@ export default function Landing() {
           </div>
           <div className="enter mt-16 rounded-3xl bg-paper-sunk p-4 sm:p-8">
             <p className="label mb-4">Sample data · Crestline Markets, outbound</p>
-            <LoadPlanView plan={SAMPLE_PLAN} />
+            <LoadPlanView plan={SAMPLE_PLAN} persist={false} />
           </div>
         </section>
 
@@ -343,8 +340,8 @@ export default function Landing() {
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-accent-soft text-sage-ink">
                   <role.icon size={26} aria-hidden="true" />
                 </span>
-                <p className="eyebrow mt-6">{role.who}</p>
-                <h3 className="heading mt-2 text-2xl">{role.line}</h3>
+                <h3 className="heading mt-6 text-2xl">{role.line}</h3>
+                <p className="label mt-2">{role.who}</p>
                 <p className="mt-4 text-base text-ink-mute">{role.detail}</p>
               </article>
             ))}

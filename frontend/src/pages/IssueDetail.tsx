@@ -121,6 +121,7 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
         <textarea
           id="supervisor-notes"
           rows={3}
+          maxLength={2000}
           className="field"
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
@@ -304,7 +305,10 @@ function Detail({ issue }: { issue: Issue }) {
           {!open && (
             <Panel title="Outcome">
               <p className="heading text-xl">{issue.resolution_type ?? '—'}</p>
-              {issue.supervisor_name && <p className="label mt-1">By {issue.supervisor_name}</p>}
+              {/* supervisor_name is also set by an acknowledgement, so it names the resolver only here. */}
+              {issue.status === 'supervisor_resolved'
+                ? issue.supervisor_name && <p className="label mt-1">By {issue.supervisor_name}</p>
+                : issue.operator_name && <p className="label mt-1">By {issue.operator_name}</p>}
               {(issue.supervisor_notes ?? issue.resolution_notes) && (
                 <p className="mt-3 text-base">{issue.supervisor_notes ?? issue.resolution_notes}</p>
               )}

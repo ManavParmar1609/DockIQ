@@ -10,9 +10,9 @@ from sqlalchemy import select
 from app.db import Database, utcnow
 from app.models import Order, Product
 from app.wms.client import Pallet, WmsStatus, WmsUnavailable, YardEntry
-from app.wms.clock import shift_of
+from app.wms.clock import shift_of, time_of
 from app.wms.engine import SimulationEngine
-from app.wms.plan import ProductRef, inventory
+from app.wms.plan import DETENTION_AFTER, ProductRef, inventory
 
 YARD_LOOKAHEAD_MINUTES = 90
 YARD_DEPARTED_SHOWN = 6
@@ -63,7 +63,11 @@ class SimulatedWms:
             carriers = {code: carrier.name for code, carrier in reference.carriers.items()}
             entries: list[YardEntry] = []
             for appointment in plan.appointments:
-                state = SimulationEngine.yard_state(appointment, orders.get(appointment.key), minute)
+                order = orders.get(appointment.key)
+                state = SimulationEngine.yard_state(appointment, order, minute)
+                arrived = appointment.arrival <= minute
+                left = order.sim_departed_minute if order is not None else None
+                dwell = ((left if left is not None else minute) - appointment.arrival) if arrived else None
                 if state == "scheduled" and appointment.arrival - minute > YARD_LOOKAHEAD_MINUTES:
                     continue
                 entries.append(
@@ -80,6 +84,15 @@ class SimulatedWms:
                         if state == "scheduled"
                         else None,
                         simulated=True,
+                        scheduled_at=time_of(appointment.scheduled),
+                        arrived_at=time_of(appointment.arrival) if arrived else None,
+                        late_minutes=round(appointment.arrival - appointment.scheduled, 1)
+                        if arrived
+                        else None,
+                        reefer_setpoint=appointment.reefer_setpoint,
+                        yard_spot=appointment.yard_spot if state == "in_yard" else None,
+                        dwell_minutes=round(dwell, 1) if dwell is not None else None,
+                        detention=dwell is not None and dwell > DETENTION_AFTER,
                     )
                 )
             departed = [entry for entry in entries if entry.state == "departed"][-YARD_DEPARTED_SHOWN:]
@@ -92,7 +105,10 @@ class SimulatedWms:
                 ProductRef(p.sku, p.name, p.category.value, p.cases_per_pallet, p.temp_max)
                 for p in await session.scalars(select(Product))
             ]
-        return [Pallet(r.pallet_id, r.sku, r.location, r.cases) for r in inventory(seed, products)]
+        return [
+            Pallet(r.pallet_id, r.sku, r.location, r.cases, r.lot, r.best_before)
+            for r in inventory(seed, products)
+        ]
 
     async def inventory(self, sku: str) -> list[Pallet]:
         return [pallet for pallet in await self._inventory() if pallet.sku == sku]

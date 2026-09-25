@@ -102,6 +102,19 @@ async def run_tool(tool: Tool, ctx: ToolContext, args: dict[str, Any]) -> AsyncI
         yield {"type": "step", "tool": tool.name, "label": tool.label, "state": "failed", "summary": str(exc)}
         yield {"type": "_result", "content": json.dumps({"error": str(exc)})}
         return
+    except Exception:
+        # A bug or a database error must not end the conversation. Never log the arguments: they
+        # carry what the person typed.
+        logger.exception("assistant tool %s failed", tool.name)
+        if ctx.session.in_transaction():
+            # A failed statement poisons the transaction; tools only read, so nothing is lost. The
+            # rollback expires the signed-in user, which the rest of the exchange still reads.
+            await ctx.session.rollback()
+            await ctx.session.refresh(ctx.user)
+        failed = "That check failed. Try again, or ask your supervisor."
+        yield {"type": "step", "tool": tool.name, "label": tool.label, "state": "failed", "summary": failed}
+        yield {"type": "_result", "content": json.dumps({"error": failed})}
+        return
     yield {
         "type": "step",
         "tool": tool.name,

@@ -92,7 +92,11 @@ function StepList({ steps }: { steps: Step[] }) {
 function Answer({ exchange }: { exchange: Exchange }) {
   const waiting = exchange.status === 'streaming' && exchange.steps.length === 0 && !exchange.text;
   return (
-    <li className="flex flex-col gap-3 border-l-4 border-ink pl-4">
+    <li
+      className="flex flex-col gap-3 border-l-4 border-ink pl-4"
+      aria-live="polite"
+      aria-busy={exchange.status === 'streaming'}
+    >
       {exchange.steps.length > 0 && <StepList steps={exchange.steps} />}
       {waiting && <p className="label">Reading your question…</p>}
       {exchange.cards.map((card, index) => (

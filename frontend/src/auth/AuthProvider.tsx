@@ -1,13 +1,16 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { api, session, unwrap } from '../api/client';
+import { ApiError, api, session, unwrap } from '../api/client';
 import type { Me } from '../api/types';
 
 interface AuthState {
   user: Me | null;
   /** True until the stored token (if any) has been checked against the API. */
   checking: boolean;
+  /** The check itself failed (network or server), so the token is neither good nor bad yet. */
+  checkError: Error | null;
+  recheck: () => void;
   login: (employeeId: string, password: string) => Promise<Me>;
   logout: () => void;
 }
@@ -23,8 +26,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: () => unwrap(api.GET('/api/auth/me')),
     enabled: hasToken,
     staleTime: Infinity,
-    retry: false,
+    // Only a 401 means signed out (the client clears the token on it); a network blip or a waking
+    // server is retried rather than sending the user back to the login screen.
+    retry: (failures, error) => !(error instanceof ApiError && error.status === 401) && failures < 3,
   });
+
+  const { refetch } = me;
+  const recheck = useCallback(() => void refetch(), [refetch]);
 
   const logout = useCallback(() => {
     session.clear();
@@ -56,11 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthState>(
     () => ({
       user: hasToken ? (me.data ?? null) : null,
-      checking: hasToken && me.isPending,
+      checking: hasToken && (me.isPending || (me.isError && me.isFetching)),
+      checkError: hasToken && me.data === undefined && !me.isFetching ? me.error : null,
+      recheck,
       login,
       logout,
     }),
-    [hasToken, me.data, me.isPending, login, logout],
+    [hasToken, me.data, me.isPending, me.isError, me.isFetching, me.error, recheck, login, logout],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

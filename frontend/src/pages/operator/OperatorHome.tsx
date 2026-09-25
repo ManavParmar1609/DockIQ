@@ -88,6 +88,9 @@ export default function OperatorHome() {
   const handoff = handoffs.data?.[0];
   const list = issues.data ?? [];
   const open = list.filter((issue) => ISSUE_STATUS[issue.status].open);
+  // Until the issues load (or when they fail), a stat shows "—", never a false "All clear".
+  const loaded = issues.data !== undefined;
+  const stat = (value: number) => (loaded ? value : '—');
 
   const assignment = order.data;
   const outbound = assignment?.type === 'outbound';
@@ -163,24 +166,24 @@ export default function OperatorHome() {
       <StatGrid>
         <Stat
           label="Open"
-          value={open.length}
-          sub={open.length ? 'Needs attention' : 'All clear'}
+          value={stat(open.length)}
+          sub={loaded ? (open.length ? 'Needs attention' : 'All clear') : undefined}
           alert={open.some((issue) => issue.severity === 'critical')}
           index={5}
         />
         <Stat
           label="Fixed by you"
-          value={list.filter((issue) => issue.status === 'self_resolved').length}
+          value={stat(list.filter((issue) => issue.status === 'self_resolved').length)}
           sub="Self-resolved"
           index={6}
         />
         <Stat
           label="Escalated"
-          value={list.filter((issue) => issue.status === 'escalated').length}
+          value={stat(list.filter((issue) => issue.status === 'escalated').length)}
           sub="With your supervisor"
           index={7}
         />
-        <Stat label="Your history" value={list.length} sub="Issues logged" index={8} />
+        <Stat label="Your history" value={stat(list.length)} sub="Issues logged" index={8} />
       </StatGrid>
 
       <Panel

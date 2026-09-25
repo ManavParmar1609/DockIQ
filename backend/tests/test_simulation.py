@@ -20,9 +20,9 @@ T0 = datetime(2026, 9, 25, 12, 0, tzinfo=UTC)
 SIMULATED_CREW = {"Priya Raman", "Owen Castillo", "Hana Kowalski", "Marcus Bell"}  # users.json
 
 PRODUCTS = (
-    ProductRef("FZ-1", "Frozen peas", "frozen", 60, 0.0),
-    ProductRef("DR-1", "Yogurt", "dairy", 80, 38.0),
-    ProductRef("DG-1", "Crackers", "dry_goods", 100, None),
+    ProductRef("FZ-1", "Frozen peas", "Frozen", 60, 0.0),
+    ProductRef("DR-1", "Yogurt", "Refrigerated", 80, 38.0),
+    ProductRef("DG-1", "Crackers", "Dry", 100, None),
 )
 CUSTOMERS = (CustomerRef("North Market", PRODUCTS[:2]), CustomerRef("Coastal Grocers", PRODUCTS[1:]))
 CARRIERS = (("FRZX", "Frostline Express"), ("CCL", "Coldchain Lines"))
@@ -225,7 +225,7 @@ def test_pallet_lookup(client: TestClient, login: Login) -> None:
 
 def test_a_person_taking_over_stops_the_simulator(client: TestClient, login: Login) -> None:
     sup = login("SUP-001")
-    step(client, sup, 60)
+    step(client, sup, 150)  # carriers run late: give Zone A's first trailer time to reach its door
     order = next(o for o in client.get("/api/orders", headers=sup).json() if o["simulated"])
     operator = next(
         u for u in client.get("/api/users", headers=sup).json() if u["id"] == order["operator_id"]
@@ -290,3 +290,103 @@ def test_without_a_wms_the_boundary_reports_offline(no_wms_client: TestClient) -
     }
     assert no_wms_client.get("/api/sim/status", headers=headers).status_code == 404
     assert no_wms_client.get("/api/wms/appointments", headers=headers).status_code == 503
+
+
+# ── Realism: punctuality, reefer, yard, FEFO inventory, KPIs (business-rules §12.6) ──
+
+
+def test_arrivals_follow_each_carriers_punctuality_profile() -> None:
+    from app.wms.plan import PUNCTUALITY, punctuality
+
+    for appointment in plan(7).appointments:
+        low, _, high = PUNCTUALITY[punctuality(7, appointment.carrier)]
+        late = appointment.arrival - appointment.scheduled
+        assert low - 0.01 <= late <= high + 0.01 or appointment.arrival == 0
+    assert punctuality(7, "FRZX") == punctuality(7, "FRZX")  # a carrier keeps its habits
+
+
+def test_reefer_is_set_below_the_strictest_limit_on_the_load() -> None:
+    from app.wms.plan import REEFER_BELOW_LIMIT
+
+    limits = {product.sku: product.temp_max for product in PRODUCTS}
+    for appointment in plan(3).appointments:
+        cold = [limits[sku] for sku, _ in appointment.lines if limits[sku] is not None]
+        expected = min(cold) - REEFER_BELOW_LIMIT if cold else None  # type: ignore[type-var]
+        assert appointment.reefer_setpoint == expected
+        assert appointment.yard_spot.startswith("Y-")
+
+
+def test_inventory_is_stored_by_temperature_room_and_listed_first_expiring_first() -> None:
+    records = inventory(5, PRODUCTS)
+    rooms = {"FZ-1": "F-", "DR-1": "C-", "DG-1": "D-"}  # freezer, cooler, dry
+    for record in records:
+        assert record.location.startswith(rooms[record.sku])
+        assert record.lot.startswith("L")
+    for sku in ("FZ-1", "DR-1", "DG-1"):
+        dates = [record.best_before for record in records if record.sku == sku]
+        assert dates == sorted(dates)
+
+
+def test_shift_kpis() -> None:
+    from app.wms.plan import Appointment, Visit, shift_kpis
+
+    def appointment(key: str, scheduled: float, arrival: float, pallets: int) -> Appointment:
+        return Appointment(
+            key,
+            0,
+            1,
+            "inbound",
+            "C",
+            "X",
+            "SIM",
+            "T",
+            "B",
+            "S",
+            scheduled,
+            arrival,
+            None,
+            "Y-01",
+            5.0,
+            (),
+            pallets,
+            None,
+        )
+
+    appointments = [
+        appointment("on-time", 10, 20, 10),  # 10 min late: on time, left after 60
+        appointment("late", 10, 40, 4),  # 30 min late, still on site 140 min later: detention
+        appointment("future", 300, 300, 8),  # not arrived yet
+    ]
+    visits = {"on-time": Visit(at_door=25, departed=80), "late": Visit(at_door=45, departed=None)}
+    kpis = shift_kpis(appointments, visits, minute=180, doors=2, shift_start=0)
+    assert (kpis.arrived, kpis.on_time_percent, kpis.average_turn_minutes, kpis.on_detention) == (
+        2,
+        50.0,
+        60.0,
+        1,
+    )
+    assert kpis.pallets_per_hour == round(10 / 3, 1)
+    assert kpis.door_utilization_percent == round((55 + 135) / (2 * 180) * 100, 1)
+
+
+def test_yard_board_and_status_carry_appointment_times_and_kpis(client: TestClient, login: Login) -> None:
+    sup = login("SUP-001")
+    status = step(client, sup, 200)
+    assert set(status["kpis"]) == {
+        "arrived",
+        "on_time_percent",
+        "average_turn_minutes",
+        "on_detention",
+        "pallets_per_hour",
+        "door_utilization_percent",
+    }
+    yard = client.get("/api/wms/appointments", headers=sup).json()
+    arrived = [entry for entry in yard if entry["arrived_at"]]
+    assert arrived
+    assert all(len(entry["scheduled_at"]) == 5 for entry in yard)
+    assert all(entry["dwell_minutes"] is not None for entry in arrived)
+    sku = client.get("/api/products", headers=sup).json()[0]["sku"]
+    pallets = client.get(f"/api/wms/inventory?sku={sku}", headers=sup).json()
+    assert [pallet["best_before"] for pallet in pallets] == sorted(
+        pallet["best_before"] for pallet in pallets
+    )

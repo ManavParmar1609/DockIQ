@@ -51,6 +51,8 @@ one orchestrated reveal. Calm is also the right emotion for a stressful dock.
 | Slow 500–700ms motion everywhere | Reveals and hovers are slow; **press feedback is instant** | A gloved tap must feel answered at once |
 | Small uppercase button labels | 14px floor, 50px pill height | Gloves, distance, glare |
 | Staggered cards (`translate-y-12`) | On the landing page only, not in working screens | Scanning a queue needs straight rows |
+| One sans for everything read at work | Source Sans 3 for reading, **Spline Sans Mono** for telemetry (IDs, codes, times, counts) | The product owner asked for more type voices; a soft mono keeps codes unambiguous (0/O, 1/l) |
+| One orchestrated moment, no scattered micro-interactions | Micro-interactions **where they explain**: the load guide's breathing spot, flowing arrow, settling pallet, gliding view; sheets sliding in | Requested by the product owner; each one carries information. Never on an alert; reduced motion honoured |
 
 ### 2.4 Non-negotiables that outrank any aesthetic
 

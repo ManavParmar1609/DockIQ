@@ -6,7 +6,7 @@ import { useBroadcasts, useWmsStatus } from '../api/hooks';
 import type { Broadcast } from '../api/types';
 import { useRealtime, type Connection } from '../api/realtime';
 import { useAuth } from '../auth/AuthProvider';
-import { SimulatedTag } from '../components/ui';
+import { ErrorBlock, SimulatedTag } from '../components/ui';
 import { initials } from '../lib/format';
 import { AlertStack, BroadcastBanner, useAlerts } from './Alerts';
 import { NAV, ROLE_LABEL } from './nav';
@@ -56,7 +56,7 @@ function Wordmark({ compact = false }: { compact?: boolean }) {
         <Warehouse size={20} strokeWidth={2.2} />
       </span>
       <span className={`display ${compact ? 'text-xl' : 'text-2xl'}`}>
-        Dock<em>IQ</em>
+        Dock<span className="wordmark-iq">IQ</span>
       </span>
     </span>
   );
@@ -111,13 +111,20 @@ function SignOut({ onLogout }: { onLogout: () => void }) {
 }
 
 export function AppShell() {
-  const { user, checking, logout } = useAuth();
+  const { user, checking, checkError, recheck, logout } = useAuth();
   const location = useLocation();
 
   if (checking) {
     return (
       <div className="grid min-h-dvh place-items-center" role="status">
         <p className="label">Signing in…</p>
+      </div>
+    );
+  }
+  if (checkError) {
+    return (
+      <div className="mx-auto grid min-h-dvh max-w-xl place-items-center p-4">
+        <ErrorBlock error={checkError} onRetry={recheck} />
       </div>
     );
   }

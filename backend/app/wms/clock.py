@@ -57,6 +57,13 @@ def shift_end(minutes: float) -> float:
     return (shift_of(minutes) + 1) * SHIFT_MINUTES - END_OF_SHIFT_MARGIN
 
 
+def time_of(minutes: float) -> str:
+    """'07:42' — the wall-clock time of a simulated minute within its shift."""
+    within = minutes - shift_of(minutes) * SHIFT_MINUTES
+    total = SHIFT_START_HOUR * 60 + int(within)
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
 def clock_label(minutes: float) -> str:
     """'Shift 1 · 09:42' for display."""
     shift = shift_of(minutes)

@@ -12,6 +12,7 @@ export type Dock = Schemas['DockOut'];
 export type Order = Schemas['OrderOut'];
 export type OrderDetail = Schemas['OrderDetailOut'];
 export type OrderItem = Schemas['OrderItemOut'];
+export type OrderCompleted = Schemas['OrderCompleted'];
 export type LoadPlan = Schemas['LoadPlanOut'];
 export type PlacedPallet = Schemas['PlacedPalletOut'];
 export type ScanResult = Schemas['ScanOut'];

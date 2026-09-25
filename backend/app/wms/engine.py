@@ -12,7 +12,7 @@ simply catches up on the next call. Orders a person touches (`sim_managed = Fals
 import asyncio
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
 from sqlalchemy import delete, func, or_, select, update
@@ -43,7 +43,16 @@ from app.realtime import ConnectionManager
 from app.schemas import IssueCreate, IssueOut
 from app.services.issue_filing import file_issue
 from app.wms.clock import SHIFT_MINUTES, Clock, clock_label, shift_of
-from app.wms.plan import Appointment, CustomerRef, ProductRef, ShiftPlan, plan_shift, work_minutes
+from app.wms.plan import (
+    Appointment,
+    CustomerRef,
+    ProductRef,
+    ShiftPlan,
+    Visit,
+    plan_shift,
+    shift_kpis,
+    work_minutes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -814,8 +823,19 @@ class SimulationEngine:
             for order in await session.scalars(select(Order).where(Order.external_ref.is_not(None)))
         }
         states = {"scheduled": 0, "in_yard": 0, "at_door": 0, "departed": 0}
+        visits: dict[str, Visit] = {}
         for appointment in plan.appointments:
-            states[self.yard_state(appointment, orders.get(appointment.key), minute)] += 1
+            order = orders.get(appointment.key)
+            states[self.yard_state(appointment, order, minute)] += 1
+            if order is not None:
+                visits[appointment.key] = Visit(order.sim_arrived_minute, order.sim_departed_minute)
+        kpis = shift_kpis(
+            plan.appointments,
+            visits,
+            minute,
+            doors=len(reference.lanes()),
+            shift_start=shift_of(minute) * SHIFT_MINUTES,
+        )
         latest = select(SimEvent).order_by(SimEvent.minute.desc(), SimEvent.id.desc()).limit(15)
         events = list(await session.scalars(latest))
         return {
@@ -828,6 +848,7 @@ class SimulationEngine:
             "shift_progress": round((minute % SHIFT_MINUTES) / SHIFT_MINUTES * 100, 1),
             "wms_online": online,
             "trailers": states,
+            "kpis": asdict(kpis),
             "events": [
                 {
                     "minute": e.minute,

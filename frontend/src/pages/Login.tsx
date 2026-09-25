@@ -149,7 +149,7 @@ export default function Login() {
         <form onSubmit={(event) => void submit(event)} className="mt-8" noValidate>
           {/* Grouped fields, as in iOS Settings: one card, a hairline between rows. */}
           <div className="card overflow-hidden">
-            <label className="flex items-center gap-3 border-b border-hairline px-4">
+            <label className="flex items-center gap-3 border-b border-hairline px-4 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-sage-ink first:rounded-t-xl last:rounded-b-xl">
               <span className="w-28 shrink-0 text-base font-medium">Employee ID</span>
               <input
                 id="employee-id"
@@ -163,7 +163,7 @@ export default function Login() {
                 required
               />
             </label>
-            <label className="flex items-center gap-3 px-4">
+            <label className="flex items-center gap-3 px-4 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-sage-ink first:rounded-t-xl last:rounded-b-xl">
               <span className="w-28 shrink-0 text-base font-medium">Password</span>
               <input
                 id="password"

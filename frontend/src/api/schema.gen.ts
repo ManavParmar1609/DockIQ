@@ -923,10 +923,22 @@ export interface components {
             total_cost_impact: number;
             /** Avg Resolution Minutes */
             avg_resolution_minutes: number;
+            /** Open Issues */
+            open_issues: number;
+            /** Open Critical */
+            open_critical: number;
+            /** Open Cost Impact */
+            open_cost_impact: number;
+            /** Cold Chain Breaches */
+            cold_chain_breaches: number;
+            /** Cold Chain Open */
+            cold_chain_open: number;
             /** By Type */
             by_type: components["schemas"]["TypeCount"][];
             /** By Severity */
             by_severity: components["schemas"]["SeverityCount"][];
+            /** By Type Severity */
+            by_type_severity: components["schemas"]["TypeSeverityCount"][];
             /** By Dock */
             by_dock: components["schemas"]["DockCount"][];
             /** By Operator */
@@ -937,6 +949,10 @@ export interface components {
             by_carrier: components["schemas"]["NameCount"][];
             /** Over Time */
             over_time: components["schemas"]["DateCount"][];
+            /** Repeat At Doors */
+            repeat_at_doors: components["schemas"]["DockRepeat"][];
+            /** Repeat With Carriers */
+            repeat_with_carriers: components["schemas"]["CarrierRepeat"][];
         };
         /** Body_login_api_auth_login_post */
         Body_login_api_auth_login_post: {
@@ -1006,6 +1022,18 @@ export interface components {
             name: string;
             /** Code */
             code: string;
+        };
+        /**
+         * CarrierRepeat
+         * @description The same kind of problem from the same carrier, more than once in the trend window.
+         */
+        CarrierRepeat: {
+            /** Count */
+            count: number;
+            /** Issue Type */
+            issue_type: string;
+            /** Name */
+            name: string;
         };
         /** ChatCreate */
         ChatCreate: {
@@ -1111,6 +1139,8 @@ export interface components {
             count: number;
             /** Door Number */
             door_number: number;
+            /** Open */
+            open: number;
         };
         /** DockOut */
         DockOut: {
@@ -1141,6 +1171,18 @@ export interface components {
             /** Company Name */
             company_name: string | null;
             order_type: components["schemas"]["OrderType"] | null;
+        };
+        /**
+         * DockRepeat
+         * @description The same kind of problem at the same door, more than once in the trend window.
+         */
+        DockRepeat: {
+            /** Count */
+            count: number;
+            /** Issue Type */
+            issue_type: string;
+            /** Door Number */
+            door_number: number;
         };
         /**
          * DockStatus
@@ -1756,6 +1798,13 @@ export interface components {
             location: string;
             /** Cases */
             cases: number;
+            /** Lot */
+            lot: string;
+            /**
+             * Best Before
+             * Format: date
+             */
+            best_before: string;
         };
         /** PhotoOut */
         PhotoOut: {
@@ -1949,6 +1998,10 @@ export interface components {
             /** Count */
             count: number;
             severity: components["schemas"]["Severity"];
+            /** Open */
+            open: number;
+            /** Avg Resolution Minutes */
+            avg_resolution_minutes: number | null;
         };
         /** ShiftHandoffCreate */
         ShiftHandoffCreate: {
@@ -1974,6 +2027,21 @@ export interface components {
             created_at: string;
             /** Supervisor Name */
             supervisor_name: string;
+        };
+        /** ShiftKpisOut */
+        ShiftKpisOut: {
+            /** Arrived */
+            arrived: number;
+            /** On Time Percent */
+            on_time_percent: number | null;
+            /** Average Turn Minutes */
+            average_turn_minutes: number | null;
+            /** On Detention */
+            on_detention: number;
+            /** Pallets Per Hour */
+            pallets_per_hour: number;
+            /** Door Utilization Percent */
+            door_utilization_percent: number;
         };
         /** SimEventOut */
         SimEventOut: {
@@ -2038,6 +2106,7 @@ export interface components {
             /** Wms Online */
             wms_online: boolean;
             trailers: components["schemas"]["SimTrailerCounts"];
+            kpis: components["schemas"]["ShiftKpisOut"];
             /** Events */
             events: components["schemas"]["SimEventOut"][];
         };
@@ -2086,6 +2155,13 @@ export interface components {
             location: string;
             /** Cases */
             cases: number;
+            /** Lot */
+            lot: string;
+            /**
+             * Best Before
+             * Format: date
+             */
+            best_before: string;
         };
         /** TaxonomyOut */
         TaxonomyOut: {
@@ -2155,6 +2231,16 @@ export interface components {
             count: number;
             /** Issue Type */
             issue_type: string;
+            /** Cost Impact */
+            cost_impact: number;
+        };
+        /** TypeSeverityCount */
+        TypeSeverityCount: {
+            /** Count */
+            count: number;
+            /** Issue Type */
+            issue_type: string;
+            severity: components["schemas"]["Severity"];
         };
         /** UserOut */
         UserOut: {
@@ -2226,6 +2312,20 @@ export interface components {
             due_in_minutes: number | null;
             /** Simulated */
             simulated: boolean;
+            /** Scheduled At */
+            scheduled_at: string;
+            /** Arrived At */
+            arrived_at: string | null;
+            /** Late Minutes */
+            late_minutes: number | null;
+            /** Reefer Setpoint */
+            reefer_setpoint: number | null;
+            /** Yard Spot */
+            yard_spot: string | null;
+            /** Dwell Minutes */
+            dwell_minutes: number | null;
+            /** Detention */
+            detention: boolean;
         };
     };
     responses: never;

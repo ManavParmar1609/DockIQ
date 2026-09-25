@@ -49,14 +49,17 @@ Sage (2.8:1) and terracotta (3.3:1) are too light for text on rice paper, so the
 deeper `-ink` variants carry text.
 
 - **Type:** Playfair Display (600, italic 500 for emphasis in sage via `<em>`) for headings and headline
-  numerals (`.num`); Source Sans 3 for everything read at work, with tabular figures (`.telemetry`).
-  Uppercase, widely tracked `.eyebrow` kickers and pill buttons. Scale: 14 floor · 17 body · 24–76
-  headlines. Self-hosted via Fontsource.
+  numerals (`.num`); Source Sans 3 for everything read at work; **Spline Sans Mono** for telemetry —
+  IDs, codes, times, counts (`.telemetry`, tabular). Uppercase, widely tracked pill buttons; no
+  kickers above headings. The wordmark sets *IQ* upright in sage (`.wordmark-iq`) so it never reads
+  "Dock12". Scale: 14 floor · 17 body · 24–76 headlines. Self-hosted via Fontsource.
 - **Shape:** 24px cards, pill buttons and tags, arches (`.arch`) on the landing page, thin 1.5 icons.
 - **Texture:** a fixed fractal-noise paper grain on the page ground only, **beneath** the opaque cards,
   so it never touches a badge, a reading or an alert. Hidden under `prefers-contrast: more`.
 - **Motion:** slow and soft — reveals 800ms (`.reveal`, 80ms stagger), hovers 300–500ms with a gentle
-  lift (`.lift`); press feedback stays instant (`scale(.97)`). Never on an alert. Reduced motion,
+  lift (`.lift`); press feedback stays instant (`scale(.97)`). Purposeful micro-interactions where
+  they explain something: the load guide's spot breathes, its arrow flows, a placed pallet settles,
+  the view glides between steps; dock sheets slide in. Never on an alert. Reduced motion,
   reduced transparency and increased contrast are honoured. Dark mode is "the garden at night".
 
 ### 2.1 The severity and confidence channels
@@ -101,20 +104,25 @@ quality         /app/log · /app/analytics
 | **Report** | Type (grouped Product / People / Systems) → subtype, product, type-specific readings, tags, description with dictation, photos → scored result with procedure → resolve or escalate |
 | **My issues** | Open / closed / all, with supervisor outcomes |
 | **Issue detail** | Everything reported, severity derivation, recurrence, procedure, photos, timeline; the supervisor's decision panel or the operator's close-out, by role and status |
-| **Floor** (supervisor) | Team priority queue (critical first, then oldest, live waiting clocks), work in progress, requests, broadcast, dock floor by zone |
+| **Floor** (supervisor) | Team priority queue (critical first, then oldest, live waiting clocks), work in progress, requests, broadcast, dock floor by zone. Tapping a dock opens its **dock sheet** (`?dock=N`): who is working it, trailer, time at the door, the order with a cases meter and per-line progress, sign-off blockers, open issues |
+| **Simulator** (staff) | Clock, speed, scenarios; shift KPIs (on time, turn time, door use, detention); yard board with door or yard spot, booked vs arrived, reefer set-point, dwell and detention; event feed |
 | **Quality** | Facility-wide open quality issues and exposure |
 | **Issue log** | Search + severity/status/type filters; rows open the detail |
-| **Analytics** | Team (supervisor) or facility (quality) totals, 30-day trend, breakdowns |
+| **Analytics** | Team (supervisor) or facility (quality). *Needs you now* (open critical, open issues, cost at risk, open cold-chain breaks) · *How the team is doing* (totals + 30-day trend) · *Where the risk is* (issue type × severity heatmap, severity and resolution speed, doors open vs resolved, cost by type, repeat problems) · *People and partners*. Chart hues are the garden hues stepped for data (`app.css` "Charts": clay, slate, moss, plum, validated for colour-blind separation in both modes); every chart has a table |
 | **Handoff** | Open issues and zone docks to hand over, the note, previous notes |
 | **Assistant** | Suggested prompts, conversation, cited sources; only `**bold**` is interpreted |
 
 ### 4.1 The load plan
 
-Drawn from the server's computed plan: a to-scale **top view** (nose and reefer to doors; floor
-positions per pattern; pallet footprint turned per orientation; stack counts; load-step numbers),
-**side elevations** showing each layer's weight so heavy-on-the-bottom is visible, a **step-through**
-that highlights pallet N in both views and reads out row, side, level, SKU, cases and weight,
-product patterns (ink hatches — never colour), and the customer's rules and special instruction.
+The picture does the explaining. The hero is **the view into the trailer from the dock door**, in
+perspective: walls, floor, the reefer on the nose, row numbers on the wall. Loaded pallets stand in
+place as pallets (load in the product's pattern and hue, wooden deck with fork pockets); the next
+one is a breathing outline in its exact spot with a numbered pin and, for a floor spot, an arrow
+from where the operator stands. The view walks in as the load fills toward the nose, so the spot is
+always large. Under it: Row · Side · Height in large type, a slip-sheet note when one is due, and
+*Back* / *Loaded, next pallet* (a short haptic tick where supported). Beside it: the whole trailer
+**from above** (tap a stack to jump), the products with their swatches, the customer's rules as
+chips, the special instruction, and the full rule list folded away. The step is remembered per order.
 
 ### 4.2 The two moments that sell the product
 

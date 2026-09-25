@@ -2,7 +2,7 @@
  * Server state. One query per read, one mutation per write; every mutation invalidates exactly the
  * data it changes, and the realtime channel (realtime.ts) invalidates what other people change.
  */
-import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, useMutation, useQuery, useQueryClient, type Query } from '@tanstack/react-query';
 
 import { ApiError, api, unwrap } from './client';
 import type {
@@ -54,6 +54,8 @@ export const keys = {
   orders: ['orders'] as const,
   order: (id: number) => ['orders', id] as const,
   loadPlan: (id: number) => ['orders', id, 'load-plan'] as const,
+  /** A mutation key: an order's tap-counter writes. */
+  count: (id: number) => ['count', id] as const,
   issues: ['issues'] as const,
   issueList: (filters: IssueFilters) => ['issues', 'list', filters] as const,
   issue: (id: number) => ['issues', id] as const,
@@ -135,13 +137,34 @@ export function useLoadPlan(id: number | undefined) {
 }
 
 /**
+ * False for an order whose tap counter still has writes queued: a refetch now would overwrite the
+ * queued taps with a stale count, and the counter refetches it itself once the last tap settles.
+ */
+export function isSettledQuery(client: QueryClient, query: Query): boolean {
+  const [root, id] = query.queryKey;
+  return !(
+    root === keys.orders[0] &&
+    typeof id === 'number' &&
+    client.isMutating({ mutationKey: keys.count(id) }) > 0
+  );
+}
+
+/** Refetch the orders (active assignment, details, completion blockers), sparing one mid-count. */
+export function invalidateOrders(client: QueryClient) {
+  return client.invalidateQueries({
+    queryKey: keys.orders,
+    predicate: (query) => isSettledQuery(client, query),
+  });
+}
+
+/**
  * Case counting from the tap counters. Each tap reads and writes the cache synchronously, so rapid
  * taps never compute from a stale count; the requests run one at a time, in order, and the server's
  * truth is re-fetched once the last tap settles.
  */
 export function useCounter(orderId: number) {
   const client = useQueryClient();
-  const mutationKey = ['count', orderId] as const;
+  const mutationKey = keys.count(orderId);
   const mutation = useMutation({
     mutationKey,
     scope: { id: `count-${orderId}` },
@@ -160,7 +183,9 @@ export function useCounter(orderId: number) {
     const item = detail?.items.find((line) => line.product_id === productId);
     if (!detail || !item) return;
     const value = next(item.actual_quantity);
-    if (value === item.actual_quantity) return;
+    // An unchanged value still counts once when the line was never verified: "Set 0" is a count.
+    if (value === item.actual_quantity && item.verified) return;
+    // Cancel an in-flight refetch first, so a stale server count cannot land on top of this tap.
     void client.cancelQueries({ queryKey: keys.order(orderId) });
     client.setQueryData<OrderDetail>(keys.order(orderId), {
       ...detail,
@@ -218,7 +243,10 @@ export function useInspection() {
   const client = useQueryClient();
   return useMutation<InspectionResult, Error, InspectionCreate>({
     mutationFn: (body) => unwrap(api.POST('/api/inspections', { body })),
-    onSuccess: () => void client.invalidateQueries({ queryKey: keys.docks }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.docks });
+      void invalidateOrders(client);
+    },
   });
 }
 
@@ -250,6 +278,8 @@ function useIssueInvalidation() {
     void client.invalidateQueries({ queryKey: keys.issues });
     void client.invalidateQueries({ queryKey: keys.docks });
     void client.invalidateQueries({ queryKey: keys.analytics });
+    // An open issue can block an order's sign-off (completion_blockers).
+    void invalidateOrders(client);
   };
 }
 

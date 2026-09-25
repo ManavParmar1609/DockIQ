@@ -2,17 +2,21 @@
 every number from a deterministic rule. See functional-specs §2.6."""
 
 import copy
+import dataclasses
 import json
 from collections.abc import AsyncIterator, Callable
 from types import SimpleNamespace
 from typing import Any
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
+from sqlalchemy import text
 
 from app.config import Settings
 from app.domain.enums import Role
+from app.services import agent_tools
 from app.services.agent import Agent
 from app.services.agent_tools import tools_for
 
@@ -261,3 +265,66 @@ def test_a_model_that_fails_after_a_tool_answers_from_that_tool(client: TestClie
     assert [card["kind"] for card in reply["cards"]].count("order") == 1
     assert "ORD-2026-4521" in reply["response"]
     assert reply["source"] == "DockIQ assistant (rules + your data)"
+
+
+def test_an_unexpected_tool_failure_is_a_failed_step_and_the_conversation_goes_on(
+    client: TestClient, login: Login, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def broken(ctx: agent_tools.ToolContext, _: dict[str, Any]) -> agent_tools.ToolOutcome:
+        await ctx.session.execute(text("SELECT * FROM no_such_table"))  # poisons the transaction
+        raise AssertionError("unreachable")
+
+    patched = tuple(
+        dataclasses.replace(tool, handler=broken) if tool.name == "shift_summary" else tool
+        for tool in agent_tools.TOOLS
+    )
+    monkeypatch.setattr(agent_tools, "TOOLS", patched)
+    model = ScriptedModel(
+        [
+            [_chunk(calls=_call(0, "shift_summary", "{}", "call_s"))],
+            [_chunk(calls=_call(0, "my_work", "{}", "call_m"))],  # the session still works afterwards
+            [_chunk("Summary is unavailable; here is your queue.")],
+        ]
+    )
+    use_model(client, model)
+    sup = login("SUP-001")
+    reply = ask(client, sup, "how is the shift going?")
+    assert [(step["tool"], step["ok"]) for step in reply["steps"]] == [
+        ("shift_summary", False),
+        ("my_work", True),
+    ]
+    assert "error" in json.loads(model.requests[1]["messages"][-1]["content"])
+    assert reply["response"] == "Summary is unavailable; here is your queue."
+    assert [m["role"] for m in client.get("/api/chat/history", headers=sup).json()] == ["user", "assistant"]
+
+
+def test_a_record_number_beyond_the_database_integer_is_not_looked_up(
+    client: TestClient, login: Login
+) -> None:
+    reply = ask(client, login("OP-001"), f"what about issue #{2**31}?")
+    assert [step["ok"] for step in reply["steps"]] == [False]
+    assert reply["response"] == "An issue reference is its number, like 42"
+
+
+def test_non_finite_or_oversized_numbers_are_refused_by_the_tools(client: TestClient, login: Login) -> None:
+    draft = {"issue_type": "Temperature Deviation", "description": "warm load"}
+    model = ScriptedModel(
+        [
+            [
+                _chunk(
+                    calls=_call(0, "draft_issue_report", json.dumps({**draft, "temp_reading_f": "nan"}), "c1")
+                )
+            ],
+            [
+                _chunk(
+                    calls=_call(0, "draft_issue_report", json.dumps({**draft, "count_actual": 2**40}), "c2")
+                )
+            ],
+            [_chunk(calls=_call(0, "check_temperature", json.dumps({"reading_f": "inf"}), "c3"))],
+            [_chunk("I need real numbers.")],
+        ]
+    )
+    use_model(client, model)
+    reply = ask(client, login("OP-001"), "the load is warm")
+    assert [step["ok"] for step in reply["steps"]] == [False, False, False]
+    assert reply["actions"] == []

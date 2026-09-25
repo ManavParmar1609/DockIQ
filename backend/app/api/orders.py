@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Query
 from fastapi import status as http
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import realtime
 from app.api.access import ensure, issue_audience, order_scope, supervisor_of, visible_order
-from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, WmsDep, get_or_404
-from app.db import utcnow
+from app.api.deps import CurrentUser, Operator, PathId, RealtimeDep, SessionDep, WmsDep, get_or_404
+from app.db import MAX_ID, utcnow
 from app.domain.barcodes import decide_scan, normalize_code
 from app.domain.dock import DockEvent, transition
 from app.domain.enums import IssueStatus, OrderStatus, OrderType, ScanResult, Severity
@@ -26,7 +28,6 @@ from app.models import (
 )
 from app.queries import issue_select, order_items_select, order_select
 from app.schemas import (
-    IssueCreate,
     IssueOut,
     LoadPlanOut,
     OrderComplete,
@@ -42,7 +43,7 @@ from app.schemas import (
     TemperatureCheckCreate,
     TemperatureCheckOut,
 )
-from app.services.issue_filing import file_issue
+from app.services.issue_filing import SystemFiling, file_issue
 from app.wms.client import WmsUnavailable
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -64,7 +65,10 @@ async def _open_order(session: AsyncSession, user: User, order_id: int) -> Order
 
 @router.get("")
 async def list_orders(
-    user: CurrentUser, session: SessionDep, status: OrderStatus | None = None, operator_id: int | None = None
+    user: CurrentUser,
+    session: SessionDep,
+    status: OrderStatus | None = None,
+    operator_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
 ) -> list[OrderOut]:
     stmt = order_select().where(order_scope(user)).order_by(Order.created_at.desc(), Order.id.desc())
     if status is not None:
@@ -104,7 +108,7 @@ async def _blockers(session: AsyncSession, order_id: int) -> list[str]:
 
 
 @router.get("/{order_id}")
-async def get_order(order_id: int, user: CurrentUser, session: SessionDep) -> OrderDetailOut:
+async def get_order(order_id: PathId, user: CurrentUser, session: SessionDep) -> OrderDetailOut:
     await visible_order(session, user, order_id)
     row = (await session.execute(order_select().where(Order.id == order_id))).one()
     return OrderDetailOut.model_validate(
@@ -117,7 +121,7 @@ async def get_order(order_id: int, user: CurrentUser, session: SessionDep) -> Or
 
 
 @router.get("/{order_id}/load-plan")
-async def load_plan(order_id: int, user: CurrentUser, session: SessionDep) -> LoadPlanOut:
+async def load_plan(order_id: PathId, user: CurrentUser, session: SessionDep) -> LoadPlanOut:
     """Where every pallet of this order goes in the trailer, by this customer's loading rules."""
     order = await visible_order(session, user, order_id)
     company = await get_or_404(session, Company, order.company_id, "Company")
@@ -181,7 +185,7 @@ async def load_plan(order_id: int, user: CurrentUser, session: SessionDep) -> Lo
 
 @router.put("/{order_id}/items")
 async def update_order_item(
-    order_id: int, body: OrderItemUpdate, user: Operator, session: SessionDep
+    order_id: PathId, body: OrderItemUpdate, user: Operator, session: SessionDep
 ) -> StatusOut:
     await _open_order(session, user, order_id)
     item = await session.scalar(
@@ -196,7 +200,7 @@ async def update_order_item(
 
 
 @router.post("/{order_id}/scan")
-async def scan(order_id: int, body: ScanCreate, user: Operator, session: SessionDep) -> ScanOut:
+async def scan(order_id: PathId, body: ScanCreate, user: Operator, session: SessionDep) -> ScanOut:
     """Check one scanned case against the order. A match counts the case; anything else counts nothing.
 
     Every scan is recorded in `scan_events`, mismatches included.
@@ -244,7 +248,7 @@ async def scan(order_id: int, body: ScanCreate, user: Operator, session: Session
 
 @router.post("/{order_id}/temperature-check")
 async def temperature_check(
-    order_id: int, body: TemperatureCheckCreate, user: Operator, session: SessionDep
+    order_id: PathId, body: TemperatureCheckCreate, user: Operator, session: SessionDep
 ) -> TemperatureCheckOut:
     """Judge a probe reading against the strictest product limit on this load (business-rules §11)."""
     await visible_order(session, user, order_id)
@@ -265,7 +269,7 @@ async def temperature_check(
 
 @router.post("/{order_id}/complete")
 async def complete_order(
-    order_id: int,
+    order_id: PathId,
     body: OrderComplete,
     user: Operator,
     session: SessionDep,
@@ -279,6 +283,7 @@ async def complete_order(
         raise HTTPException(http.HTTP_409_CONFLICT, " ".join(blockers))
     now = utcnow()
     filed = []
+    # An order never given a door still files its discrepancies, as issues without a dock.
     if order.type is OrderType.INBOUND:
         company = await get_or_404(session, Company, order.company_id, "Company")
         items = list(await session.scalars(select(OrderItem).where(OrderItem.order_id == order_id)))
@@ -288,9 +293,9 @@ async def complete_order(
                 await file_issue(
                     session,
                     user.id,
-                    IssueCreate(
+                    SystemFiling(
                         order_id=order.id,
-                        dock_door_id=order.dock_door_id or 0,
+                        dock_door_id=order.dock_door_id,
                         issue_type="Count Discrepancy",
                         issue_subtype=found.subtype,
                         description=f"Expected {found.expected}, received {found.actual}",

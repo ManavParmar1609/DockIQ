@@ -20,12 +20,13 @@ dim light, glare, food-safety decisions. The product owner chose **Apple's desig
 - **Botanical / Organic Serif** (product owner's design system, 2026-09-25). Tokens and every value:
   `docs/specs/ui-ux-spec.md` §2; rules and the documented departures: `.claude/rules/frontend-aesthetics.md`.
 - **Type:** Playfair Display for headings (`.display`, `.heading`, `<em>` for italic sage emphasis)
-  and headline numerals (`.num`); Source Sans 3 for everything read at work; `.telemetry` for data;
-  `.eyebrow` for small uppercase kickers.
+  and headline numerals (`.num`); Source Sans 3 for everything read at work; Spline Sans Mono via
+  `.telemetry` for IDs, codes, times and counts. No kickers above headings. Wordmark: `.wordmark-iq`.
 - **Surfaces:** rice-paper ground with grain beneath opaque `.card`s; `.lift` on interactive cards.
 - **Colour:** forest for primary pills; sage/terracotta decorate (their `-ink` variants carry text);
   brick red only for critical severity and destructive actions.
-- **Motion:** slow reveals and hovers, instant press feedback, never on an alert.
+- **Motion:** slow reveals and hovers, instant press feedback, purposeful micro-interactions that
+  explain (the load guide, sheets), never on an alert. Reduced motion is honoured.
 
 ## Non-negotiables — these outrank the aesthetic
 

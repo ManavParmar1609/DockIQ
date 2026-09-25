@@ -6,6 +6,7 @@ import { useActiveOrder, useInspection } from '../../api/hooks';
 import {
   ChoiceGroup,
   EmptyState,
+  ErrorBlock,
   FieldLabel,
   LoadingBlock,
   MutationError,
@@ -57,6 +58,9 @@ export default function Inspection() {
   const [notes, setNotes] = useState('');
 
   if (order.isPending) return <LoadingBlock label="Finding your assignment" />;
+  if (order.isError && !order.data) {
+    return <ErrorBlock error={order.error} onRetry={() => void order.refetch()} />;
+  }
   const assignment = order.data;
   if (!assignment?.dock_door_id) {
     return (
@@ -188,6 +192,7 @@ export default function Inspection() {
             <textarea
               id="inspection-notes"
               rows={3}
+              maxLength={2000}
               className="field"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}

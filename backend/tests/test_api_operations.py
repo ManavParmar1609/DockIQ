@@ -1,10 +1,17 @@
 """Auth, reference data, orders and scanning, load plans, floor operations, chat and analytics."""
 
+import asyncio
 from collections.abc import Callable
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.api import deps
+from app.api.deps import RateLimit
+from app.config import Settings
+from app.db import Database
 from app.domain.barcodes import demo_gtin
+from app.models import Order
 from tests.conftest import DEMO_PASSWORD, Headers, token_of
 
 Login = Callable[[str], Headers]
@@ -40,6 +47,29 @@ def test_login_is_rate_limited(client: TestClient) -> None:
         for _ in range(11)
     ]
     assert codes[-1] == 429
+
+
+def test_login_is_also_limited_per_employee_id_whatever_the_client_address(client: TestClient) -> None:
+    # A forged X-Forwarded-For gives every attempt a new address; the account's own limit still holds.
+    for n in range(10):
+        elsewhere = TestClient(client.app, client=(f"203.0.113.{n}", 4000))
+        wrong = elsewhere.post("/api/auth/login", data={"username": "OP-001", "password": "x"})
+        assert wrong.status_code == 401
+    fresh = TestClient(client.app, client=("198.51.100.1", 4000))
+    assert fresh.post("/api/auth/login", data={"username": " op-001", "password": "x"}).status_code == 429
+    other = fresh.post("/api/auth/login", data={"username": "OP-002", "password": DEMO_PASSWORD})
+    assert other.status_code == 200, "one account's limit must not lock out the others"
+
+
+def test_the_rate_limiter_forgets_keys_that_went_quiet(monkeypatch: pytest.MonkeyPatch) -> None:
+    now = [0.0]
+    monkeypatch.setattr(deps.time, "monotonic", lambda: now[0])
+    limit = RateLimit(2, 60)
+    limit.check("ip:a")
+    limit.check("id:OP-001")
+    now[0] = 61.0
+    limit.check("ip:b")
+    assert set(limit._hits) == {"ip:b"}  # memory is bounded by the keys seen in the last window
 
 
 def test_everything_but_health_and_login_needs_a_token(client: TestClient) -> None:
@@ -180,6 +210,44 @@ def test_inbound_completion_files_count_discrepancies(client: TestClient, login:
     assert "Count shortage 16.7% exceeds 5% (+3)" in issue["severity_reason"]
 
 
+async def _take_the_dock_away(settings: Settings, order_id: int) -> None:
+    database = Database(settings)
+    try:
+        async with database.sessionmaker() as session:
+            order = await session.get(Order, order_id)
+            assert order is not None
+            order.dock_door_id = None
+            await session.commit()
+    finally:
+        await database.dispose()
+
+
+def test_an_inbound_order_without_a_dock_signs_off_and_still_files_its_discrepancies(
+    client: TestClient, seeded_db: Settings, login: Login
+) -> None:
+    asyncio.run(_take_the_dock_away(seeded_db, 2))
+    op, sup = login("OP-002"), login("SUP-001")
+    salmon, milk = client.get("/api/orders/2", headers=op).json()["items"]
+    client.put(
+        "/api/orders/2/items", json={"product_id": salmon["product_id"], "actual_quantity": 100}, headers=op
+    )
+    client.put(
+        "/api/orders/2/items",
+        json={"product_id": milk["product_id"], "actual_quantity": milk["expected_quantity"]},
+        headers=op,
+    )
+    done = client.post("/api/orders/2/complete", json={}, headers=op)
+    assert done.status_code == 200, done.text
+    [issue_id] = done.json()["discrepancy_issue_ids"]
+    issue = client.get(f"/api/issues/{issue_id}", headers=sup).json()
+    assert (issue["issue_type"], issue["dock_door_id"], issue["door_number"]) == (
+        "Count Discrepancy",
+        None,
+        None,
+    )
+    assert client.get("/api/orders/2", headers=op).json()["status"] == "complete"
+
+
 # ── Floor ──
 
 
@@ -228,6 +296,44 @@ def test_quick_request_reaches_the_supervisor(client: TestClient, login: Login) 
     assert client.post("/api/requests", json={"request_type": "Pizza"}, headers=op).status_code == 422
 
 
+def test_a_request_is_fulfilled_once_and_keeps_its_first_time(client: TestClient, login: Login) -> None:
+    op, sup = login("OP-002"), login("SUP-001")
+    created = client.post(
+        "/api/requests", json={"dock_door_id": 3, "request_type": "Supplies — Pallet Wrap"}, headers=op
+    ).json()
+    assert client.put(f"/api/requests/{created['id']}/fulfill", headers=sup).status_code == 200
+
+    def fulfilled_at() -> str:
+        rows = client.get("/api/requests", headers=sup).json()
+        return next(row for row in rows if row["id"] == created["id"])["fulfilled_at"]
+
+    first = fulfilled_at()
+    again = client.put(f"/api/requests/{created['id']}/fulfill", headers=sup)
+    assert again.status_code == 409
+    assert fulfilled_at() == first
+
+
+def test_free_text_is_bounded_wherever_a_person_types(client: TestClient, login: Login) -> None:
+    op, sup, long = login("OP-002"), login("SUP-001"), "x" * 2001
+    request = {"dock_door_id": 3, "request_type": "Supplies — Pallet Wrap", "details": long}
+    assert client.post("/api/requests", json=request, headers=op).status_code == 422
+    assert (
+        client.post("/api/shift-handoffs", json={"shift": "day", "notes": long}, headers=sup).status_code
+        == 422
+    )
+    assert (
+        client.post("/api/inspections", json=inspection(dock_door_id=3, notes=long), headers=op).status_code
+        == 422
+    )
+    assert client.post("/api/orders/2/complete", json={"notes": long}, headers=op).status_code == 422
+    assert (
+        client.post(
+            "/api/shift-handoffs", json={"shift": "day", "notes": "x" * 2000}, headers=sup
+        ).status_code
+        == 200
+    )
+
+
 def test_broadcast_reaches_the_team_only(client: TestClient, login: Login) -> None:
     sup = login("SUP-001")
     with client.websocket_connect("/ws", subprotocols=["dockiq", token_of(login("OP-001"))]) as socket:
@@ -261,6 +367,28 @@ def test_analytics_are_team_scoped_for_supervisors(client: TestClient, login: Lo
     assert 0 < team["total_issues"] < 50
     assert sum(row["count"] for row in facility["by_type"]) == 50
     assert client.get("/api/analytics/summary", headers=login("OP-001")).status_code == 403
+
+
+def test_analytics_surface_what_is_open_now(client: TestClient, login: Login) -> None:
+    sup = login("SUP-001")
+    before = client.get("/api/analytics/summary", headers=sup).json()
+    issue = client.post("/api/issues", json=CRUSHED_FROZEN, headers=login("OP-001")).json()
+    after = client.get("/api/analytics/summary", headers=sup).json()
+
+    assert after["open_issues"] == before["open_issues"] + 1
+    assert after["open_critical"] == before["open_critical"] + 1
+    assert after["open_cost_impact"] == round(before["open_cost_impact"] + issue["estimated_cost_impact"], 2)
+    dock_1 = {row["door_number"]: row["open"] for row in after["by_dock"]}[1]
+    assert dock_1 == {row["door_number"]: row["open"] for row in before["by_dock"]}.get(1, 0) + 1
+
+    # Every breakdown adds back up to the headline numbers.
+    assert sum(row["count"] for row in after["by_type_severity"]) == after["total_issues"]
+    assert sum(row["open"] for row in after["by_severity"]) == after["open_issues"]
+    by_type = {row["issue_type"]: row for row in after["by_type"]}
+    assert after["cold_chain_breaches"] == by_type.get("Temperature Deviation", {"count": 0})["count"]
+    assert after["cold_chain_open"] <= after["cold_chain_breaches"]
+    assert round(sum(row["cost_impact"] for row in after["by_type"]), 2) == after["total_cost_impact"]
+    assert all(row["count"] > 1 for row in after["repeat_at_doors"] + after["repeat_with_carriers"])
 
 
 # ── Guardrails: critical and failed-inspection work waits for a supervisor (business-rules §7.1) ──

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { Severity } from '../api/types';
 import { SAMPLE_PLAN } from '../pages/landing/samplePlan';
 import { LoadPlanView } from './LoadPlanView';
+import { PalletList } from './PalletList';
 import { ConfidenceMeter, SeverityBadge } from './Severity';
 
 describe('SeverityBadge', () => {
@@ -35,13 +36,15 @@ describe('ConfidenceMeter', () => {
 });
 
 describe('LoadPlanView', () => {
-  it('shows the customer rules and steps through the load in order', async () => {
+  it('pictures the next spot and steps through the load in order', async () => {
     render(<LoadPlanView plan={SAMPLE_PLAN} />);
-    expect(screen.getByText('Crestline Markets loading rules')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /Looking into the trailer from the dock door\. Pallet 1,/ }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Slip sheet between every layer')).toBeInTheDocument();
     expect(screen.getByText(/Load step/)).toHaveTextContent(`Load step 1 of ${SAMPLE_PLAN.total_pallets}`);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Next step' }));
+    await userEvent.click(screen.getByRole('button', { name: /Loaded, next pallet/ }));
     expect(screen.getByText(/Load step/)).toHaveTextContent('Load step 2 of');
     expect(screen.getByRole('button', { name: 'Previous step' })).toBeEnabled();
   });
@@ -51,5 +54,20 @@ describe('LoadPlanView', () => {
     expect(screen.getAllByRole('button', { name: /^Row \d+ (left|right):/ })).toHaveLength(
       SAMPLE_PLAN.stacks_used,
     );
+  });
+});
+
+describe('PalletList', () => {
+  it('marks only the first-expiring pallet as the one to pick', () => {
+    render(
+      <PalletList
+        pallets={[
+          { pallet_id: 'P1', location: 'F-12-B04-2', cases: 40, lot: 'L2611A', best_before: '2026-11-02' },
+          { pallet_id: 'P2', location: 'F-12-B09-1', cases: 40, lot: 'L2640B', best_before: '2027-03-15' },
+        ]}
+      />,
+    );
+    expect(screen.getAllByText('Pick first')).toHaveLength(1);
+    expect(screen.getByText(/lot L2611A · best before 2 Nov 2026/)).toBeInTheDocument();
   });
 });

@@ -9,6 +9,7 @@ goes through here. Simulator concepts (seeds, virtual clocks) must never appear 
 """
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Protocol
 
 
@@ -35,6 +36,13 @@ class YardEntry:
     state: str  # scheduled | in_yard | at_door | departed
     due_in_minutes: float | None  # for scheduled trailers
     simulated: bool
+    scheduled_at: str  # the booked appointment, "HH:MM"
+    arrived_at: str | None  # at the gate, "HH:MM"
+    late_minutes: float | None  # against the appointment; negative = early
+    reefer_setpoint: float | None  # °F
+    yard_spot: str | None  # while waiting for a door
+    dwell_minutes: float | None  # on site so far, or until departure
+    detention: bool  # on site longer than the detention allowance
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +51,8 @@ class Pallet:
     sku: str
     location: str
     cases: int
+    lot: str
+    best_before: date
 
 
 class WmsClient(Protocol):

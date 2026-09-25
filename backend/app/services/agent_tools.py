@@ -10,6 +10,7 @@ Tool descriptions follow the tool-use guidance for agents: what the tool does, w
 when not), what each parameter means, and what it does not return.
 """
 
+import math
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import issue_scope, order_scope
+from app.db import MAX_ID
 from app.domain.enums import IssueStatus, OrderStatus, ProductCategory, Role
 from app.domain.receiving import check_probe_temperature
 from app.domain.retrieval import find_resolution
@@ -232,6 +234,8 @@ async def check_temperature(ctx: ToolContext, args: dict[str, Any]) -> ToolOutco
         reading = float(args["reading_f"])
     except (KeyError, TypeError, ValueError) as exc:
         raise ToolError("reading_f must be the probe reading in °F, as a number") from exc
+    if not math.isfinite(reading):
+        raise ToolError("reading_f must be the probe reading in °F, as a number")
     order: Order | None = None
     if number := args.get("order_number"):
         order = await ctx.session.scalar(
@@ -285,7 +289,14 @@ async def locate_stock(ctx: ToolContext, args: dict[str, Any]) -> ToolOutcome:
         sku=product.sku,
         product_name=product.name,
         pallets=[
-            StockPallet(pallet_id=p.pallet_id, location=p.location, cases=p.cases) for p in pallets[:MAX_LIST]
+            StockPallet(
+                pallet_id=p.pallet_id,
+                location=p.location,
+                cases=p.cases,
+                lot=p.lot,
+                best_before=p.best_before,
+            )
+            for p in pallets[:MAX_LIST]
         ],
         wms_online=online,
     )
@@ -306,9 +317,9 @@ async def look_up(ctx: ToolContext, args: dict[str, Any]) -> ToolOutcome:
             order = await ctx.session.scalar(
                 select(Order).where(Order.order_number == reference.upper(), order_scope(ctx.user))
             )
-            if order is None and reference.isdigit():
+            if order is None and (order_id := _record_id(reference)) is not None:
                 order = await ctx.session.scalar(
-                    select(Order).where(Order.id == int(reference), order_scope(ctx.user))
+                    select(Order).where(Order.id == order_id, order_scope(ctx.user))
                 )
             if order is None:
                 raise ToolError(f"No order '{reference}' that you can see")
@@ -316,11 +327,10 @@ async def look_up(ctx: ToolContext, args: dict[str, Any]) -> ToolOutcome:
             data = _order_data(card, await ctx.session.get(Company, order.company_id))
             return ToolOutcome(data, f"Order {order.order_number}", [card])
         case "issue":
-            if not reference.isdigit():
+            issue_id = _record_id(reference)
+            if issue_id is None:
                 raise ToolError("An issue reference is its number, like 42")
-            issue = await ctx.session.scalar(
-                select(Issue).where(Issue.id == int(reference), issue_scope(ctx.user))
-            )
+            issue = await ctx.session.scalar(select(Issue).where(Issue.id == issue_id, issue_scope(ctx.user)))
             if issue is None:
                 raise ToolError(f"No issue #{reference} that you can see")
             resolution = issue.ai_resolution or {}
@@ -536,16 +546,35 @@ async def draft_handoff(ctx: ToolContext, args: dict[str, Any]) -> ToolOutcome:
     return ToolOutcome(data, "Drafted the handoff note", actions=[draft])
 
 
+def _record_id(reference: str) -> int | None:
+    """A record number as the database can hold it; anything else is not a record number."""
+    if not reference.isdecimal():
+        return None
+    try:
+        value = int(reference)
+    except ValueError:  # longer than Python will parse
+        return None
+    return value if 1 <= value <= MAX_ID else None
+
+
 def _number(value: Any) -> float | None:
     try:
-        return None if value is None or value == "" else float(value)
+        number = None if value is None or value == "" else float(value)
     except (TypeError, ValueError):
         return None
+    if number is not None and not math.isfinite(number):
+        raise ToolError("Numbers must be ordinary finite values")
+    return number
 
 
 def _integer(value: Any) -> int | None:
+    """A count: negatives read as 0; beyond what the database holds is an error, not a 500."""
     number = _number(value)
-    return None if number is None else max(0, int(number))
+    if number is None:
+        return None
+    if number > MAX_ID:
+        raise ToolError(f"Counts must be at most {MAX_ID}")
+    return max(0, int(number))
 
 
 # ── The catalogue: schemas the model sees, and who may use each tool ──

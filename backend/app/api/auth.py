@@ -38,11 +38,12 @@ async def login(
     settings: SettingsDep,
 ) -> TokenOut:
     """`username` is the employee ID (e.g. `OP-001`); case-insensitive."""
+    employee_id = form.username.strip().upper()
     client = request.client.host if request.client else "unknown"
-    request.app.state.login_limit.check(client)
-    user = await session.scalar(
-        select(User).where(func.upper(User.employee_id) == form.username.strip().upper())
-    )
+    # Two limits: the client address can be forged behind a proxy (X-Forwarded-For), the account cannot.
+    request.app.state.login_limit.check(f"ip:{client}")
+    request.app.state.login_limit.check(f"id:{employee_id}")
+    user = await session.scalar(select(User).where(func.upper(User.employee_id) == employee_id))
     # Always verify (against a dummy hash if needed) so a missing account costs the same time.
     password_ok = verify_password(form.password, user.password_hash if user else None)
     if user is None or not password_ok or not user.is_active:

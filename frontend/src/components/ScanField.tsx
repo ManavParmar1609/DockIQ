@@ -55,7 +55,13 @@ function CameraScanner({ onCode, onClose }: { onCode: (code: string) => void; on
       .getUserMedia({ video: { facingMode: 'environment' } })
       .then(async (media) => {
         stream = media;
-        if (!video.current) return;
+        // Closed before the camera answered: the cleanup already ran, so release the late stream here.
+        if (stopped || !video.current) {
+          media.getTracks().forEach((track) => {
+            track.stop();
+          });
+          return;
+        }
         video.current.srcObject = media;
         await video.current.play();
         await scan();
@@ -116,7 +122,7 @@ export function ScanField({
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
     const code = value.trim();
-    if (!code) return;
+    if (!code || disabled) return;
     onScan(code);
     setValue('');
     input.current?.focus();
@@ -143,7 +149,10 @@ export function ScanField({
             placeholder={label}
             autoComplete="off"
             inputMode="text"
-            disabled={disabled}
+            // Read-only, not disabled, while a scan is checked: a disabled field drops focus, and a
+            // keyboard-wedge scanner would type the next code into nothing.
+            readOnly={disabled}
+            aria-busy={disabled}
           />
         </div>
         <button type="submit" className="btn btn-primary" disabled={disabled || !value.trim()}>

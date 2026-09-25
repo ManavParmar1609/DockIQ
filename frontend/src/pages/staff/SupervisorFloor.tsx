@@ -1,5 +1,6 @@
 import { Megaphone, Send } from 'lucide-react';
 import { useState, type SyntheticEvent } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { useDocks, useFulfillRequest, useIssues, useRequests, useSendBroadcast } from '../../api/hooks';
 import { useUser } from '../../auth/AuthProvider';
@@ -61,6 +62,27 @@ export default function SupervisorFloor() {
   const requests = useRequests('pending');
   const fulfill = useFulfillRequest();
   const [composing, setComposing] = useState(false);
+
+  // The open dock lives in the URL (?dock=4), so it survives a refresh and the back button closes it.
+  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const selectedDoor = Number(params.get('dock')) || null;
+  const openDock = (door: number) => {
+    const next = new URLSearchParams(params);
+    next.set('dock', String(door));
+    setParams(next, { state: { dockSheet: true } });
+  };
+  const closeDock = () => {
+    const state: unknown = location.state;
+    if (typeof state === 'object' && state !== null && 'dockSheet' in state) {
+      void navigate(-1);
+      return;
+    }
+    const next = new URLSearchParams(params);
+    next.delete('dock');
+    setParams(next, { replace: true });
+  };
 
   const open = issues.data ?? [];
   const escalated = open.filter((issue) => issue.status === 'escalated');
@@ -164,7 +186,15 @@ export default function SupervisorFloor() {
 
       <Panel title="Dock floor" aside={<span className="label">{activeDocks.length} active</span>} index={7}>
         <QueryBoundary query={docks}>
-          {(list) => <DockFloor docks={list} highlightZone={user.zone} />}
+          {(list) => (
+            <DockFloor
+              docks={list}
+              highlightZone={user.zone}
+              selectedDoor={selectedDoor}
+              onOpen={openDock}
+              onClose={closeDock}
+            />
+          )}
         </QueryBoundary>
       </Panel>
     </div>

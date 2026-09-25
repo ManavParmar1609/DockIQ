@@ -9,6 +9,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import { errorMessage } from '../api/client';
 import type { IssueStatus } from '../api/types';
+import { rovingKeyDown, rovingTabIndex } from '../lib/roving';
 import { ISSUE_STATUS } from '../lib/vocab';
 
 // ── Layout ──
@@ -29,15 +30,17 @@ export function PageHeader({
 }) {
   return (
     <header className="pt-2">
-      {kicker && <p className="eyebrow mb-2">{kicker}</p>}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className={`display ${size === 'lg' ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
           {title}
         </h1>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
-      {meta && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-base text-ink-mute">{meta}</div>
+      {(kicker ?? meta) && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-base text-ink-mute">
+          {kicker && <span className="text-ink-soft">{kicker}</span>}
+          {meta}
+        </div>
       )}
     </header>
   );
@@ -263,7 +266,10 @@ export function ErrorBlock({ error, onRetry }: { error: unknown; onRetry?: () =>
   );
 }
 
-/** Render a query's loading and error states; children get the data. */
+/**
+ * Render a query's loading and error states; children get the data. A failed background refetch
+ * keeps the last good data on screen, with a retry above it.
+ */
 export function QueryBoundary<T>({
   query,
   loading,
@@ -274,8 +280,24 @@ export function QueryBoundary<T>({
   children: (data: T) => ReactNode;
 }) {
   if (query.isPending) return <LoadingBlock label={loading} />;
-  if (query.isError) return <ErrorBlock error={query.error} onRetry={() => void query.refetch()} />;
-  return <>{children(query.data)}</>;
+  const retry = () => void query.refetch();
+  if (query.data === undefined) return <ErrorBlock error={query.error} onRetry={retry} />;
+  if (!query.isError) return <>{children(query.data)}</>;
+  return (
+    <div className="flex flex-col gap-3">
+      <Notice
+        title="Could not refresh — showing the last update"
+        action={
+          <button type="button" className="btn btn-secondary" onClick={retry}>
+            <RotateCw size={18} aria-hidden="true" /> Retry
+          </button>
+        }
+      >
+        {errorMessage(query.error)}
+      </Notice>
+      {children(query.data)}
+    </div>
+  );
 }
 
 /** A mutation's failure, shown where the action was taken. */
@@ -328,16 +350,27 @@ export function ChoiceGroup<T extends string>({
   const grid = { 2: 'grid-cols-2', 3: 'grid-cols-2 sm:grid-cols-3', 4: 'grid-cols-2 sm:grid-cols-4' }[
     columns
   ];
+  const selected = options.findIndex((option) => option.value === value);
+  const select = (index: number) => {
+    const option = options[index];
+    if (option) onChange(option.value);
+  };
   return (
     <fieldset>
       <legend className="mb-2 text-base font-semibold">{label}</legend>
-      <div className={`grid gap-2 ${grid}`} role="radiogroup" aria-label={label}>
-        {options.map((option) => (
+      <div
+        className={`grid gap-2 ${grid}`}
+        role="radiogroup"
+        aria-label={label}
+        onKeyDown={rovingKeyDown('radio', selected, options.length, select)}
+      >
+        {options.map((option, index) => (
           <button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={value === option.value}
+            tabIndex={rovingTabIndex(index, selected)}
             className="choice justify-center"
             onClick={() => onChange(option.value)}
           >

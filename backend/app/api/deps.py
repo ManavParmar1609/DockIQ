@@ -3,13 +3,13 @@ from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Path, Request
 from fastapi import status as http
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.db import Base, get_session
+from app.db import MAX_ID, Base, get_session
 from app.domain.enums import Role
 from app.models import User
 from app.realtime import ConnectionManager
@@ -18,6 +18,8 @@ from app.services.agent import Agent
 from app.wms.client import WmsClient
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+# A record id in the URL: out of the INTEGER range is a 422, never a driver error.
+PathId = Annotated[int, Path(ge=1, le=MAX_ID)]
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
@@ -105,6 +107,9 @@ class RateLimit:
 
     def check(self, key: str) -> None:
         now = time.monotonic()
+        # Expired keys are dropped, so memory is bounded by the keys seen in the last window.
+        for stale in [k for k, hits in self._hits.items() if not hits or now - hits[-1] > self.window]:
+            del self._hits[stale]
         hits = self._hits[key]
         while hits and now - hits[0] > self.window:
             hits.popleft()

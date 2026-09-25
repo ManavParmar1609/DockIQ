@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from starlette.websockets import WebSocketDisconnect
 
 from tests.conftest import Headers, token_of
@@ -86,6 +87,56 @@ def test_unknown_type_or_mismatched_subtype_is_rejected(client: TestClient, logi
         "/api/issues", json={**FROZEN_TIER1_DAMAGE, "issue_subtype": "Overage"}, headers=op
     )
     assert (bad_type.status_code, bad_subtype.status_code) == (422, 422)
+
+
+def test_reporting_on_an_order_outside_your_scope_is_not_found(client: TestClient, login: Login) -> None:
+    # Order 2 is OP-002's, at dock 3: OP-001 may not attach a report to it, even at its own dock.
+    response = client.post(
+        "/api/issues", json={**FROZEN_TIER1_DAMAGE, "order_id": 2, "dock_door_id": 3}, headers=login("OP-001")
+    )
+    assert response.status_code == 404
+    assert dock(client, login("OP-002"), 3)["status"] == "active", "a refused report must not flag the dock"
+
+
+def test_reporting_an_order_at_a_dock_it_is_not_at_is_unprocessable(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    response = client.post(
+        "/api/issues", json={**FROZEN_TIER1_DAMAGE, "order_id": 1, "dock_door_id": 12}, headers=op
+    )
+    assert response.status_code == 422
+    assert dock(client, op, 12)["status"] == "idle", "a refused report must not flag the dock"
+    assert report(client, op, order_id=1)["severity"] == "critical"  # the order's own dock is fine
+
+
+def test_report_text_and_tags_are_bounded(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    for overrides in (
+        {"description": "x" * 2001},
+        {"quick_tags": [f"tag {n}" for n in range(11)]},
+        {"quick_tags": ["x" * 33]},
+    ):
+        assert (
+            client.post("/api/issues", json={**FROZEN_TIER1_DAMAGE, **overrides}, headers=op).status_code
+            == 422
+        )
+    assert report(client, op, description="x" * 2000, quick_tags=["Crushed"] * 10)["id"] > 0
+
+
+def test_ids_beyond_the_database_integer_are_unprocessable_not_a_server_error(
+    client: TestClient, login: Login
+) -> None:
+    op, too_big = login("OP-001"), 2**31
+    for path in (
+        f"/api/issues/{too_big}",
+        f"/api/orders/{too_big}",
+        f"/api/photos/{too_big}",
+        f"/api/docks/{too_big}",
+        "/api/issues/0",
+        f"/api/issues?operator_id={too_big}",
+    ):
+        assert client.get(path, headers=op).status_code == 422, path
+    body = {**FROZEN_TIER1_DAMAGE, "dock_door_id": too_big}
+    assert client.post("/api/issues", json=body, headers=op).status_code == 422
 
 
 def test_escalation_reaches_the_team_supervisor_only(client: TestClient, login: Login) -> None:
@@ -263,6 +314,27 @@ def test_photo_limits(client: TestClient, login: Login) -> None:
         f"/api/issues/{issue_id}/photos", files={"file": ("p.jpg", JPEG, "image/jpeg")}, headers=op
     )
     assert fifth.status_code == 422
+
+
+def test_listing_photos_never_reads_the_image_bytes(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    issue_id = report(client, op)["id"]
+    client.post(f"/api/issues/{issue_id}/photos", files={"file": ("p.jpg", JPEG, "image/jpeg")}, headers=op)
+    statements: list[str] = []
+
+    def record(conn: object, cursor: object, statement: str, *args: object) -> None:
+        statements.append(statement)
+
+    engine = client.app.state.db.engine.sync_engine  # type: ignore[attr-defined]
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        listed = client.get(f"/api/issues/{issue_id}/photos", headers=op).json()
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    assert [photo["size_bytes"] for photo in listed] == [len(JPEG)]
+    photo_reads = [s for s in statements if "FROM issue_photos" in s]
+    assert photo_reads
+    assert not any("issue_photos.data" in s for s in photo_reads)
 
 
 # ── "On my way" ──

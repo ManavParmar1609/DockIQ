@@ -17,6 +17,7 @@ import { PhotoPicker, VoiceButton } from '../../components/Evidence';
 import { issueIcon } from '../../components/icons';
 import { ProcedureCard, RecurringPatterns, SeverityDerivation } from '../../components/Resolution';
 import {
+  ErrorBlock,
   FieldLabel,
   LoadingBlock,
   MutationError,
@@ -26,6 +27,7 @@ import {
   QueryBoundary,
 } from '../../components/ui';
 import { formatTemp } from '../../lib/format';
+import { rovingKeyDown, rovingTabIndex } from '../../lib/roving';
 import { readPrefill } from './reportLink';
 
 const GROUPS: { id: string; title: string; blurb: string }[] = [
@@ -147,6 +149,14 @@ function DetailsStep({
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const isProduct = type.group === 'product';
   const floor = type.floor[draft.subtype ?? ''] ?? type.floor['*'];
+  const subtypeIndex = type.subtypes.findIndex((subtype) => subtype === draft.subtype);
+  const products = order?.items ?? [];
+  const productIndex = products.findIndex((item) => item.product_id === draft.productId);
+  const pickProduct = (item: OrderDetail['items'][number]) =>
+    set({
+      productId: item.product_id,
+      limit: draft.limit || (item.temp_max === null ? '' : String(item.temp_max)),
+    });
 
   return (
     <div className="flex flex-col gap-6">
@@ -158,13 +168,21 @@ function DetailsStep({
       </div>
 
       <Panel title="What exactly?">
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Situation">
-          {type.subtypes.map((subtype) => (
+        <div
+          className="grid gap-2 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label="Situation"
+          onKeyDown={rovingKeyDown('radio', subtypeIndex, type.subtypes.length, (index) =>
+            set({ subtype: type.subtypes[index] ?? null }),
+          )}
+        >
+          {type.subtypes.map((subtype, index) => (
             <button
               key={subtype}
               type="button"
               role="radio"
               aria-checked={draft.subtype === subtype}
+              tabIndex={rovingTabIndex(index, subtypeIndex)}
               className="choice"
               onClick={() => set({ subtype })}
             >
@@ -183,20 +201,24 @@ function DetailsStep({
 
       {isProduct && order && order.items.length > 0 && (
         <Panel title="Which product?">
-          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Product">
-            {order.items.map((item) => (
+          <div
+            className="grid gap-2 sm:grid-cols-2"
+            role="radiogroup"
+            aria-label="Product"
+            onKeyDown={rovingKeyDown('radio', productIndex, products.length, (index) => {
+              const item = products[index];
+              if (item) pickProduct(item);
+            })}
+          >
+            {order.items.map((item, index) => (
               <button
                 key={item.id}
                 type="button"
                 role="radio"
                 aria-checked={draft.productId === item.product_id}
+                tabIndex={rovingTabIndex(index, productIndex)}
                 className="choice"
-                onClick={() =>
-                  set({
-                    productId: item.product_id,
-                    limit: draft.limit || (item.temp_max === null ? '' : String(item.temp_max)),
-                  })
-                }
+                onClick={() => pickProduct(item)}
               >
                 <span>
                   <span className="block">{item.product_name}</span>
@@ -323,7 +345,9 @@ function DetailsStep({
         title="Describe it"
         aside={
           <VoiceButton
-            onText={(text) => set({ description: draft.description ? `${draft.description} ${text}` : text })}
+            onText={(text) =>
+              set({ description: (draft.description ? `${draft.description} ${text}` : text).slice(0, 2000) })
+            }
           />
         }
       >
@@ -334,6 +358,7 @@ function DetailsStep({
           id="description"
           rows={3}
           className="field text-lg"
+          maxLength={2000}
           value={draft.description}
           onChange={(event) => set({ description: event.target.value })}
           placeholder="What you see, where, how much"
@@ -520,7 +545,10 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
   const submit = () => {
     if (!current || !order?.dock_door_id) return;
     const product = order.items.find((item) => item.product_id === draft.productId);
-    const description = [draft.description.trim(), ...draft.tags].filter(Boolean).join('. ');
+    // The tags ride along in the text; keep the whole within the server's 2000-character limit.
+    const tagText = draft.tags.join('. ');
+    const room = 2000 - (tagText ? tagText.length + 2 : 0);
+    const description = [draft.description.trim().slice(0, room), tagText].filter(Boolean).join('. ');
     report.mutate(
       {
         order_id: order.id,
@@ -638,6 +666,8 @@ export default function ReportIssue() {
       />
       {active.isPending ? (
         <LoadingBlock label="Finding your assignment" />
+      ) : active.isError && !active.data ? (
+        <ErrorBlock error={active.error} onRetry={() => void active.refetch()} />
       ) : !active.data ? (
         <Notice title="No active assignment">
           Issues are reported against the trailer at your dock. Ask your supervisor for an assignment.

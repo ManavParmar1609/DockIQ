@@ -6,8 +6,9 @@ demo rehearsable and a whole shift testable in milliseconds.
 """
 
 import random
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date, timedelta
 
 from app.wms.clock import SHIFT_MINUTES
 
@@ -21,6 +22,28 @@ LAST_ARRIVAL_BEFORE_END = 70
 EXCEPTION_PROBABILITY = 0.3
 OUTAGE_WINDOW = (90, 390)
 OUTAGE_MINUTES = (5, 10)
+
+# Carrier punctuality: (earliest, most likely, latest) minutes against the booked appointment, drawn
+# from a triangular distribution. Each carrier keeps one profile for every shift of a seed's run.
+PUNCTUALITY: dict[str, tuple[float, float, float]] = {
+    "reliable": (-15.0, -3.0, 15.0),
+    "average": (-10.0, 5.0, 40.0),
+    "late": (-5.0, 18.0, 75.0),
+}
+ON_TIME_WINDOW = 15.0  # arriving up to this many minutes after the appointment is on time
+DETENTION_AFTER = 120.0  # minutes on site before the carrier can bill detention
+REEFER_BELOW_LIMIT = 5.0  # the reefer is set this many °F under the strictest product limit
+YARD_SPOTS = 40
+
+# Inventory: the temperature room each category is stored in, and its shelf life in days.
+STORAGE_ZONE: dict[str, str] = {"Frozen": "F", "Refrigerated": "C", "Produce": "P", "Dry": "D"}
+SHELF_LIFE_DAYS: dict[str, tuple[int, int]] = {
+    "Frozen": (120, 365),
+    "Refrigerated": (6, 21),
+    "Produce": (3, 12),
+    "Dry": (90, 540),
+}
+INVENTORY_DATE = date(2026, 9, 25)  # the simulation's calendar day for best-before dates
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +80,9 @@ class PlannedException:
 
 @dataclass(frozen=True, slots=True)
 class Appointment:
+    """One booked trailer. `scheduled` is the appointment; `arrival` is when it actually reaches the
+    gate (carrier punctuality applied). Both are simulated minutes since shift 0 started."""
+
     key: str
     shift: int
     door: int
@@ -67,7 +93,10 @@ class Appointment:
     trailer: str
     bol: str
     seal: str
-    arrival: float  # simulated minutes since shift 0 started
+    scheduled: float
+    arrival: float
+    reefer_setpoint: float | None  # °F; None for a load with no temperature limit
+    yard_spot: str  # where it parks if its door is busy
     inspection_minutes: float
     lines: tuple[tuple[str, int], ...]  # (sku, cases)
     pallets: int
@@ -79,6 +108,13 @@ class ShiftPlan:
     shift: int
     appointments: tuple[Appointment, ...]
     outages: tuple[tuple[float, float], ...]  # (start, end) in simulated minutes
+
+
+def punctuality(seed: int, carrier_code: str) -> str:
+    """The carrier's punctuality profile for this seed: reliable, average or late."""
+    return random.Random(f"dockiq-carrier:{seed}:{carrier_code}").choices(
+        list(PUNCTUALITY), weights=(4, 4, 2)
+    )[0]
 
 
 def work_minutes(pallets: int, experience: str | None) -> float:
@@ -235,6 +271,9 @@ def plan_shift(
                 weights = [weight for kind, weight in EXCEPTION_KINDS if kind in kinds]
                 exception = _exception(rng, rng.choices(kinds, weights)[0], lines, products)
             inspection = rng.uniform(*INSPECTION_MINUTES)
+            low, mode, high = PUNCTUALITY[punctuality(seed, carrier_code)]
+            scheduled = base + clock
+            limits = [products[sku].temp_max for sku, _ in lines if products[sku].temp_max is not None]
             appointments.append(
                 Appointment(
                     key=f"s{shift}-d{door}-{serial}",
@@ -247,7 +286,10 @@ def plan_shift(
                     trailer=f"TRL-{carrier_code[:2]}-{rng.randint(1000, 9999)}",
                     bol=f"BOL-{rng.randint(100000, 999999)}",
                     seal=f"SL-{rng.randint(10000, 99999)}",
-                    arrival=base + clock,
+                    scheduled=scheduled,
+                    arrival=max(float(base), scheduled + rng.triangular(low, high, mode)),
+                    reefer_setpoint=min(limits) - REEFER_BELOW_LIMIT if limits else None,
+                    yard_spot=f"Y-{rng.randint(1, YARD_SPOTS):02d}",
                     inspection_minutes=inspection,
                     lines=lines,
                     pallets=pallets,
@@ -269,24 +311,89 @@ def plan_shift(
 
 @dataclass(frozen=True, slots=True)
 class PalletRecord:
-    pallet_id: str  # SSCC-style
+    pallet_id: str  # SSCC-style licence plate
     sku: str
-    location: str
+    location: str  # room-aisle-bay-level, e.g. F-12-B04-2
     cases: int
+    lot: str
+    best_before: date
 
 
 def inventory(seed: int, products: Sequence[ProductRef]) -> tuple[PalletRecord, ...]:
+    """Pallets on hand, stored in their temperature room and listed first-expiring-first (FEFO)."""
     rng = random.Random(f"dockiq-inventory:{seed}")
     records: list[PalletRecord] = []
     for index, product in enumerate(sorted(products, key=lambda p: p.sku)):
+        room = STORAGE_ZONE.get(product.category, "D")
+        shortest, longest = SHELF_LIFE_DAYS.get(product.category, (90, 365))
+        pallets: list[PalletRecord] = []
         for n in range(rng.randint(2, 5)):
-            aisle = 10 + (index % 16)
-            records.append(
+            pallets.append(
                 PalletRecord(
                     pallet_id=f"00286{seed % 1000:03d}{index:04d}{n:03d}",
                     sku=product.sku,
-                    location=f"A{aisle}-B{rng.randint(1, 24):02d}-L{rng.randint(1, 4)}",
+                    location=f"{room}-{10 + index % 16:02d}-B{rng.randint(1, 24):02d}-{rng.randint(1, 4)}",
                     cases=product.cases_per_pallet,
+                    lot=f"L{rng.randint(2600, 2699)}{chr(65 + n)}",
+                    best_before=INVENTORY_DATE + timedelta(days=rng.randint(shortest, longest)),
                 )
             )
+        records.extend(sorted(pallets, key=lambda pallet: pallet.best_before))
     return tuple(records)
+
+
+# ── Shift KPIs: what a WMS reports about the dock, from the plan and what happened ──
+
+
+@dataclass(frozen=True, slots=True)
+class Visit:
+    """What happened to one appointment: when it reached a door and when it left (sim minutes)."""
+
+    at_door: float | None
+    departed: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class ShiftKpis:
+    arrived: int
+    on_time_percent: float | None
+    average_turn_minutes: float | None  # gate to departure, for trailers that have left
+    on_detention: int
+    pallets_per_hour: float
+    door_utilization_percent: float
+
+
+def shift_kpis(
+    appointments: Sequence[Appointment],
+    visits: Mapping[str, Visit],
+    minute: float,
+    doors: int,
+    shift_start: float,
+) -> ShiftKpis:
+    arrived = [a for a in appointments if a.arrival <= minute]
+    on_time = [a for a in arrived if a.arrival - a.scheduled <= ON_TIME_WINDOW]
+    turns: list[float] = []
+    detention = 0
+    pallets_moved = 0
+    occupied = 0.0
+    for appointment in arrived:
+        visit = visits.get(appointment.key)
+        left = visit.departed if visit else None
+        if (left if left is not None else minute) - appointment.arrival > DETENTION_AFTER:
+            detention += 1
+        if left is not None:
+            turns.append(left - appointment.arrival)
+            pallets_moved += appointment.pallets
+        if visit and visit.at_door is not None:
+            occupied += (left if left is not None else minute) - visit.at_door
+    elapsed = max(minute - shift_start, 0.0)
+    return ShiftKpis(
+        arrived=len(arrived),
+        on_time_percent=round(len(on_time) / len(arrived) * 100, 1) if arrived else None,
+        average_turn_minutes=round(sum(turns) / len(turns), 1) if turns else None,
+        on_detention=detention,
+        pallets_per_hour=round(pallets_moved / max(elapsed / 60, 0.25), 1),
+        door_utilization_percent=round(min(occupied / (doors * elapsed) * 100, 100.0), 1)
+        if elapsed and doors
+        else 0.0,
+    )

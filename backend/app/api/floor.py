@@ -11,7 +11,7 @@ from sqlalchemy.orm.util import AliasedClass
 
 from app import realtime
 from app.api.access import request_scope, supervisor_of, team_audience, visible_order
-from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, Supervisor, get_or_404
+from app.api.deps import CurrentUser, Operator, PathId, RealtimeDep, SessionDep, Supervisor, get_or_404
 from app.db import utcnow
 from app.domain.dock import DockEvent, transition
 from app.domain.enums import RequestStatus, Role
@@ -132,12 +132,14 @@ async def create_request(
 
 
 @router.put("/requests/{request_id}/fulfill")
-async def fulfill_request(request_id: int, user: Supervisor, session: SessionDep) -> StatusOut:
+async def fulfill_request(request_id: PathId, user: Supervisor, session: SessionDep) -> StatusOut:
     request = await session.scalar(
         select(QuickRequest).where(QuickRequest.id == request_id, request_scope(user))
     )
     if request is None:
         raise HTTPException(http.HTTP_404_NOT_FOUND, "Request not found")
+    if request.status is not RequestStatus.PENDING:  # keep the first fulfilment's time
+        raise HTTPException(http.HTTP_409_CONFLICT, f"Request is already {request.status.value}")
     request.status = RequestStatus.FULFILLED
     request.fulfilled_at = utcnow()
     await session.commit()

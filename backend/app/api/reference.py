@@ -1,10 +1,13 @@
 """Reference data: users, companies, products, carriers, dock doors, and the issue taxonomy."""
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Query
 from fastapi import status as http
 from sqlalchemy import or_, select
 
-from app.api.deps import CurrentUser, SessionDep, get_or_404
+from app.api.deps import CurrentUser, PathId, SessionDep, get_or_404
+from app.db import MAX_ID
 from app.domain.enums import Role
 from app.domain.severity import ISSUE_TYPE_WEIGHTS
 from app.domain.taxonomy import (
@@ -59,7 +62,7 @@ async def list_users(user: CurrentUser, session: SessionDep, role: Role | None =
 
 
 @router.get("/users/{user_id}")
-async def get_user(user_id: int, user: CurrentUser, session: SessionDep) -> UserOut:
+async def get_user(user_id: PathId, user: CurrentUser, session: SessionDep) -> UserOut:
     visible = {row.id for row in await list_users(user, session)}
     if user_id not in visible:
         raise HTTPException(http.HTTP_404_NOT_FOUND, "User not found")
@@ -73,13 +76,13 @@ async def list_companies(_: CurrentUser, session: SessionDep) -> list[CompanyOut
 
 
 @router.get("/companies/{company_id}")
-async def get_company(company_id: int, _: CurrentUser, session: SessionDep) -> CompanyOut:
+async def get_company(company_id: PathId, _: CurrentUser, session: SessionDep) -> CompanyOut:
     return CompanyOut.model_validate(await get_or_404(session, Company, company_id, "Company"))
 
 
 @router.get("/products")
 async def list_products(
-    _: CurrentUser, session: SessionDep, company_id: int | None = None
+    _: CurrentUser, session: SessionDep, company_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None
 ) -> list[ProductOut]:
     stmt = select(Product).order_by(Product.id)
     if company_id is not None:
@@ -101,7 +104,7 @@ async def list_docks(_: CurrentUser, session: SessionDep) -> list[DockOut]:
 
 
 @router.get("/docks/{dock_id}")
-async def get_dock(dock_id: int, _: CurrentUser, session: SessionDep) -> DockOut:
+async def get_dock(dock_id: PathId, _: CurrentUser, session: SessionDep) -> DockOut:
     row = (await session.execute(dock_select().where(DockDoor.id == dock_id))).first()
     if row is None:
         raise HTTPException(http.HTTP_404_NOT_FOUND, "Dock not found")

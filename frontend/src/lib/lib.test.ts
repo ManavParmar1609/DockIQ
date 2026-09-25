@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { checkDigit, encodeEan13, toEan13 } from './ean13';
-import { duration, elapsed, formatTemp, greeting, initials, percent, timeAgo } from './format';
+import { duration, elapsed, formatDate, formatTemp, greeting, initials, percent, timeAgo } from './format';
+import { rovingIndex, rovingTabIndex } from './roving';
 import { ISSUE_STATUS, bySeverityThenAge, parseSeverityReason } from './vocab';
 
 const NOW = Date.parse('2026-09-25T12:00:00Z');
@@ -48,6 +49,13 @@ describe('format helpers', () => {
   });
 });
 
+describe('formatDate', () => {
+  it('prints a calendar date without shifting it across a timezone', () => {
+    expect(formatDate('2026-10-01')).toBe('1 Oct 2026');
+    expect(formatDate('2027-01-31')).toBe('31 Jan 2027');
+  });
+});
+
 describe('vocabulary', () => {
   it('has one label per issue status and knows which are open', () => {
     expect(Object.keys(ISSUE_STATUS)).toHaveLength(4);
@@ -90,5 +98,28 @@ describe('EAN-13', () => {
     expect(bits.startsWith('101')).toBe(true);
     expect(bits.slice(45, 50)).toBe('01010');
     expect(bits.endsWith('101')).toBe(true);
+  });
+});
+
+describe('rovingIndex', () => {
+  it('moves with the arrows and wraps at both ends', () => {
+    expect(rovingIndex('ArrowRight', 0, 3)).toBe(1);
+    expect(rovingIndex('ArrowRight', 2, 3)).toBe(0);
+    expect(rovingIndex('ArrowLeft', 0, 3)).toBe(2);
+    expect(rovingIndex('Home', 2, 3)).toBe(0);
+    expect(rovingIndex('End', 0, 3)).toBe(2);
+  });
+
+  it('moves from the first item when nothing is selected yet', () => {
+    expect(rovingIndex('ArrowDown', -1, 3)).toBe(1);
+    expect(rovingIndex('ArrowUp', -1, 3)).toBe(2);
+    expect(rovingTabIndex(0, -1)).toBe(0);
+    expect(rovingTabIndex(1, -1)).toBe(-1);
+  });
+
+  it('leaves Up and Down alone in a horizontal tablist, and ignores other keys', () => {
+    expect(rovingIndex('ArrowDown', 0, 3, false)).toBeNull();
+    expect(rovingIndex('Enter', 0, 3)).toBeNull();
+    expect(rovingIndex('ArrowRight', 0, 0)).toBeNull();
   });
 });

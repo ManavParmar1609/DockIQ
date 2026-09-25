@@ -1,10 +1,11 @@
 """Request and response models. Responses are explicit so a column rename cannot leak to clients."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.db import MAX_ID
 from app.domain.enums import (
     ChatRole,
     DockStatus,
@@ -26,17 +27,24 @@ class Schema(BaseModel):
 
 # ── Requests ──
 
+# A record id as Postgres INTEGER holds it: anything else is a 422, never a driver error.
+Id = Annotated[int, Field(ge=1, le=MAX_ID)]
+# Free text a person types: long enough for any note, short enough to bound a row.
+FreeText = Annotated[str, Field(max_length=2000)]
+Tag = Annotated[str, Field(min_length=1, max_length=32)]
+Choice = Annotated[str, Field(max_length=32)]  # a short vocabulary value, stored as VARCHAR(32)
+
 
 class IssueCreate(BaseModel):
-    order_id: int | None = None
-    dock_door_id: int
+    order_id: Id | None = None
+    dock_door_id: Id
     issue_type: str = Field(min_length=1, max_length=64)
     issue_subtype: str | None = Field(default=None, max_length=120)
-    description: str | None = ""
-    quick_tags: list[str] = []
-    product_id: int | None = None
-    company_id: int | None = None
-    carrier_id: int | None = None
+    description: FreeText | None = ""
+    quick_tags: list[Tag] = Field(default=[], max_length=10)
+    product_id: Id | None = None
+    company_id: Id | None = None
+    carrier_id: Id | None = None
     quantity_affected: int | None = Field(default=1, ge=0)
     temp_reading: float | None = None
     temp_threshold_max: float | None = None
@@ -46,34 +54,34 @@ class IssueCreate(BaseModel):
 
 class IssueSelfResolve(BaseModel):
     resolution_type: str = Field(min_length=1, max_length=64)
-    resolution_notes: str | None = ""
+    resolution_notes: FreeText | None = ""
 
 
 class IssueSupervisorResolve(BaseModel):
     resolution_type: str = Field(min_length=1, max_length=64)
-    supervisor_notes: str | None = ""
+    supervisor_notes: FreeText | None = ""
 
 
 class InspectionCreate(BaseModel):
-    order_id: int | None = None
-    dock_door_id: int
-    seal_condition: str
-    interior_cleanliness: str
+    order_id: Id | None = None
+    dock_door_id: Id
+    seal_condition: Choice
+    interior_cleanliness: Choice
     interior_temperature: float | None = None
-    visible_damage: str
-    notes: str | None = ""
+    visible_damage: Choice
+    notes: FreeText | None = ""
 
 
 class ChatCreate(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
-    company_id: int | None = None
-    product_category: str | None = None
+    company_id: Id | None = None
+    product_category: Choice | None = None
 
 
 class QuickRequestCreate(BaseModel):
-    dock_door_id: int | None = None
+    dock_door_id: Id | None = None
     request_type: str = Field(min_length=1, max_length=64)
-    details: str | None = ""
+    details: FreeText | None = ""
 
 
 class BroadcastCreate(BaseModel):
@@ -82,17 +90,17 @@ class BroadcastCreate(BaseModel):
 
 class ShiftHandoffCreate(BaseModel):
     shift: str = Field(min_length=1, max_length=16)
-    notes: str = Field(min_length=1)
+    notes: str = Field(min_length=1, max_length=2000)
 
 
 class OrderItemUpdate(BaseModel):
-    actual_quantity: int = Field(ge=0)
-    product_id: int
+    actual_quantity: int = Field(ge=0, le=MAX_ID)
+    product_id: Id
 
 
 class OrderComplete(BaseModel):
-    seal_number: str | None = None
-    notes: str | None = ""
+    seal_number: str | None = Field(default=None, max_length=64)
+    notes: FreeText | None = ""
 
 
 class ScanCreate(BaseModel):
@@ -418,6 +426,8 @@ class StockPallet(BaseModel):
     pallet_id: str
     location: str
     cases: int
+    lot: str
+    best_before: date
 
 
 class StockCard(BaseModel):
@@ -561,14 +571,37 @@ class CountByLabel(BaseModel):
 
 class TypeCount(CountByLabel):
     issue_type: str
+    cost_impact: float
 
 
 class SeverityCount(CountByLabel):
     severity: Severity
+    open: int
+    avg_resolution_minutes: float | None
 
 
 class DockCount(CountByLabel):
     door_number: int
+    open: int
+
+
+class TypeSeverityCount(CountByLabel):
+    issue_type: str
+    severity: Severity
+
+
+class DockRepeat(CountByLabel):
+    """The same kind of problem at the same door, more than once in the trend window."""
+
+    issue_type: str
+    door_number: int
+
+
+class CarrierRepeat(CountByLabel):
+    """The same kind of problem from the same carrier, more than once in the trend window."""
+
+    issue_type: str
+    name: str
 
 
 class NameCount(CountByLabel):
@@ -592,13 +625,21 @@ class AnalyticsSummary(BaseModel):
     self_resolution_rate: float
     total_cost_impact: float
     avg_resolution_minutes: float
+    open_issues: int
+    open_critical: int
+    open_cost_impact: float
+    cold_chain_breaches: int
+    cold_chain_open: int
     by_type: list[TypeCount]
     by_severity: list[SeverityCount]
+    by_type_severity: list[TypeSeverityCount]
     by_dock: list[DockCount]
     by_operator: list[OperatorCount]
     by_company: list[NameCount]
     by_carrier: list[NameCount]
     over_time: list[DateCount]
+    repeat_at_doors: list[DockRepeat]
+    repeat_with_carriers: list[CarrierRepeat]
 
 
 # ── Simulation and WMS (business-rules §12) ──
@@ -619,6 +660,15 @@ class SimTrailerCounts(BaseModel):
     departed: int
 
 
+class ShiftKpisOut(BaseModel):
+    arrived: int
+    on_time_percent: float | None
+    average_turn_minutes: float | None
+    on_detention: int
+    pallets_per_hour: float
+    door_utilization_percent: float
+
+
 class SimStatusOut(BaseModel):
     simulated: bool = True
     seed: int
@@ -630,6 +680,7 @@ class SimStatusOut(BaseModel):
     shift_progress: float
     wms_online: bool
     trailers: SimTrailerCounts
+    kpis: ShiftKpisOut
     events: list[SimEventOut]
 
 
@@ -670,6 +721,13 @@ class YardEntryOut(BaseModel):
     state: Literal["scheduled", "in_yard", "at_door", "departed"]
     due_in_minutes: float | None
     simulated: bool
+    scheduled_at: str
+    arrived_at: str | None
+    late_minutes: float | None
+    reefer_setpoint: float | None
+    yard_spot: str | None
+    dwell_minutes: float | None
+    detention: bool
 
 
 class PalletOut(BaseModel):
@@ -677,3 +735,5 @@ class PalletOut(BaseModel):
     sku: str
     location: str
     cases: int
+    lot: str
+    best_before: date
