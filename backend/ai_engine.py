@@ -10,9 +10,13 @@ _embed_client = None
 def get_llm_client():
     global _llm_client
     if _llm_client is None:
+        api_key = os.environ.get("NVIDIA_API_KEY")
+        if not api_key:
+            # Raised inside chat_response's try, so chat degrades to keyword fallback.
+            raise RuntimeError("NVIDIA_API_KEY is not set; using keyword fallback")
         _llm_client = OpenAI(
             base_url="https://integrate.api.nvidia.com/v1",
-            api_key=os.environ["NVIDIA_API_KEY"]
+            api_key=api_key
         )
     return _llm_client
 

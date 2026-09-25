@@ -24,3 +24,20 @@ Thumbs.db
 
 # Misc
 *.log
+
+# Scratch — throwaway artifacts (extracted doc text, probe scripts, one-off reports).
+# Nothing here is part of the project. See CLAUDE.md "Scratch files".
+.scratch/
+
+# Vendored third-party skill repo — its own git repo, ~1000 files. Not project code.
+claude-skills/
+
+# Personal Claude Code overrides (the shared config is .claude/settings.json)
+.claude/settings.local.json
+
+# Stale test-runner artifacts
+_trial_temp/
+
+# Vendored impeccable skill ships a 14.7 MB platform binary per copy; restored by its installer.
+.claude/skills/impeccable/scripts/bin/
+.github/skills/impeccable/scripts/bin/

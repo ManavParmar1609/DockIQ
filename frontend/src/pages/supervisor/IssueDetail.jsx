@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api';
 import { SeverityBadge } from '../../components/Shared';
-import { ArrowLeft, Sparkles, User, Clock, MapPin, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, User, Clock, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const RESOLUTION_TYPES = ['Accept', 'Partial Accept', 'Full Reject', 'Override — Accept Anyway', 'Request Re-inspection', 'Contact Carrier', 'Other'];
 

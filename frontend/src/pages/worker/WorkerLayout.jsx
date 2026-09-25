@@ -32,7 +32,8 @@ export default function WorkerLayout({ children }) {
       }
     });
     // WebSocket for real-time
-    const wsUrl = import.meta.env.DEV ? 'ws://localhost:8000/ws' : `ws://${window.location.host}/ws`;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}/ws`;
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
