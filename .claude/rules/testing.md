@@ -14,8 +14,9 @@ API gets a **freshly migrated, freshly seeded** database — never `dev.db`.
 | `test_api_operations.py` | Reference data, orders, inspections, requests, broadcasts, handoffs, chat fallback, analytics |
 | `test_platform.py` | Settings normalisation, migrations match the models, downgrade/upgrade round-trip |
 
-**Frontend:** no runner yet. Chosen in Phase 2 with the TypeScript migration (Vitest + Testing
-Library). Until then, use the manual checklist below.
+**Frontend:** Vitest + Testing Library (`npm test`), jsdom. `lib/lib.test.ts` pins the pure helpers
+(`timeAgo`, EAN-13, the status vocabulary, severity-reason parsing); `components/components.test.tsx`
+covers `SeverityBadge` (all four levels, red only for critical), `ConfidenceMeter` and `LoadPlanView`.
 
 ---
 
@@ -55,10 +56,10 @@ passing, `strict=True` turns that into a failure, and the marker must be removed
 
 ---
 
-## Frontend manual checklist (until Phase 2 adds a runner)
+## Frontend: before calling a UI change done
 
-1. Log in as an **operator** and open every worker screen once: Dashboard, Inspection, Loading,
-   Unloading, Resolve (`/app/resolve/new`), Chat, My Issues.
-2. Log in as a **supervisor** and open every supervisor screen once: Dashboard, an escalated
-   **Issue Detail**, Logs, Analytics, Chat, Handoff.
-3. Watch the browser console for any red.
+1. `npm run lint && npm run typecheck && npm test && npm run build`.
+2. Run both servers and open, once each, as **OP-001**: Shift, Order (all tabs), Inspection, Report,
+   My issues, Assistant; as **SUP-001**: Floor, an issue detail, Issue log, Analytics, Handoff; as
+   **QA-001**: Quality. Watch the console for any red.
+3. For layout work, check a tablet (1180×820), a phone (390×844) and a desktop (1440×900).

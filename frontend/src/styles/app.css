@@ -1,0 +1,297 @@
+/*
+ * DockIQ — "Freight Manifest"
+ * Swiss Industrial Print for a cold-storage dock floor: unbleached paper, carbon ink, one hazard red
+ * reserved for severity and alerts. Rules: .claude/rules/frontend-aesthetics.md.
+ *
+ * Tokens live here and nowhere else. Tailwind's default palette, radii and shadows are wiped so a
+ * stray `gray-500` or `rounded-lg` does not exist. The type scale starts at 14px: nothing smaller can
+ * be expressed.
+ */
+@import 'tailwindcss';
+
+@theme {
+  --color-*: initial;
+  --color-paper: #efece4; /* substrate */
+  --color-paper-sunk: #e5e1d6; /* recessed fields, alternating rows */
+  --color-paper-deep: #d8d2c4; /* pressed states, scale bars */
+  --color-ink: #111110; /* carbon ink — all primary text and rules */
+  --color-ink-soft: #3b3a35; /* secondary text, 11:1 on paper */
+  --color-ink-mute: #5c594f; /* labels and captions, 5.9:1 on paper */
+  --color-hairline: #b5af9f; /* non-text dividers only */
+  --color-light: #fbfaf6; /* text on ink or hazard fills */
+  --color-hazard: #d4161a; /* the only accent: severity + alerts. Light text on it is 5.1:1 */
+  --color-hazard-bright: #e61919; /* graphic marks only (stripes, bars) — never behind text */
+  --color-hazard-deep: #b0100d; /* hazard text on paper, 6:1 */
+
+  /* Landing page only (a desk-viewed marketing surface — rules §2.2). Never inside the app. */
+  --color-night: #0e0e0d;
+  --color-night-raised: #1a1a18;
+  --color-night-rule: #3a3934;
+  --color-night-mute: #a8a497; /* 7.8:1 on night */
+
+  --font-*: initial;
+  --font-sans: 'Archivo Variable', 'Archivo', ui-sans-serif, sans-serif;
+  --font-mono: 'Martian Mono Variable', 'Martian Mono', ui-monospace, monospace;
+
+  --text-*: initial;
+  --text-xs: 0.875rem; /* 14px — the floor, same as sm by design */
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+  --text-5xl: 4rem;
+  --text-6xl: 5.5rem;
+
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+  }
+  /* Gloved hands: every control is at least 44px tall. */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-light);
+  }
+  input[type='number'] {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Monolithic uppercase headers — Archivo at full width and weight. */
+  .display {
+    font-stretch: 125%;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+  }
+  .heading {
+    font-stretch: 112%;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    line-height: 1;
+  }
+  /* Metadata and captions: mono, uppercase, tracked. 14px floor. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink-mute);
+  }
+  /* Every ID, count, temperature, weight and timestamp. */
+  .telemetry {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-weight: 600;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0 1.25rem;
+    border: 2px solid var(--color-ink);
+    font-weight: 700;
+    font-stretch: 110%;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    transition:
+      background-color 120ms,
+      color 120ms;
+    cursor: pointer;
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    border-color: var(--color-hairline);
+    color: var(--color-ink-mute);
+    background: var(--color-paper-sunk);
+  }
+  .btn-primary {
+    background: var(--color-ink);
+    color: var(--color-light);
+  }
+  .btn-primary:not(:disabled):hover {
+    background: var(--color-ink-soft);
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--color-ink);
+  }
+  .btn-secondary:not(:disabled):hover {
+    background: var(--color-paper-sunk);
+  }
+  .btn-hazard {
+    background: var(--color-hazard);
+    border-color: var(--color-hazard);
+    color: var(--color-light);
+  }
+  .btn-hazard:not(:disabled):hover {
+    background: var(--color-hazard-deep);
+  }
+
+  .field {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.625rem 0.875rem;
+    background: var(--color-light);
+    border: 2px solid var(--color-ink);
+    color: var(--color-ink);
+    font-size: 1rem;
+  }
+  .field::placeholder {
+    color: var(--color-ink-mute);
+  }
+
+  /* A choice rendered as a tile: pressed = ink fill. */
+  .choice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 56px;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--color-ink);
+    background: var(--color-light);
+    text-align: left;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .choice:hover {
+    background: var(--color-paper-sunk);
+  }
+  .choice[aria-pressed='true'],
+  .choice[aria-checked='true'] {
+    background: var(--color-ink);
+    color: var(--color-light);
+  }
+
+  /* Hazard tape: a graphic edge band beside an alert — never behind its text. */
+  .hazard-tape {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--color-hazard-bright) 0 10px,
+      var(--color-ink) 10px 20px
+    );
+  }
+
+  /* The one orchestrated moment: a staggered reveal as a screen loads. Never on an alert. */
+  .reveal {
+    animation: var(--animate-rise);
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+
+  .shell-grid {
+    @media (width >= 64rem) {
+      display: grid;
+      grid-template-columns: 16rem minmax(0, 1fr);
+    }
+  }
+
+  /* Diagrams keep a legible scale and scroll inside their frame on narrow screens. */
+  .figure-wide {
+    min-width: 46rem;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr) 3rem;
+  }
+
+  dialog::backdrop {
+    background: rgb(17 17 16 / 0.6);
+  }
+
+  .tabbar-safe {
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Landing reveal: sections rise in as they enter the viewport (IntersectionObserver adds .in). */
+.enter {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.enter.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    opacity: 1;
+    transform: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  dialog::backdrop {
+    background: var(--color-ink);
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-hairline: var(--color-ink);
+    --color-ink-mute: var(--color-ink-soft);
+  }
+}

@@ -77,9 +77,10 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 | GET | `/api/orders` | scoped | Optional `?status=` and `?operator_id=` | — |
 | GET | `/api/orders/{id}` | scoped | Order including its `order_items` (with GTINs) | — |
 | GET | `/api/orders/{id}/load-plan` | scoped | Where every pallet goes, by the customer's rules — see business-rules §10 | — |
+| POST | `/api/orders/{id}/temperature-check` | assigned operator | `{reading}` → status, limit, delta and guidance (business-rules §11.1) | — |
 | POST | `/api/orders/{id}/scan` | assigned operator | `{code}` — GTIN-14/13, UPC-A, or SKU. Returns `match` (case counted), `mismatch` (a real product **not on this order — do not load**), or `unknown`. Every scan is logged in `scan_events` | `order_items`, `scan_events` |
 | PUT | `/api/orders/{id}/items` | assigned operator | Record `actual_quantity` for a line | `order_items` |
-| POST | `/api/orders/{id}/complete` | assigned operator | Sign off, capture seal number. A complete order is closed to further counting (403) | `orders`, dock → `idle`/`complete`; emits `order_complete` |
+| POST | `/api/orders/{id}/complete` | assigned operator | Sign off, capture seal number. Inbound: lines outside tolerance are filed as Count Discrepancy issues (returned as `discrepancy_issue_ids`). A complete order is closed to further counting (403) | `orders`, `issues`, dock → `idle`/`complete`; emits `new_issue` per discrepancy and `order_complete` |
 
 ### 2.4 Issues — the core entity
 
@@ -169,11 +170,9 @@ concerns:
 | `new_request` | `POST /api/requests` → operator and supervisor |
 | `broadcast` | `POST /api/broadcasts` → the supervisor's team |
 
-**Adding an event means changing both ends.** The server-side vocabulary is the set of constructor
-functions in `backend/app/realtime.py`. The client is *not* in `api.js` — it is constructed
-inline and duplicated verbatim in `WorkerLayout.jsx:35-37` and `SupervisorLayout.jsx:13-15`, with no
-reconnect, no `onerror`/`onclose` handling, and an unguarded `JSON.parse` that will throw on a
-malformed frame and kill the handler.
+**Adding an event means changing both ends:** a constructor in `backend/app/realtime.py` and the
+client in `frontend/src/api/realtime.ts`, which authenticates, reconnects with backoff (1 s → 30 s),
+drops malformed frames, and invalidates exactly the cached data each event changes.
 
 ---
 

@@ -390,6 +390,37 @@ scanner issues; and unsafe loading conditions or trailer defects.
 
 ---
 
+## 11. Receiving
+
+`domain/receiving.py`.
+
+### 11.1 Probe temperature check — `POST /api/orders/{id}/temperature-check`
+
+The reading is judged against the **strictest `temp_max` of any product on the load**, in the same
+bands as the severity temperature modifier (§1.4), so the guidance and the score always agree:
+
+| Over the limit by | Status | Guidance |
+|---|---|---|
+| ≤ 0°F | ok | Proceed |
+| > 0°F | marginal | Monitor, re-probe before continuing |
+| > 5°F | warning | Close the doors; re-probe the centre of a case in 10 minutes |
+| > 10°F | critical | **Do not unload. Close the doors. Do not sign the BOL.** Report it |
+
+No temperature-controlled product on the load → `not_applicable`. *(Phase 2 — previously computed in
+the browser from the first line only.)*
+
+### 11.2 Count reconciliation on completion
+
+When an **inbound** order is completed, each line whose received count deviates from expected by more
+than the customer's `count_tolerance` is filed automatically as a **Count Discrepancy** issue —
+subtype *Short count* or *Overage* — scored by the normal formula, in the same transaction as the
+completion. Lines with `expected = 0` are skipped. *(Phase 2 — previously done in the browser, which
+filed overages as "Count Shortage" with a negative quantity.)*
+
+---
+
+## Change log
+
 | Date | Change |
 |---|---|
 | 2026-09-25 | Initial extraction from code and source documents. |

@@ -33,7 +33,7 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 DockIQ runs on a tablet on a forklift in a **cold-storage warehouse**. Gloved hands, dim light,
 glare, and decisions that are sometimes food-safety critical. "Genuinely designed for the context"
 therefore means: the interface should feel like an **operations document or a control panel**, not
-a consumer app. The current Apple-derived look (`.apple-*` classes, `--brand: #0071e3`, Inter) is
+a consumer app. The original Apple-derived look (`.apple-*` classes, `--brand: #0071e3`, Inter) was
 exactly the safe, on-distribution choice the directive rules out — and it is also the wrong genre
 for the setting.
 
@@ -65,7 +65,7 @@ context in four specific places.** These overrides are not negotiable:
 | Inter (Extra Bold/Black) is an "optimal" macro font | **Inter is banned.** Part 1 names it explicitly. Use another heavy neo-grotesque — Archivo Black or Monument Extended are the skill's own alternatives | The directive outranks the skill |
 | Micro-type at 10–14px | **Floor of 14px for anything read at arm's length; 16px+ for values an operator acts on** (temperatures, counts, severity) | Gloves, distance, glare |
 | Global grain, CRT scanlines, halftone dithering | **No texture, grain, scanline, dither, blend-mode or opacity effect on any severity badge, temperature reading, count, CRITICAL alert, or primary action.** Sparing use on chrome and landing only, if at all | A degraded critical alert is a food-safety defect, not a style |
-| Rejects all `border-radius`; 1px dividing lines | Keep the rigid grid, **but touch targets stay ≥ 44px** with clear hit areas. Razor-thin dividers are fine; razor-thin *targets* are not | `index.css:49` enforces 44px today; the redesign must not lose it |
+| Rejects all `border-radius`; 1px dividing lines | Keep the rigid grid, **but touch targets stay ≥ 44px** with clear hit areas. Razor-thin dividers are fine; razor-thin *targets* are not | `styles/app.css` enforces 44px on every control |
 
 And two the directive itself requires:
 
@@ -73,7 +73,7 @@ And two the directive itself requires:
   reason, not picked from habit.
 - **Motion is for one orchestrated moment** — a staggered reveal on dashboard load — not scattered
   micro-interactions, and never on a critical alert. Respect `prefers-reduced-motion` (already in
-  `index.css`; keep it).
+  `styles/app.css`; keep it).
 
 ### 2.4 Non-negotiables that outrank any aesthetic
 
@@ -89,29 +89,15 @@ And two the directive itself requires:
    functional icons. They are inaccessible, render inconsistently, and are a generic-AI tell.
 7. Simulated data remains **visibly marked as simulated**.
 
-### 2.5 Migration off the current system
+### 2.5 The shipped direction — "Freight Manifest" *(chosen 2026-09-25, built in Phase 2)*
 
-This is a **replacement, not a coexistence**. Doing it in one pass avoids two design systems living
-in the same app:
+Archivo (width axis 112–125% for uppercase display) + Martian Mono for telemetry, on unbleached paper
+`#EFECE4` with carbon ink `#111110` and one hazard red. Text-bearing red is `#D4161A` (5.1:1 with
+light text; the brighter `#E61919` is kept for graphic marks only). The Apple-derived system was
+replaced in one pass: the `.apple-*` classes, Inter and the unused Tailwind palettes are gone, and the
+`prefers-*`, `:focus-visible` and safe-area rules carried over. Details: `docs/specs/ui-ux-spec.md` §2.
 
-1. Define the new token set as CSS custom properties in `index.css` — substrate, ink, accent, the
-   severity ramp, type scale, spacing — and **delete** the unused `dock.*`/`apple.*` palettes from
-   `tailwind.config.js` in the same change.
-2. Replace the `.apple-*` chrome classes (`.apple-shell`, `.apple-sidebar`, `.apple-tabbar`,
-   `.apple-fab`, `.apple-brand*`, `.apple-chat*`, `.apple-login*`) with the new shell.
-3. Purge hardcoded hex from JSX (`Analytics.jsx:5-10`, the `focus:ring-[#0071e3]/20` arbitrary
-   value in five files) — they become tokens.
-4. Settle the grey family to one.
-5. Keep, verbatim: the `prefers-reduced-motion`, `prefers-reduced-transparency`,
-   `prefers-contrast: more`, `:focus-visible` and safe-area-inset rules.
-
-### 2.6 What to bring to the user before building
-
-Typeface and palette are **proposed, not chosen unilaterally**: two or three concrete directions,
-each with a real font pairing (heavy grotesque + monospace), a substrate value, and a one-line
-argument for why it fits a cold-storage dock. The user picks.
-
-### 2.7 Skills to load for frontend work
+### 2.6 Skills to load for frontend work
 
 - `industrial-brutalist-ui` — structural reference for the app shell (with the overrides above).
 - `design-taste-frontend` — landing page only.

@@ -1,13 +1,8 @@
 # DockIQ.AI — UI / UX Specification
 
-**Status:** Describes the interface **as built** (verified against `frontend/src/` and the 42 images
-in `screenshots/`, 2026-09-25), plus the constraints any redesign must respect.
-
-⚠️ **A redesign is planned.** The current look is Apple-derived and uses Inter — both of which the
-project's frontend aesthetic brief rules out. See
-[`.claude/rules/frontend-aesthetics.md`](../../.claude/rules/frontend-aesthetics.md) for the target
-direction. This document records what exists and, more importantly, **what must survive the
-redesign**.
+**Status:** Describes the interface **as built** after the Phase 2 redesign (verified against
+`frontend/src/` and a screenshot + end-to-end pass on 2026-09-25), and the constraints any change
+must respect. Rules: [`.claude/rules/frontend-aesthetics.md`](../../.claude/rules/frontend-aesthetics.md).
 
 ---
 
@@ -18,176 +13,112 @@ is the whole design brief:
 
 | Constraint | Consequence |
 |---|---|
-| Operators wear **gloves** | Touch targets ≥ 44px. Enforced globally today by `index.css:49` |
-| The floor is **cold and dimly lit**; screens catch glare | High contrast is functional, not stylistic. WCAG AA minimum |
-| Operators are **standing, often mid-task, sometimes in a hurry** | Minimise typing. Prefer tap-to-count, chips, and presets over free text |
-| Some decisions are **food-safety critical** | Severity must be unambiguous at a glance. Never rely on colour alone |
-| Hands may be full; the tablet may be at arm's length | Large type for primary values; the critical number should be readable across a pallet |
+| Operators wear **gloves** | Touch targets ≥ 44px — a base rule on every `button`, `a`, `input`, `select`, `textarea` in `styles/app.css` |
+| The floor is **cold and dimly lit**; screens catch glare | A light paper substrate (survives glare), carbon ink, WCAG AA measured on the actual substrate |
+| Operators are **standing, often mid-task** | Scan, tap-to-count, subtype tiles and voice dictation before free text |
+| Some decisions are **food-safety critical** | Severity is label + shape + fill, never colour alone; only CRITICAL is red |
+| The tablet may be at arm's length | Type floor 14px; values an operator acts on (counts, temperatures, severity) at 16px+ |
 
-**Hard rule:** no decorative effect — texture, grain, scanline, animation, reduced opacity — is ever
-applied to a CRITICAL alert, a temperature reading, or a severity badge. Those must render at full
-contrast, always.
+**Hard rule:** no decorative effect — texture, grain, animation, reduced opacity — is ever applied
+to a CRITICAL alert, a temperature, a count or a severity badge.
 
 ---
 
-## 2. Application structure
+## 2. The design system — "Freight Manifest"
 
-Two role shells wrapping a shared content area.
+Swiss Industrial Print, chosen for the dock floor (rules §2.2). Tokens live only in
+`frontend/src/styles/app.css`; Tailwind's default palette, radii and shadows are **removed**, so an
+off-system colour cannot be written.
+
+| Token | Value | Use |
+|---|---|---|
+| `paper` | `#EFECE4` | Substrate |
+| `paper-sunk` / `paper-deep` | `#E5E1D6` / `#D8D2C4` | Recessed fields, scale bars |
+| `ink` / `ink-soft` / `ink-mute` | `#111110` / `#3B3A35` / `#5C594F` | Text 17:1 / 11:1 / 5.9:1 on paper |
+| `light` | `#FBFAF6` | Panels; text on ink and hazard fills |
+| `hazard` | `#D4161A` | The **only** accent — severity and alerts. Light text on it is 5.1:1 |
+| `hazard-bright` | `#E61919` | Graphic marks only (hazard tape, chart bars) — never behind text |
+| `hazard-deep` | `#B0100D` | Alert text on paper, 6:1 |
+| `night*` | `#0E0E0D` … | **Landing page only** — the one dark surface |
+
+- **Type:** Archivo (variable, width axis at 112–125% for uppercase display) + Martian Mono for every
+  ID, count, weight, temperature and time. Self-hosted via Fontsource — no third-party font request.
+- **Geometry:** square corners, 2px ink rules, compartments on a 0.5-unit ink grid.
+- **Motion:** one staggered rise as a screen loads (`.reveal`, 55ms steps). Never on an alert.
+  `prefers-reduced-motion`, `prefers-reduced-transparency`, `prefers-contrast: more` are honoured.
+
+### 2.1 The severity and confidence channels
+
+| Level | Shape | Fill |
+|---|---|---|
+| Critical | ▲ | Hazard red, light text, hazard-tape edge on alerts and queue rows |
+| High | ◆ | Solid ink |
+| Medium | ■ | Ink outline |
+| Low | ○ | Dashed hairline |
+
+**Match confidence** is a separate three-cell ink meter labelled `MATCH · HIGH|MEDIUM|LOW`. It never
+uses the severity palette — the old UI's red "LOW confidence" pill read as more alarming than an
+amber MEDIUM severity beside it.
+
+---
+
+## 3. Application structure
 
 ```
-/                    Landing (marketing)
-/login               Role picker → person picker
-/app/*               ProtectedRoutes → WorkerLayout | SupervisorLayout
+/               Landing (dark, marketing)          /login   Sign in (employee ID + password)
+/app            role home — Shift | Floor | Quality
+/app/issues/:id issue detail (all roles; actions by role)
+operator        /app/order · /app/inspection · /app/report · /app/issues · /app/chat
+supervisor      /app/log · /app/analytics · /app/handoff · /app/chat
+quality         /app/log · /app/analytics
 ```
 
-⚠️ Layouts are **wrapper components taking `children`**, not `<Outlet/>` route elements, and each
-carries its own duplicated WebSocket bootstrap. There is no 404 inside `/app` — an unknown
-sub-path renders the chrome with an empty content area.
+- **Shell:** desktop rail (numbered nav, live-connection indicator, simulated-data tag, user,
+  sign-out); tablet/phone top bar + bottom tab bar with safe-area padding.
+- **Routing:** React Router data routes with `<Outlet/>`; every page is lazy-loaded; **every route
+  has an error boundary**, so one broken screen never blanks the app.
+- **Server state:** TanStack Query; the `/ws` channel invalidates exactly the data an event changes,
+  so screens update live without polling.
+- **Every data view** renders a loading, an error-with-retry, or the content (`QueryBoundary`).
 
-| Shell | Navigation |
+## 4. Screens
+
+| Screen | What it does |
 |---|---|
-| **Worker** (`role === 'operator'`) | Dashboard · Inspection · Loading · Unloading · Resolve · Chat · My Issues. Plus a broadcast banner, a FAB, and a quick-request sheet |
-| **Supervisor** (everything else) | Dashboard · Issue detail · Logs · Analytics · Chat · Handoff. Plus an alerts badge |
+| **Shift** (operator) | Current dock and order, last handoff, four actions, open/fixed/escalated counts, recent issues |
+| **Order** | Loading: *Load plan · Scan & count · Sign-off*. Receiving: *Temperature · Checks · Scan & count · Sign-off* |
+| **Inspection** | Seal / interior / damage tiles, reefer temperature; result names the limit used and each failed check, with a pre-filled report per failure |
+| **Report** | Type (grouped Product / People / Systems) → subtype, product, type-specific readings, tags, description with dictation, photos → scored result with procedure → resolve or escalate |
+| **My issues** | Open / closed / all, with supervisor outcomes |
+| **Issue detail** | Everything reported, severity derivation, recurrence, procedure, photos, timeline; the supervisor's decision panel or the operator's close-out, by role and status |
+| **Floor** (supervisor) | Team priority queue (critical first, then oldest, live waiting clocks), work in progress, requests, broadcast, dock floor by zone |
+| **Quality** | Facility-wide open quality issues and exposure |
+| **Issue log** | Search + severity/status/type filters; rows open the detail |
+| **Analytics** | Team (supervisor) or facility (quality) totals, 30-day trend, breakdowns |
+| **Handoff** | Open issues and zone docks to hand over, the note, previous notes |
+| **Assistant** | Suggested prompts, conversation, cited sources; only `**bold**` is interpreted |
 
-Both render: a sidebar with brand, nav and a user footer on desktop; a top bar and bottom tab bar on
-mobile. They are ~80% identical code.
+### 4.1 The load plan
 
----
+Drawn from the server's computed plan: a to-scale **top view** (nose and reefer to doors; floor
+positions per pattern; pallet footprint turned per orientation; stack counts; load-step numbers),
+**side elevations** showing each layer's weight so heavy-on-the-bottom is visible, a **step-through**
+that highlights pallet N in both views and reads out row, side, level, SKU, cases and weight,
+product patterns (ink hatches — never colour), and the customer's rules and special instruction.
 
-## 3. Screens
+### 4.2 The two moments that sell the product
 
-| Screen | Purpose |
-|---|---|
-| **Landing** | Marketing site — sticky nav, hero with a dashboard mockup, stats ribbon, feature sections, dark CTA, scroll-reveal via IntersectionObserver |
-| **Login** | Passwordless demo entry: pick *Dock Worker* or *Supervisor*, then pick a person |
-| **Worker · Dashboard** | Time-of-day greeting, last shift's handoff note, current dock assignment card, 4 quick-action tiles, 4 stat cards, recent-issues timeline |
-| **Worker · Trailer Inspection** | Seal condition, cleanliness, interior temp, visible damage, notes → pass/fail verdict screen |
-| **Worker · Loading** | Outbound. Load-pattern diagram, SOP panel, per-SKU tap counters, progress bars, sign-off with seal number |
-| **Worker · Unloading** | Inbound. Temperature probe check with threshold verdict, 5-point receiving checklist, per-SKU counters with tolerance flags, auto-files Count Shortage issues on complete |
-| **Worker · Issue Resolution** | 4-step wizard: issue type → quick tags + notes → AI severity + resolution steps → self-resolve or escalate |
-| **Worker · My Issues** | Own issue list with status badges, quick tags, supervisor notes, inline resolve |
-| **Worker/Supervisor · Chat** | AI assistant — message thread, typing indicator, suggested questions |
-| **Supervisor · Dashboard** | Broadcast composer, 4 stat cards, severity-sorted escalated queue, pending requests with Fulfill, live dock grid. Polls every 10s |
-| **Supervisor · Issue Detail** | Full context (customer, product, carrier, cost), AI severity reasoning, the guidance the worker saw, resolve form |
-| **Supervisor · Issue Logs** | Searchable/filterable table of the last 200 issues |
-| **Supervisor · Analytics** | Recharts: 5 metric cards, 30-day trend, severity donut, breakdowns by type/dock/customer/carrier, operator leaderboard |
-| **Supervisor · Shift Handoff** | Dock counts, active docks, unresolved issues, day/night toggle, notes, history |
+- **Scan mismatch (Scenario 3):** a known product that is not on the order stops the operator with a
+  hazard alert — *SKU mismatch, do not load* — and a one-tap, pre-filled report.
+- **Scored result (Scenarios 1, 2):** severity badge, points, every factor of the derivation, cost,
+  recurrence, the procedure with its match confidence and cited SOP source.
 
-⚠️ **Chat is one component serving both roles**, with worker-centric copy and worker-centric
-suggested questions ("What's the load pattern for…") shown to supervisors.
-
----
-
-## 4. The two screens that carry the product
-
-### 4.1 Supervisor priority queue
-
-The single most important screen — it *is* Scenario 5. The source document mocks it up as:
-
-```
-CRITICAL  Dock 5  — Temp deviation 28°F
-          Frozen Seafood — Lisa — 8:03 AM          [GO TO DOCK 5]
-HIGH      Dock 12 — Damaged pallet
-          Frozen Chicken — Mike — 8:00 AM          [VIEW DETAILS]
-MEDIUM    Dock 18 — Load sequence question
-          Dairy — Jay — 8:02 AM                    [VIEW DETAILS]
-```
-
-Every row must carry **severity · dock · issue type · product · operator · age**, and the highest
-severity must be unmistakably first. The current build adds estimated cost impact, which is a good
-addition — it makes the triage decision defensible.
-
-### 4.2 Issue Resolution step 3 — AI severity + guidance
-
-Where the product's "explainable, not magic" claim is made good. It shows:
-
-- The **severity band** as a badge, and
-- **The arithmetic**, in plain language:
-  `Score: 7.5 → MEDIUM. Factors: Issue type 'Temperature Deviation' (weight: 5); Customer Tier 1 (×1.5)`
-- The **numbered resolution steps**, and
-- A **confidence badge** and a **cited source** (e.g. "Cold Chain SOP 2.3").
-
-**Preserve all four in any redesign.** Showing the score derivation is what separates this from a
-black box, and the citation is what makes an operator willing to act on it.
-
----
-
-## 5. Current design system — and its problems
-
-### 5.1 What is actually in use
-
-**Three colour vocabularies compete**, which is the main thing a redesign must collapse to one:
-
-1. CSS custom properties in `index.css` — `--brand: #0071e3`, `--radius-md`, `--shadow-sm`,
-   `--spring`. **These are the tokens actually in use.**
-2. Tailwind semantic utilities — `bg-blue-600` and friends.
-3. Hardcoded hex in JS — `Analytics.jsx:5-10` defines `APPLE_BLUE = '#0071e3'` etc.; the arbitrary
-   value `focus:ring-[#0071e3]/20` appears in five files.
-
-⚠️ The `dock.*` and `apple.*` palettes defined in `tailwind.config.js` are **completely unused** —
-verified, zero matches in `src/`. Either adopt them or delete them.
-
-⚠️ **Grey-family chaos:** `gray`, `stone` and `zinc` are mixed across 18 files with no rule (390
-occurrences). The dashboards use `stone-*`; everything else uses `gray-*`.
-
-Class systems in `index.css`: `.glass` / `.glass-sm` cards · `.severity-*` (consumed by
-`SeverityBadge`) · `.glow-*` · `.animate-in` · ~130 lines of landing-only classes · ~80 lines of
-`.apple-*` app chrome.
-
-Type: **Inter** body, JetBrains Mono for monospace.
-
-### 5.2 Severity colour language
-
-| Severity | Current treatment |
-|---|---|
-| CRITICAL | Red, with an alarm emoji |
-| HIGH | Orange/red |
-| MEDIUM | Amber |
-| LOW | Neutral |
-
-Confidence badges use the same red/amber/green family, which is a genuine problem: in
-`screenshots/issue_step3.png` a MEDIUM amber severity badge sits beside a red "LOW confidence" badge,
-and the red reads as *more* alarming than the severity. **A redesign should give confidence its own
-visual channel** — weight, outline, or a meter — rather than reusing the severity palette.
-
-### 5.3 Accessibility: good CSS, weak JSX
-
-**Already handled well in `index.css`:** `prefers-reduced-motion`, `prefers-reduced-transparency`,
-`prefers-contrast: more`, `:focus-visible`, and `env(safe-area-inset-bottom)`. Keep all of these.
-
-**Gaps in the JSX:**
-- Clickable `<div onClick>` cards that are not focusable or keyboard-operable
-  (`SupervisorDashboard.jsx:213`)
-- A `✕` close button with no `aria-label` (`WorkerLayout.jsx:122`)
-- No `aria-live` on the broadcast banner or the chat stream — new critical information arrives
-  silently for a screen reader
-- **Emoji used as meaningful content** with no text alternative — the supervisor dashboard uses 🚨 ⚡
-  🚪 📋 📍 👤 🏢 📦 💰 as functional icons
-
-The emoji-as-icon pattern should go in the redesign regardless of accessibility: it is also a
-generic-AI-aesthetic tell, and it renders inconsistently across platforms.
-
-### 5.4 Known visual defects
-
-| Defect | Evidence |
-|---|---|
-| **`timeAgo` never rolls up past minutes** | `screenshots/sup_dashboard.png` renders **"27914m ago"** (≈19 days). Needs hours/days/weeks |
-| `timeAgo`/`getGreeting` are copy-pasted between the two dashboards | `WorkerDashboard.jsx:8-22`, `SupervisorDashboard.jsx:8-22` |
-| Progress renders `NaN%` on an order with no items | `Loading.jsx:98` |
-| Four competing status→label maps for the same five statuses | `MyIssues`, `IssueLogs`, `WorkerDashboard`, `ShiftHandoff` — labels differ ("Supervisor" vs "Supervisor Resolved") |
-| Three competing resolution-type lists | `IssueResolution` (8), `MyIssues` (7), `IssueDetail` (7, different set) |
-| Three different loading treatments, five hand-rolled empty states | Needs `<LoadingState>` / `<EmptyState>` primitives |
-| The tap-counter is duplicated and **divergent** | `Loading.jsx` clamps to expected quantity, `Unloading.jsx` does not; one renders `−1` (U+2212), the other `-1` |
-| The global 44px `min-height` silently overrides compact chips | `index.css:49` vs `py-0.5`/`text-xs` chip buttons |
-
----
-
-## 6. What a redesign must not break
+## 5. What any change must not break
 
 1. Touch targets ≥ 44px.
 2. Severity legible at a glance, never by colour alone, never degraded by an effect.
-3. The score derivation, confidence and cited source on the resolution screen.
-4. The existing `prefers-*` media query support.
-5. Tablet-first layout — desktop sidebar, mobile/tablet tab bar, safe-area insets.
-6. Simulated data must remain **visibly marked as simulated**, per the project's binding constraint
-   that nothing in the demo is real company information.
+3. The score derivation, confidence and cited source on the result and detail screens.
+4. The `prefers-*` media query support.
+5. Tablet-first layout — desktop rail, tablet/phone tab bar, safe-area insets.
+6. Simulated data **visibly marked as simulated** (shell tag, login, landing sample labels).
+7. No arbitrary Tailwind values and no hex in components — tokens only.

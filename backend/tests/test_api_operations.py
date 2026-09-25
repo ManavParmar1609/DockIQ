@@ -131,7 +131,7 @@ def test_counting_and_completing_an_order(client: TestClient, login: Login) -> N
     assert counted.status_code == 200
     with client.websocket_connect("/ws", subprotocols=["dockiq", token_of(sup)]) as socket:
         done = client.post("/api/orders/1/complete", json={"seal_number": "SL-1"}, headers=op)
-        assert done.json() == {"status": "completed"}
+        assert done.json() == {"status": "completed", "discrepancy_issue_ids": []}  # outbound: no auto-filing
         assert socket.receive_json() == {"type": "order_complete", "order_id": 1}
     dock = client.get("/api/docks/1", headers=op).json()
     assert (dock["status"], dock["lifecycle_phase"]) == ("idle", "complete")
@@ -150,6 +150,34 @@ def test_load_plan_follows_the_customer_rules(client: TestClient, login: Login) 
     top = [p for p in plan["pallets"] if p["level"] == 1]
     assert min(p["weight_lbs"] for p in bottom) >= max(p["weight_lbs"] for p in top)
     assert (plan["pallets"][0]["load_sequence"], plan["pallets"][0]["row"]) == (1, 0)
+
+
+def test_probe_temperature_is_judged_server_side(client: TestClient, login: Login) -> None:
+    op = login("OP-002")  # order 2: inbound, Bulkhaven salmon (Frozen, max 0°F) + milk (max 40°F)
+    critical = client.post("/api/orders/2/temperature-check", json={"reading": 28}, headers=op).json()
+    assert (critical["status"], critical["limit"], critical["delta"]) == ("critical", 0, 28)
+    assert "DO NOT UNLOAD" in critical["guidance"]
+    ok = client.post("/api/orders/2/temperature-check", json={"reading": -4}, headers=op).json()
+    assert ok["status"] == "ok"
+
+
+def test_inbound_completion_files_count_discrepancies(client: TestClient, login: Login) -> None:
+    op, sup = login("OP-002"), login("SUP-001")
+    detail = client.get("/api/orders/2", headers=op).json()
+    salmon, milk = detail["items"]
+    client.put(
+        "/api/orders/2/items", json={"product_id": salmon["product_id"], "actual_quantity": 100}, headers=op
+    )
+    client.put(
+        "/api/orders/2/items",
+        json={"product_id": milk["product_id"], "actual_quantity": milk["expected_quantity"]},
+        headers=op,
+    )
+    done = client.post("/api/orders/2/complete", json={}, headers=op).json()
+    assert len(done["discrepancy_issue_ids"]) == 1  # salmon 100 of 120; milk exact
+    issue = client.get(f"/api/issues/{done['discrepancy_issue_ids'][0]}", headers=sup).json()
+    assert (issue["issue_type"], issue["issue_subtype"]) == ("Count Discrepancy", "Short count")
+    assert "Count shortage 16.7% exceeds 5% (+3)" in issue["severity_reason"]
 
 
 # ── Floor ──

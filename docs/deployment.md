@@ -58,8 +58,8 @@ Check it: `https://<service>.koyeb.app/api/health` → `{"status":"ok"}`.
 
 ## 3. Vercel — the frontend
 
-Import the repository, set **Root Directory** to `frontend` (framework preset: Vite), and set one
-environment variable:
+Import the repository, set **Root Directory** to `frontend` (framework preset: Vite, Node.js
+version **24.x** in Project Settings), and set one environment variable:
 
 | Name | Value |
 |---|---|

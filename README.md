@@ -1,26 +1,28 @@
 # DockIQ.AI
 
-Dock-door intelligence for cold-storage warehouses. Operators report loading and unloading issues from
-a tablet; a **deterministic, explainable** engine scores severity, estimates the cost, and suggests a
-resolution with its SOP source; supervisors triage an escalation queue in real time. An optional LLM
-answers free-form questions in the chat assistant — and nowhere else.
+Dock-door intelligence for cold-storage warehouses. Operators scan, count and report issues from a
+tablet at the dock; a **deterministic, explainable** engine scores severity, estimates the cost and
+finds the procedure with its SOP source; supervisors triage their own team's queue in real time;
+Quality is told about cold-chain and product-integrity issues the moment they are raised. Each
+customer's trailer load plan is drawn pallet by pallet.
 
 > **Prototype on fictional data.** Every company, carrier, product and person in the seed is
-> invented. There is no authentication yet (Phase 2A), so never deploy it with real data.
+> invented. Sign-in is real but the credentials are demo credentials — never deploy it with real data.
 
 ## Stack
 
 | | |
 |---|---|
-| API | Python 3.12 · FastAPI · SQLAlchemy 2 (async) · Alembic · Pydantic v2 · `uv` |
+| API | Python 3.12 · FastAPI · SQLAlchemy 2 (async) · Alembic · Pydantic v2 · Argon2 + JWT · `uv` |
 | Database | SQLite locally · Neon Postgres in production |
-| Frontend | React 18 · Vite · Tailwind |
-| Quality | pytest (SQLite + Postgres in CI) · ruff · GitHub Actions |
+| Frontend | React 19 · TypeScript (strict) · Vite 8 · Tailwind 4 · TanStack Query · React Router 8 |
+| Quality | pytest (SQLite + Postgres) · Vitest + Testing Library · ruff · ESLint · Prettier · GitHub Actions |
 | Hosting | Koyeb (API) · Vercel (frontend) · Neon (DB) — all free tiers, see [docs/deployment.md](docs/deployment.md) |
 
 ## Run it locally
 
-Prerequisites: [uv](https://docs.astral.sh/uv/) and Node.js 20+. No accounts or keys needed.
+Prerequisites: [uv](https://docs.astral.sh/uv/) and **Node 24** (`fnm use` / `nvm use` reads
+`frontend/.node-version`). No accounts or keys needed.
 
 ```powershell
 # API — http://127.0.0.1:8000  (interactive docs at /docs)
@@ -29,28 +31,29 @@ uv sync
 uv run python -m app.seed          # create backend/dev.db: migrate + load demo data
 uv run uvicorn app.main:app --reload
 
-# Frontend — http://127.0.0.1:5173  (in a second terminal; proxies /api and /ws to :8000)
+# Frontend — http://127.0.0.1:5173  (second terminal; proxies /api and /ws to :8000)
 cd frontend
 npm install
 npm run dev
 ```
 
-Reset the demo data at any time with `uv run python -m app.seed --reset`.
+Sign in as `OP-001` (operator), `SUP-001` (supervisor) or `QA-001` (quality) with the local demo
+password `dockiq-demo`. Reset the demo data with `uv run python -m app.seed --reset`.
 
-Optional: put `NVIDIA_API_KEY=…` in `backend/.env` (see [backend/.env.example](backend/.env.example))
-to have chat answered by the LLM. Without it, chat answers from the knowledge base.
+Optional: `NVIDIA_API_KEY=…` in `backend/.env` (see [backend/.env.example](backend/.env.example)) has
+the chat assistant answer with an LLM. Without it, chat answers from the knowledge base.
 
 ## Test
 
 ```powershell
-cd backend
-uv run pytest                      # every test gets a fresh migrated + seeded database
-uv run ruff check . ; uv run ruff format --check .
+cd backend;  uv run pytest; uv run ruff check .; uv run ruff format --check .
+cd frontend; npm run lint; npm run typecheck; npm test; npm run build
 ```
 
-Set `TEST_DATABASE_URL` to a Postgres URL to run the same suite against Postgres (CI does).
+Set `TEST_DATABASE_URL` to a Postgres URL to run the backend suite against Postgres (CI does).
 
 ## Documentation
 
 Start at [docs/README.md](docs/README.md). The plan is [docs/roadmap.md](docs/roadmap.md); every
-scoring rule and threshold is in [docs/architecture/business-rules.md](docs/architecture/business-rules.md).
+scoring rule and threshold is in [docs/architecture/business-rules.md](docs/architecture/business-rules.md);
+the interface is specified in [docs/specs/ui-ux-spec.md](docs/specs/ui-ux-spec.md).

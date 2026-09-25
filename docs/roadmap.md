@@ -9,7 +9,7 @@ migration happens before feature work so features land once, on the final stack.
 |---|---|---|
 | **0** | Harness + documentation | **Done** — `CLAUDE.md`, rules, hooks, settings, docs, three bug fixes |
 | **1** | Migrate to the free-deployment stack | **Done** — async SQLAlchemy + Alembic, Neon/Koyeb/Vercel, 84 tests, CI |
-| **2** | Feature gap + real auth and supervisor→worker teams | Analysed; partly blocked (§0) |
+| **2** | Feature gap + real auth and supervisor→worker teams | **Done** — auth + teams, 12 types / 87 subtypes, scanning, photos, load plans, redesigned TypeScript frontend |
 | **3** | Live simulated Warehouse Management Service | Designed |
 
 ---
@@ -95,6 +95,21 @@ supply Phase 2's auth for free) and Cloudflare Workers + D1 + Durable Objects. B
 ---
 
 ## Phase 2 — Features
+
+> **Delivered 2026-09-25.**
+>
+> - **2A:** Argon2 + JWT sign-in; identity from the token on every route; supervisor→operator teams
+>   by zone; a Quality role; row scoping in one module; authenticated, addressed WebSockets; rate
+>   limits on login and chat.
+> - **2B:** the full DOCX taxonomy (12 types, 87 subtypes) including **Safety** (injury always
+>   critical) and **WMS**; count overage, mixed-SKU and missing/extra pallets; barcode scan with
+>   SKU-mismatch stop and scan audit; photo evidence; voice dictation; persisted recurrence; Quality
+>   notification; per-customer **trailer load plans**; server-side receiving temperature check and
+>   automatic count-discrepancy filing.
+> - **2C:** every listed defect fixed (the backend ones with tests; the frontend ones by the rebuild).
+> - **Frontend:** rebuilt in React 19 + TypeScript strict + TanStack Query + React Router 8 +
+>   Tailwind 4 with generated API types, in the "Freight Manifest" design. Verified by lint, types,
+>   unit tests, a screenshot pass at tablet/phone/desktop sizes and a cross-role end-to-end run.
 
 ### 2A. Real authentication and supervisor→worker teams
 
@@ -232,13 +247,5 @@ makes that promise easier to accidentally break.
 
 ## Cross-cutting: frontend redesign
 
-The current interface is Apple-derived and uses Inter — both ruled out by the project's aesthetic
-brief. The committed direction is an industrial / tactical-telemetry treatment for the application
-shell, which suits a cold-storage dock control surface on its merits: high contrast, extreme type
-scale and utilitarian colour are what a dim floor and a gloved operator need.
-
-See [`.claude/rules/frontend-aesthetics.md`](../.claude/rules/frontend-aesthetics.md) for the rules
-and [`docs/specs/ui-ux-spec.md §6`](specs/ui-ux-spec.md) for what must not break.
-
-**Open:** typeface and palette, to be proposed as two or three concrete directions rather than
-chosen unilaterally.
+**Done in Phase 2** — "Freight Manifest": Archivo + Martian Mono on unbleached paper, carbon ink, one
+hazard red for severity and alerts. See [`docs/specs/ui-ux-spec.md`](specs/ui-ux-spec.md).

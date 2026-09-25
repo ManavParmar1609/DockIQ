@@ -28,24 +28,28 @@ tests/             pytest; every test gets a freshly migrated + seeded database
 Local development uses SQLite (`backend/dev.db`); production uses Neon Postgres. The same migrations
 and the same test suite run on both (`TEST_DATABASE_URL` switches the suite to Postgres).
 
-### Frontend — `frontend/src/`
+### Frontend — `frontend/src/` (React 19, TypeScript strict, Vite 8, Tailwind 4, Node 24)
 
 ```
-App.jsx  →  WorkerLayout | SupervisorLayout  →  13 page components  →  api.js  →  backend
-              (children wrappers, not <Outlet/>)
+main.tsx        QueryClientProvider → AuthProvider → RouterProvider
+router.tsx      data routes; lazy pages; ErrorBoundary per branch; RoleGate
+api/            client.ts (openapi-fetch, the only gateway) · schema.gen.ts (generated) ·
+                types.ts · hooks.ts (TanStack Query) · realtime.ts (/ws → cache invalidation)
+auth/           AuthProvider (token in sessionStorage, /auth/me, 401 → signed out)
+shell/          AppShell (rail + tab bar), nav, Alerts, QuickRequest
+components/     ui kit, Severity, LoadPlanView, Barcode, ScanField, Evidence, Resolution, …
+lib/            format, vocab (the one status map), ean13, useNow
+pages/          Landing, Login, Home, IssueDetail, Chat, operator/*, staff/*
+styles/app.css  every token; Tailwind palette wiped
 ```
-
-One context (`context/AuthContext.jsx`), one shared-component file (`components/Shared.jsx`).
-**No `hooks/`, `utils/`, `constants/`, or `lib/` directories exist yet** — create them when the
-first genuine second use appears, not before.
 
 ---
 
 ## 2. Invariants — do not break these
 
 1. **All HTTP routes are namespaced under `/api`.**
-2. **`frontend/src/api.js` is the only client-side gateway.** No `fetch` anywhere else in `src/`.
-   If you need a new endpoint, add a method there.
+2. **`frontend/src/api/` is the only client-side gateway.** No `fetch` anywhere else — ESLint
+   enforces it. Types come from `npm run gen:api`; never hand-write a response shape.
 3. **`/ws` carries exactly six event types** — `new_issue`, `issue_escalated`, `issue_resolved`,
    `order_complete`, `new_request`, `broadcast` — each built by a constructor in `app/realtime.py`.
    Adding one means a new constructor *and* both layout handlers *and* the functional spec.
@@ -69,15 +73,9 @@ first genuine second use appears, not before.
 
 ## 3. Server state on the frontend
 
-Every page owns its own data with `useState` + `useEffect`. **There is no cache and no query
-library.** Two pages showing the same order are two independent fetches.
-
-WebSocket events do **not** invalidate page data — the supervisor's WS handler only increments a
-badge counter in the layout; the dashboard has no idea an event arrived and relies on a 10-second
-`setInterval` poll instead.
-
-Assume nothing is shared. If you need cross-page freshness, that is a deliberate change, not
-something to bolt on ad hoc.
+TanStack Query owns server state: one query per read, one mutation per write, each mutation
+invalidating exactly what it changes. The realtime channel invalidates what *other people* change.
+There is no polling. Components never call the API directly — they use the hooks in `api/hooks.ts`.
 
 ---
 
@@ -119,27 +117,25 @@ Listed so it is visible rather than rediscovered. Do not "fix" it incidentally i
 
 ### Frontend
 
+The Phase 1 frontend debt — duplicated layouts, no error boundaries, copy-pasted helpers, four
+status maps, three resolution lists, unhandled API failures, side effects in state updaters,
+unguarded `JSON.parse` — was removed by the Phase 2 rebuild. Open items:
+
 | Issue | Detail |
 |---|---|
-| **Two ~80%-identical layouts** | `WorkerLayout` (202 ln) and `SupervisorLayout` (111 ln) duplicate the WS bootstrap, shell, sidebar, mobile bars and logout handler. Extract `<AppShell>` + `useRealtime()` |
-| **Layouts are not route elements** | They take `children` and wrap a nested `<Routes>`. Converting to `<Outlet/>` enables per-route error boundaries and a real `/app/*` 404 |
-| **No ErrorBoundary anywhere** | One unimported symbol white-screens an entire page with nothing to catch it |
-| **Copy-pasted helpers** | `timeAgo` and `getGreeting` duplicated across both dashboards, and divergent |
-| **Divergent duplicate widget** | The tap counter in `Loading.jsx` clamps to expected quantity; the one in `Unloading.jsx` does not |
-| **Four competing status maps** | Same five issue statuses, four different label/colour tables, with different labels |
-| **Three competing resolution-type lists** | `IssueResolution` (8), `MyIssues` (7), `IssueDetail` (7, different set) |
-| **`Shared.jsx` is a grab-bag** | Seven unrelated components, from a 3-line dot to a 107-line diagram. Its exported `StatCard` is dead code — both dashboards hand-roll their own |
-| **No error handling on 40+ API call sites** | A rejection leaves the page stuck on its loading state forever |
+| Token in `sessionStorage` | Readable by any script on the origin; an HttpOnly cookie needs same-site hosting. See `security.md` |
+| No offline mode | A tablet that loses Wi-Fi shows errors with retry, but cannot queue a report |
 
 ---
 
 ## 6. When you add something
 
 - **A new endpoint** → router in `app/api/`, request + response schema in `app/schemas.py`, a test,
-  a method in `api.js`, and a row in `docs/requirements/functional-specs.md`.
+  `npm run gen:api`, a hook in `api/hooks.ts`, and a row in `docs/requirements/functional-specs.md`.
 - **A new table or column** → model in `app/models.py` **and** a migration in `migrations/versions/`.
 - **A new domain rule, threshold or weight** → `app/domain/` or the seeded knowledge base, a pinning
   test, **and** `docs/architecture/business-rules.md`. Same commit.
-- **A new WebSocket event** → constructor in `app/realtime.py`, both layout handlers, the spec.
-- **A second use of a helper** → that is when it moves to `src/utils/`, not the first.
+- **A new WebSocket event** → constructor in `app/realtime.py`, `RealtimeEvent` + invalidation in
+  `frontend/src/api/realtime.ts`, the spec.
+- **A second use of a helper** → it moves to `src/lib/`.
 - **Anything touching the WMS** → it goes through `WmsClient`, never around it.

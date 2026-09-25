@@ -99,6 +99,10 @@ class ScanCreate(BaseModel):
     code: str = Field(min_length=1, max_length=64)
 
 
+class TemperatureCheckCreate(BaseModel):
+    reading: float = Field(ge=-80, le=150)
+
+
 # ── Responses ──
 
 
@@ -302,6 +306,19 @@ class ScanOut(BaseModel):
     scanned_product_name: str | None
     expected_skus: list[str]
     item: "OrderItemOut | None"
+
+
+class TemperatureCheckOut(BaseModel):
+    status: str
+    reading: float
+    limit: float | None
+    delta: float | None
+    guidance: str
+
+
+class OrderCompleted(BaseModel):
+    status: str
+    discrepancy_issue_ids: list[int]
 
 
 class PlacedPalletOut(BaseModel):

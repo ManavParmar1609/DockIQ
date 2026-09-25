@@ -199,9 +199,9 @@ def checklist(rules: LoadRules) -> list[str]:
     items = [
         f"Max {rules.max_height} pallet{'s' if rules.max_height != 1 else ''} high",
         {
-            FloorPattern.STRAIGHT: 'Straight load — 48" side along the trailer',
-            FloorPattern.TURNED: 'Turned load — 40" side along the trailer',
-            FloorPattern.PINWHEEL: "Pinwheel — alternate orientation to lock the load",
+            FloorPattern.STRAIGHT: 'Straight load: 48" side along the trailer',
+            FloorPattern.TURNED: 'Turned load: 40" side along the trailer',
+            FloorPattern.PINWHEEL: "Pinwheel: alternate orientation to lock the load",
         }[rules.floor_pattern],
         {
             LoadSequence.HEAVIEST_TO_NOSE: "Heaviest pallets to the nose",

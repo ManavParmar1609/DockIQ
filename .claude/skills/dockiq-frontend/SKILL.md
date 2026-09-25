@@ -22,8 +22,8 @@ follows is the operational summary.
   every ID, count, temperature and timestamp. Reads as an operations manual.
 - **Landing page: dark archetype permitted.** It is a desk-viewed marketing surface. Do not mix
   substrates inside one interface.
-- **Typography:** heavy neo-grotesque for structure + monospace for data. **Inter is banned. Space
-  Grotesk is banned.** Propose a pairing with a reason; do not default.
+- **Typography:** Archivo (heavy, width axis) for structure + Martian Mono for data. Inter and
+  Space Grotesk are banned.
 - **Motion:** one orchestrated staggered reveal on dashboard load. Not scattered. Never on an alert.
   Respect `prefers-reduced-motion`.
 
@@ -42,17 +42,17 @@ follows is the operational summary.
 
 ## Mechanics
 
-- Tokens are CSS custom properties in `index.css`. No new hardcoded hex in JSX, no new Tailwind
-  arbitrary values. The `dock.*`/`apple.*` Tailwind palettes are unused — delete, don't extend.
-- All API calls through `src/api.js`. Every new call site handles failure.
+- Tokens are in `styles/app.css` `@theme`; Tailwind's palette is wiped. No hex in components, no
+  Tailwind arbitrary values — add a named class instead.
+- All API calls through `src/api/` hooks; render data with `QueryBoundary`, errors with `MutationError`.
 - No side effects inside `setState` updaters.
 - Keep the existing `prefers-*`, `:focus-visible` and safe-area rules verbatim.
 - Skill references: `industrial-brutalist-ui` for the shell (with the overrides in the rules file —
   it lists Inter as optimal and mandates scanlines; both are overridden here),
   `design-taste-frontend` for the landing only, `impeccable` for the quality pass.
 
-## Before building a redesign
+## The system is built — extend it
 
-Bring the user two or three concrete directions — font pairing, substrate value, one-line argument
-for why it fits a dock floor. They choose. Then build it as a **replacement** of the `.apple-*`
-system in one pass, not alongside it.
+The direction was chosen ("Freight Manifest") and shipped. Do not propose a new typeface or palette;
+build with what exists: tokens in `frontend/src/styles/app.css`, the kit in `components/ui.tsx`,
+severity in `components/Severity.tsx`. Record any genuinely new pattern in `docs/specs/ui-ux-spec.md`.

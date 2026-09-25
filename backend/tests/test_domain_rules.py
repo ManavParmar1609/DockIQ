@@ -11,6 +11,7 @@ from app.domain.enums import DockStatus, IssueStatus, LifecyclePhase, ScanResult
 from app.domain.evidence import sniff_image_type
 from app.domain.inspection import evaluate_inspection, interior_temperature_limit
 from app.domain.lifecycle import can_transition
+from app.domain.receiving import CountLine, TemperatureStatus, check_probe_temperature, count_discrepancies
 from app.domain.recurrence import carrier_pattern, dock_pattern
 from app.domain.retrieval import FALLBACK_RESOLUTION, KbEntry, find_resolution
 from app.domain.severity import ISSUE_TYPE_WEIGHTS
@@ -250,3 +251,32 @@ def test_inspection_and_completion_move_the_phase() -> None:
         DockStatus.IDLE,
         LifecyclePhase.COMPLETE,
     )
+
+
+# ── Receiving ──
+
+
+@pytest.mark.parametrize(
+    ("reading", "status"),
+    [
+        (0.0, TemperatureStatus.OK),
+        (0.1, TemperatureStatus.MARGINAL),
+        (5.1, TemperatureStatus.WARNING),
+        (10.1, TemperatureStatus.CRITICAL),
+    ],
+)
+def test_probe_bands_match_the_severity_modifier(reading: float, status: TemperatureStatus) -> None:
+    assert check_probe_temperature(reading, [0.0, 40.0]).status is status
+
+
+def test_probe_on_a_dry_load_is_not_applicable() -> None:
+    assert check_probe_temperature(70.0, [None]).status is TemperatureStatus.NOT_APPLICABLE
+
+
+def test_count_discrepancies_respect_the_tolerance_both_ways() -> None:
+    lines = [CountLine(1, 100, 97), CountLine(2, 100, 96), CountLine(3, 100, 105), CountLine(4, 0, 3)]
+    found = count_discrepancies(lines, tolerance=0.03)
+    assert [(d.product_id, d.subtype, d.difference) for d in found] == [
+        (2, "Short count", 4),
+        (3, "Overage", 5),
+    ]

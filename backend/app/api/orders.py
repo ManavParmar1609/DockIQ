@@ -4,18 +4,22 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import realtime
-from app.api.access import ensure, order_scope, supervisor_of, visible_order
+from app.api.access import ensure, issue_audience, order_scope, supervisor_of, visible_order
 from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, get_or_404
 from app.db import utcnow
 from app.domain.barcodes import decide_scan, normalize_code
 from app.domain.dock import DockEvent, transition
-from app.domain.enums import OrderStatus, ScanResult
+from app.domain.enums import OrderStatus, OrderType, ScanResult
 from app.domain.load_plan import OrderLine, plan_load, rules_from_pattern
-from app.models import Company, DockDoor, Order, OrderItem, Product, ScanEvent, User
-from app.queries import order_items_select, order_select
+from app.domain.receiving import CountLine, check_probe_temperature, count_discrepancies
+from app.models import Company, DockDoor, Issue, Order, OrderItem, Product, ScanEvent, User
+from app.queries import issue_select, order_items_select, order_select
 from app.schemas import (
+    IssueCreate,
+    IssueOut,
     LoadPlanOut,
     OrderComplete,
+    OrderCompleted,
     OrderDetailOut,
     OrderItemOut,
     OrderItemUpdate,
@@ -24,7 +28,10 @@ from app.schemas import (
     ScanCreate,
     ScanOut,
     StatusOut,
+    TemperatureCheckCreate,
+    TemperatureCheckOut,
 )
+from app.services.issue_filing import file_issue
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -186,12 +193,61 @@ async def scan(order_id: int, body: ScanCreate, user: Operator, session: Session
     )
 
 
+@router.post("/{order_id}/temperature-check")
+async def temperature_check(
+    order_id: int, body: TemperatureCheckCreate, user: Operator, session: SessionDep
+) -> TemperatureCheckOut:
+    """Judge a probe reading against the strictest product limit on this load (business-rules §11)."""
+    await visible_order(session, user, order_id)
+    limits = await session.scalars(
+        select(Product.temp_max)
+        .join(OrderItem, OrderItem.product_id == Product.id)
+        .where(OrderItem.order_id == order_id)
+    )
+    result = check_probe_temperature(body.reading, list(limits))
+    return TemperatureCheckOut(
+        status=result.status.value,
+        reading=result.reading,
+        limit=result.limit,
+        delta=result.delta,
+        guidance=result.guidance,
+    )
+
+
 @router.post("/{order_id}/complete")
 async def complete_order(
     order_id: int, body: OrderComplete, user: Operator, session: SessionDep, events: RealtimeDep
-) -> StatusOut:
+) -> OrderCompleted:
+    """Sign the order off. On an inbound order, every line outside the customer's count tolerance is
+    filed as a Count Discrepancy issue in the same transaction (business-rules §11)."""
     order = await _open_order(session, user, order_id)
     now = utcnow()
+    filed = []
+    if order.type is OrderType.INBOUND:
+        company = await get_or_404(session, Company, order.company_id, "Company")
+        items = list(await session.scalars(select(OrderItem).where(OrderItem.order_id == order_id)))
+        lines = [CountLine(item.product_id, item.expected_quantity, item.actual_quantity) for item in items]
+        for found in count_discrepancies(lines, company.count_tolerance):
+            filed.append(
+                await file_issue(
+                    session,
+                    user.id,
+                    IssueCreate(
+                        order_id=order.id,
+                        dock_door_id=order.dock_door_id or 0,
+                        issue_type="Count Discrepancy",
+                        issue_subtype=found.subtype,
+                        description=f"Expected {found.expected}, received {found.actual}",
+                        product_id=found.product_id,
+                        company_id=order.company_id,
+                        carrier_id=order.carrier_id,
+                        quantity_affected=found.difference,
+                        count_expected=found.expected,
+                        count_actual=found.actual,
+                    ),
+                )
+            )
+
     order.status = OrderStatus.COMPLETE
     order.seal_number = body.seal_number
     order.notes = body.notes
@@ -203,5 +259,10 @@ async def complete_order(
         )
         dock.last_activity_at = now
     await session.commit()
+
+    for issue in filed:
+        row = (await session.execute(issue_select().where(Issue.id == issue.id))).one()
+        payload = IssueOut.model_validate(dict(row._mapping)).model_dump()
+        await events.send(await issue_audience(session, issue), realtime.new_issue(payload))
     await events.send({user.id, await supervisor_of(session, user.id)}, realtime.order_complete(order_id))
-    return StatusOut(status="completed")
+    return OrderCompleted(status="completed", discrepancy_issue_ids=[issue.id for issue in filed])
