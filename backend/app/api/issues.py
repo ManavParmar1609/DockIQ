@@ -125,7 +125,7 @@ async def self_resolve_issue(
     await session.commit()
     await events.send(
         await issue_audience(session, issue),
-        realtime.issue_resolved(issue_id, IssueStatus.SELF_RESOLVED.value),
+        realtime.issue_resolved(issue_id, IssueStatus.SELF_RESOLVED.value, body.resolution_type),
     )
     return StatusOut(status=IssueStatus.SELF_RESOLVED.value)
 
@@ -150,6 +150,27 @@ async def escalate_issue(
     return StatusOut(status=IssueStatus.ESCALATED.value)
 
 
+@router.put("/issues/{issue_id}/acknowledge")
+async def acknowledge_issue(
+    issue_id: int, user: Supervisor, session: SessionDep, events: RealtimeDep
+) -> StatusOut:
+    """ "On my way": the supervisor takes the issue and the operator is told who is coming."""
+    issue = await visible_issue(session, user, issue_id)  # scoped: only this supervisor's team
+    if issue.status not in OPEN_STATUSES:
+        raise HTTPException(
+            http.HTTP_409_CONFLICT, f"Issue is already {issue.status.value.replace('_', ' ')}"
+        )
+    issue.acknowledged_at = issue.acknowledged_at or utcnow()
+    issue.supervisor_id = user.id
+    dock = await session.get(DockDoor, issue.dock_door_id) if issue.dock_door_id is not None else None
+    await session.commit()
+    await events.send(
+        await issue_audience(session, issue),
+        realtime.issue_acknowledged(issue_id, user.name, dock.door_number if dock else None),
+    )
+    return StatusOut(status="acknowledged")
+
+
 @router.put("/issues/{issue_id}/supervisor-resolve")
 async def supervisor_resolve_issue(
     issue_id: int, body: IssueSupervisorResolve, user: Supervisor, session: SessionDep, events: RealtimeDep
@@ -168,7 +189,7 @@ async def supervisor_resolve_issue(
     await session.commit()
     await events.send(
         await issue_audience(session, issue),
-        realtime.issue_resolved(issue_id, IssueStatus.SUPERVISOR_RESOLVED.value),
+        realtime.issue_resolved(issue_id, IssueStatus.SUPERVISOR_RESOLVED.value, body.resolution_type),
     )
     return StatusOut(status=IssueStatus.SUPERVISOR_RESOLVED.value)
 

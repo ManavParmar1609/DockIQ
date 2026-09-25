@@ -71,8 +71,18 @@ def issue_escalated(issue: dict[str, Any]) -> dict[str, Any]:
     return {"type": "issue_escalated", "issue": issue}
 
 
-def issue_resolved(issue_id: int, method: str) -> dict[str, Any]:
-    return {"type": "issue_resolved", "issue_id": issue_id, "method": method}
+def issue_resolved(issue_id: int, method: str, resolution: str | None = None) -> dict[str, Any]:
+    return {"type": "issue_resolved", "issue_id": issue_id, "method": method, "resolution": resolution}
+
+
+def issue_acknowledged(issue_id: int, supervisor_name: str, door_number: int | None) -> dict[str, Any]:
+    """A supervisor is on the way: the reporting operator is told who, and to which door."""
+    return {
+        "type": "issue_acknowledged",
+        "issue_id": issue_id,
+        "supervisor_name": supervisor_name,
+        "door_number": door_number,
+    }
 
 
 def order_complete(order_id: int) -> dict[str, Any]:

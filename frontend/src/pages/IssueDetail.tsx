@@ -1,8 +1,15 @@
-import { ArrowLeft, ArrowUpRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Check, Footprints } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
-import { useEscalate, useIssue, useSelfResolve, useSupervisorResolve, useTaxonomy } from '../api/hooks';
+import {
+  useAcknowledge,
+  useEscalate,
+  useIssue,
+  useSelfResolve,
+  useSupervisorResolve,
+  useTaxonomy,
+} from '../api/hooks';
 import { aiResolutionOf, type Issue } from '../api/types';
 import { useUser } from '../auth/AuthProvider';
 import { PhotoStrip } from '../components/Evidence';
@@ -45,6 +52,34 @@ function Timeline({ issue }: { issue: Issue }) {
   );
 }
 
+/** One tap tells the operator who is coming; the decision can follow at the dock. */
+function OnMyWay({ issue }: { issue: Issue }) {
+  const acknowledge = useAcknowledge();
+  if (issue.acknowledged_at) {
+    return (
+      <p className="mb-4 flex items-center gap-2 border-2 border-ink bg-paper-sunk p-3 text-base">
+        <Footprints size={20} aria-hidden="true" />
+        {issue.supervisor_name ?? 'You'} took this at {formatDateTime(issue.acknowledged_at)}. The operator
+        knows.
+      </p>
+    );
+  }
+  return (
+    <div className="mb-4 flex flex-col gap-2 border-b-2 border-ink pb-4">
+      <button
+        type="button"
+        className="btn btn-primary text-lg"
+        disabled={acknowledge.isPending}
+        onClick={() => acknowledge.mutate(issue.id)}
+      >
+        <Footprints size={22} aria-hidden="true" /> On my way to dock {issue.door_number ?? '—'}
+      </button>
+      <p className="text-sm text-ink-mute">Tells {issue.operator_name ?? 'the operator'} you are coming.</p>
+      <MutationError error={acknowledge.error} />
+    </div>
+  );
+}
+
 function SupervisorDecision({ issue }: { issue: Issue }) {
   const taxonomy = useTaxonomy();
   const resolve = useSupervisorResolve();
@@ -66,6 +101,7 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
   }
   return (
     <Panel title="Your decision">
+      <OnMyWay issue={issue} />
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Decision">
         {(taxonomy.data?.supervisor_decisions ?? []).map((option) => (
           <button
@@ -258,6 +294,11 @@ function Detail({ issue }: { issue: Issue }) {
         </div>
 
         <div className="flex flex-col gap-6">
+          {user.role === 'operator' && open && issue.acknowledged_at && (
+            <Notice title={`${issue.supervisor_name ?? 'Your supervisor'} is on the way`}>
+              Took your issue at {formatDateTime(issue.acknowledged_at)}. Keep the product where it is.
+            </Notice>
+          )}
           {canDecide && <SupervisorDecision issue={issue} />}
           {canClose && <OperatorActions issue={issue} />}
           {!open && (

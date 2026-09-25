@@ -90,7 +90,8 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 | GET | `/api/issues/{id}` | scoped | Full issue with joined context, `issue_subtype`, `recurring_patterns`, `photo_count` | — |
 | POST | `/api/issues` | operator | **Create and classify** — see below. `issue_type` and `issue_subtype` must come from the taxonomy (422) | `issues`, dock → `issue`; emits `new_issue` |
 | PUT | `/api/issues/{id}/self-resolve` | the reporter | `resolution_type` must be an operator resolution (422). A critical issue answers 409: its supervisor decides | `status='self_resolved'`, dock → `active`; emits `issue_resolved` |
-| PUT | `/api/issues/{id}/escalate` | the reporter or their supervisor | Hand to the supervisor. No body | `status='escalated'`; dock → `critical` if severity is critical; emits `issue_escalated` |
+| PUT | `/api/issues/{id}/acknowledge` | the team supervisor | "On my way": stamps `acknowledged_at` and `supervisor_id`. 409 once resolved | emits `issue_acknowledged` (who is coming, to which door) |
+| PUT | `/api/issues/{id}/escalate` | the reporter or their supervisor | Hand to the supervisor. No body. Critical issues arrive already escalated (business-rules §7.1) | `status='escalated'`; dock → `critical` if severity is critical; emits `issue_escalated` |
 | PUT | `/api/issues/{id}/supervisor-resolve` | the reporter's supervisor | `resolution_type` must be a supervisor decision (422) | `status='supervisor_resolved'`; emits `issue_resolved` |
 | POST | `/api/issues/{id}/photos` | reporter or their supervisor | Multipart `file`. ≤ 600 kB, ≤ 4 per issue, JPEG/PNG/WebP by content | `issue_photos` |
 | GET | `/api/issues/{id}/photos` | scoped | Photo metadata | — |
@@ -214,7 +215,8 @@ concerns:
 |---|---|
 | `new_issue` | `POST /api/issues` → reporter, their supervisor, and Quality if quality-relevant |
 | `issue_escalated` | `PUT /api/issues/{id}/escalate` → same audience |
-| `issue_resolved` | self-resolve and supervisor-resolve → same audience |
+| `issue_resolved` | self-resolve and supervisor-resolve → same audience; carries `resolution` so the operator sees the decision |
+| `issue_acknowledged` | `PUT /api/issues/{id}/acknowledge` → same audience; the operator is told who is coming |
 | `order_complete` | `POST /api/orders/{id}/complete` → operator and supervisor |
 | `new_request` | `POST /api/requests` → operator and supervisor |
 | `broadcast` | `POST /api/broadcasts` → the supervisor's team |

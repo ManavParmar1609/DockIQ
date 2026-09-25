@@ -1,6 +1,6 @@
 /**
  * The /ws channel: authenticated, reconnecting, and wired into the query cache so a screen updates
- * the moment someone else changes what it shows. The seven event types are the complete vocabulary —
+ * the moment someone else changes what it shows. The eight event types are the complete vocabulary —
  * see docs/requirements/functional-specs.md §3.
  */
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,7 +13,8 @@ import type { Issue } from './types';
 export type RealtimeEvent =
   | { type: 'new_issue'; issue: Issue }
   | { type: 'issue_escalated'; issue: Issue }
-  | { type: 'issue_resolved'; issue_id: number; method: string }
+  | { type: 'issue_resolved'; issue_id: number; method: string; resolution: string | null }
+  | { type: 'issue_acknowledged'; issue_id: number; supervisor_name: string; door_number: number | null }
   | { type: 'order_complete'; order_id: number }
   | { type: 'new_request'; request_id: number; request_type: string }
   | { type: 'broadcast'; id: number; message: string }
@@ -23,6 +24,7 @@ const EVENT_TYPES = new Set<RealtimeEvent['type']>([
   'new_issue',
   'issue_escalated',
   'issue_resolved',
+  'issue_acknowledged',
   'order_complete',
   'new_request',
   'broadcast',
@@ -71,6 +73,9 @@ export function useRealtime(onEvent: (event: RealtimeEvent) => void): Connection
           void client.invalidateQueries({ queryKey: keys.issues });
           void client.invalidateQueries({ queryKey: keys.docks });
           void client.invalidateQueries({ queryKey: keys.analytics });
+          break;
+        case 'issue_acknowledged':
+          void client.invalidateQueries({ queryKey: keys.issues });
           break;
         case 'issue_resolved':
           void client.invalidateQueries({ queryKey: keys.issues });

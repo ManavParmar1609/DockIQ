@@ -119,17 +119,17 @@ export default function OperatorHome() {
       {assignment && (
         <div className="grid gap-3 md:grid-cols-2">
           <Action
-            to="/app/order"
-            icon={PackageCheck}
-            title={outbound ? 'Load the trailer' : 'Receive the trailer'}
-            sub={outbound ? 'Load plan, scanning and counts' : 'Temperature, checks and counts'}
+            to="/app/inspection"
+            icon={ClipboardCheck}
+            title="1 · Inspect the trailer"
+            sub="Seal, cleanliness, damage, temperature"
             index={1}
           />
           <Action
-            to="/app/inspection"
-            icon={ClipboardCheck}
-            title="Inspect the trailer"
-            sub="Seal, cleanliness, damage, temperature"
+            to="/app/order"
+            icon={PackageCheck}
+            title={outbound ? '2 · Load the trailer' : '2 · Receive the trailer'}
+            sub={outbound ? 'Load plan, scanning and counts' : 'Temperature, checks and counts'}
             index={2}
           />
           <Action

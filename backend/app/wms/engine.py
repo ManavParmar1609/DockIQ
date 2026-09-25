@@ -612,7 +612,7 @@ class SimulationEngine:
         for issue in notices.resolved:
             await self._events.send(
                 await issue_audience(session, issue),
-                realtime.issue_resolved(issue.id, IssueStatus.SELF_RESOLVED.value),
+                realtime.issue_resolved(issue.id, IssueStatus.SELF_RESOLVED.value, issue.resolution_type),
             )
         if notices.floor_changed or notices.new_issues or notices.escalated or notices.resolved:
             await self._events.send_all(realtime.floor_update())

@@ -446,6 +446,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/issues/{issue_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Acknowledge Issue
+         * @description "On my way": the supervisor takes the issue and the operator is told who is coming.
+         */
+        put: operations["acknowledge_issue_api_issues__issue_id__acknowledge_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/issues/{issue_id}/supervisor-resolve": {
         parameters: {
             query?: never;
@@ -2915,6 +2935,37 @@ export interface operations {
         };
     };
     escalate_issue_api_issues__issue_id__escalate_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_issue_api_issues__issue_id__acknowledge_put: {
         parameters: {
             query?: never;
             header?: never;

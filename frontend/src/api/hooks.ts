@@ -265,6 +265,16 @@ export function useSelfResolve() {
   });
 }
 
+/** "On my way": the supervisor takes the issue; the operator is told who is coming. */
+export function useAcknowledge() {
+  const invalidate = useIssueInvalidation();
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.PUT('/api/issues/{issue_id}/acknowledge', { params: { path: { issue_id: id } } })),
+    onSuccess: invalidate,
+  });
+}
+
 export function useEscalate() {
   const invalidate = useIssueInvalidation();
   return useMutation({

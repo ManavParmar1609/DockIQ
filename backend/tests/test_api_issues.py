@@ -263,3 +263,49 @@ def test_photo_limits(client: TestClient, login: Login) -> None:
         f"/api/issues/{issue_id}/photos", files={"file": ("p.jpg", JPEG, "image/jpeg")}, headers=op
     )
     assert fifth.status_code == 422
+
+
+# ── "On my way" ──
+
+
+def test_acknowledging_tells_the_operator_who_is_coming(client: TestClient, login: Login) -> None:
+    op, sup = login("OP-001"), login("SUP-001")
+    issue_id = report(client, op)["id"]  # critical, escalated
+    with client.websocket_connect("/ws", subprotocols=["dockiq", token_of(op)]) as operator:
+        ack = client.put(f"/api/issues/{issue_id}/acknowledge", headers=sup)
+        assert ack.json() == {"status": "acknowledged"}
+        assert operator.receive_json() == {
+            "type": "issue_acknowledged",
+            "issue_id": issue_id,
+            "supervisor_name": "Sarah Mitchell",
+            "door_number": 1,
+        }
+    stored = client.get(f"/api/issues/{issue_id}", headers=op).json()
+    assert stored["acknowledged_at"] is not None
+    assert stored["supervisor_name"] == "Sarah Mitchell"
+
+
+def test_only_the_team_supervisor_acknowledges_an_open_issue(client: TestClient, login: Login) -> None:
+    op, sup = login("OP-001"), login("SUP-001")
+    issue_id = report(client, op)["id"]
+    assert client.put(f"/api/issues/{issue_id}/acknowledge", headers=op).status_code == 403
+    assert client.put(f"/api/issues/{issue_id}/acknowledge", headers=login("SUP-002")).status_code == 404
+    client.put(f"/api/issues/{issue_id}/supervisor-resolve", json={"resolution_type": "Accept"}, headers=sup)
+    assert client.put(f"/api/issues/{issue_id}/acknowledge", headers=sup).status_code == 409
+
+
+def test_the_operator_hears_the_supervisors_decision(client: TestClient, login: Login) -> None:
+    op, sup = login("OP-001"), login("SUP-001")
+    issue_id = report(client, op)["id"]
+    with client.websocket_connect("/ws", subprotocols=["dockiq", token_of(op)]) as operator:
+        client.put(
+            f"/api/issues/{issue_id}/supervisor-resolve",
+            json={"resolution_type": "Partial Accept", "supervisor_notes": "3 cases out"},
+            headers=sup,
+        )
+        assert operator.receive_json() == {
+            "type": "issue_resolved",
+            "issue_id": issue_id,
+            "method": "supervisor_resolved",
+            "resolution": "Partial Accept",
+        }

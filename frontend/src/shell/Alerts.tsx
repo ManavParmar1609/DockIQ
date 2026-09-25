@@ -1,25 +1,66 @@
 /**
- * Live alerts from the realtime channel. Supervisors and Quality see incoming issues; operators see
- * their supervisor's broadcasts. A critical alert stays until dismissed — it never times out.
+ * Live alerts from the realtime channel. Supervisors and Quality see incoming issues. Operators see
+ * their supervisor's broadcasts, who is on the way to their dock, and the decision on their issue.
+ * A critical alert stays until dismissed — it never times out.
  */
-import { Megaphone, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Footprints, Gavel, Megaphone, X } from 'lucide-react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import type { RealtimeEvent } from '../api/realtime';
-import type { Issue, Role } from '../api/types';
+import type { Role, Severity } from '../api/types';
 import { SeverityBadge } from '../components/Severity';
 
-interface IssueAlert {
+interface Alert {
   key: string;
-  issue: Issue;
-  escalated: boolean;
+  href: string;
+  kicker: string;
+  title: string;
+  detail: string;
+  severity?: Severity;
+  icon?: ReactNode;
 }
 
 const DISMISS_AFTER_MS = 12_000;
 
+function alertFor(event: RealtimeEvent, role: Role): Omit<Alert, 'key'> | null {
+  if ((event.type === 'new_issue' || event.type === 'issue_escalated') && role !== 'operator') {
+    const { issue } = event;
+    return {
+      href: `/app/issues/${String(issue.id)}`,
+      kicker:
+        event.type === 'issue_escalated' || issue.status === 'escalated' ? 'Escalated to you' : 'New issue',
+      title: issue.issue_type,
+      detail: `Dock ${String(issue.door_number ?? '—')} · ${issue.operator_name ?? ''}`,
+      severity: issue.severity,
+    };
+  }
+  if (event.type === 'issue_acknowledged' && role === 'operator') {
+    return {
+      href: `/app/issues/${String(event.issue_id)}`,
+      kicker: 'Help is coming',
+      title: `${event.supervisor_name} is on the way`,
+      detail:
+        event.door_number == null
+          ? `Issue #${String(event.issue_id)}`
+          : `To dock ${String(event.door_number)}`,
+      icon: <Footprints size={20} aria-hidden="true" />,
+    };
+  }
+  if (event.type === 'issue_resolved' && event.method === 'supervisor_resolved' && role === 'operator') {
+    return {
+      href: `/app/issues/${String(event.issue_id)}`,
+      kicker: 'Supervisor decided',
+      title: event.resolution ?? 'Decision recorded',
+      detail: `Issue #${String(event.issue_id)} · open it for the notes`,
+      icon: <Gavel size={20} aria-hidden="true" />,
+    };
+  }
+  return null;
+}
+
 export function useAlerts(role: Role) {
-  const [alerts, setAlerts] = useState<IssueAlert[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [broadcast, setBroadcast] = useState<{ id: number; message: string } | null>(null);
 
   const dismiss = useCallback((key: string) => {
@@ -30,13 +71,12 @@ export function useAlerts(role: Role) {
     (event: RealtimeEvent) => {
       if (event.type === 'broadcast' && role === 'operator') {
         setBroadcast({ id: event.id, message: event.message });
+        return;
       }
-      if ((event.type === 'new_issue' || event.type === 'issue_escalated') && role !== 'operator') {
-        const key = `${event.type}-${event.issue.id}-${Date.now()}`;
-        setAlerts((current) => [
-          { key, issue: event.issue, escalated: event.type === 'issue_escalated' },
-          ...current.slice(0, 3),
-        ]);
+      const alert = alertFor(event, role);
+      if (alert) {
+        const key = `${event.type}-${alert.href}-${String(Date.now())}`;
+        setAlerts((current) => [{ key, ...alert }, ...current.slice(0, 3)]);
       }
     },
     [role],
@@ -45,8 +85,8 @@ export function useAlerts(role: Role) {
   return { alerts, dismiss, broadcast, onEvent };
 }
 
-function AlertCard({ alert, onDismiss }: { alert: IssueAlert; onDismiss: () => void }) {
-  const critical = alert.issue.severity === 'critical';
+function AlertCard({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }) {
+  const critical = alert.severity === 'critical';
 
   useEffect(() => {
     if (critical) return undefined;
@@ -60,16 +100,13 @@ function AlertCard({ alert, onDismiss }: { alert: IssueAlert; onDismiss: () => v
       className={`flex border-2 bg-light ${critical ? 'border-hazard' : 'border-ink'}`}
     >
       {critical && <div className="hazard-tape w-2.5 shrink-0" aria-hidden="true" />}
-      <Link to={`/app/issues/${alert.issue.id}`} onClick={onDismiss} className="flex-1 p-3">
-        <p className="label mb-1.5">{alert.escalated ? 'Escalated to you' : 'New issue'}</p>
+      <Link to={alert.href} onClick={onDismiss} className="flex-1 p-3">
+        <p className="label mb-1.5">{alert.kicker}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <SeverityBadge severity={alert.issue.severity} size="sm" />
-          <span className="font-bold">{alert.issue.issue_type}</span>
+          {alert.severity ? <SeverityBadge severity={alert.severity} size="sm" /> : alert.icon}
+          <span className="font-bold">{alert.title}</span>
         </div>
-        <p className="mt-1 text-sm text-ink-soft">
-          <span className="telemetry">Dock {alert.issue.door_number ?? '—'}</span> ·{' '}
-          {alert.issue.operator_name}
-        </p>
+        <p className="telemetry mt-1 text-sm text-ink-soft">{alert.detail}</p>
       </Link>
       <button
         type="button"
@@ -83,7 +120,7 @@ function AlertCard({ alert, onDismiss }: { alert: IssueAlert; onDismiss: () => v
   );
 }
 
-export function AlertStack({ alerts, dismiss }: { alerts: IssueAlert[]; dismiss: (key: string) => void }) {
+export function AlertStack({ alerts, dismiss }: { alerts: Alert[]; dismiss: (key: string) => void }) {
   if (alerts.length === 0) return null;
   return (
     <div

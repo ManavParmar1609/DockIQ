@@ -50,9 +50,9 @@ styles/app.css  every token; Tailwind palette wiped
 1. **All HTTP routes are namespaced under `/api`.**
 2. **`frontend/src/api/` is the only client-side gateway.** No `fetch` anywhere else — ESLint
    enforces it. Types come from `npm run gen:api`; never hand-write a response shape.
-3. **`/ws` carries exactly seven event types** — `new_issue`, `issue_escalated`, `issue_resolved`,
-   `order_complete`, `new_request`, `broadcast`, `floor_update` — each built by a constructor in
-   `app/realtime.py`. Only the data-free `floor_update` goes to every socket.
+3. **`/ws` carries exactly eight event types** — `new_issue`, `issue_escalated`, `issue_resolved`,
+   `issue_acknowledged`, `order_complete`, `new_request`, `broadcast`, `floor_update` — each built by
+   a constructor in `app/realtime.py`. Only the data-free `floor_update` goes to every socket.
    Adding one means a new constructor *and* both layout handlers *and* the functional spec.
 4. **Domain logic lives in `app/domain/` only, and it is pure.** No database session, no I/O, no
    framework imports. Routers fetch, call the domain, persist. `queries.py` may *count*; the domain
