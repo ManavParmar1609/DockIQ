@@ -8,7 +8,7 @@ migration happens before feature work so features land once, on the final stack.
 | Phase | Goal | Status |
 |---|---|---|
 | **0** | Harness + documentation | **Done** — `CLAUDE.md`, rules, hooks, settings, docs, three bug fixes |
-| **1** | Migrate to the free-deployment stack | **Done** — async SQLAlchemy + Alembic, Neon/Koyeb/Vercel, 84 tests, CI |
+| **1** | Migrate to the free-deployment stack | **Done** — async SQLAlchemy + Alembic, Neon/Render/Vercel (Koyeb until its free tier closed), 84 tests, CI |
 | **2** | Feature gap + real auth and supervisor→worker teams | **Done** — auth + teams, 12 types / 87 subtypes, scanning, photos, load plans, redesigned TypeScript frontend |
 | **3** | Live simulated Warehouse Management Service | Designed |
 

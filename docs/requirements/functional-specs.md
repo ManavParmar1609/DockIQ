@@ -43,7 +43,7 @@ mirrors this list 1:1; no `fetch` call exists elsewhere in the frontend.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/health` | public | Liveness + database round-trip. Used as the Koyeb health check |
+| GET | `/api/health` | public | Liveness + database round-trip. Used as the Render health check |
 | POST | `/api/auth/login` | public, rate-limited | OAuth2 password form: `username` = employee ID, `password`. Returns a bearer token (12 h — one shift) and the user |
 | GET | `/api/auth/me` | token | The signed-in user, with their supervisor's name |
 | GET | `/api/auth/demo-accounts` | public | Names, IDs and roles of the seeded accounts for the demo login screen. **Never passwords.** Disabled by `DEMO_ACCOUNTS_LISTED=false` |

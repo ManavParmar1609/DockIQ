@@ -2,12 +2,14 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
+from uuid import uuid4
 
 from fastapi import Request
 from sqlalchemy import DateTime, Enum, event
 from sqlalchemy.engine import Dialect
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 from sqlalchemy.types import TypeDecorator
 
 from app.config import Settings
@@ -66,12 +68,26 @@ class Base(DeclarativeBase):
 Base.metadata.naming_convention = NAMING_CONVENTION
 
 
+def engine_options(settings: Settings) -> dict[str, Any]:
+    if settings.is_sqlite:
+        return {"pool_pre_ping": True}
+    if settings.behind_pgbouncer:
+        # PgBouncer pools for us and may hand each transaction a different server connection, so
+        # asyncpg's numbered, cached prepared statements would collide. SQLAlchemy's documented
+        # remedy: no client pool, unique statement names, no statement cache.
+        return {
+            "poolclass": NullPool,
+            "connect_args": {
+                "statement_cache_size": 0,
+                "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
+            },
+        }
+    # Direct connection. Neon closes idle connections when the compute scales to zero.
+    return {"pool_pre_ping": True, "pool_size": 5, "max_overflow": 5, "pool_recycle": 300}
+
+
 def create_engine(settings: Settings) -> AsyncEngine:
-    kwargs: dict[str, Any] = {"pool_pre_ping": True}
-    if not settings.is_sqlite:
-        # Neon closes idle connections when the compute scales to zero.
-        kwargs |= {"pool_size": 5, "max_overflow": 5, "pool_recycle": 300}
-    engine = create_async_engine(settings.database_url, **kwargs)
+    engine = create_async_engine(settings.database_url, **engine_options(settings))
     if settings.is_sqlite:
         event.listen(engine.sync_engine, "connect", _sqlite_pragmas)
     return engine

@@ -1,4 +1,4 @@
-# DockIQ API — built by Koyeb (or any container host) from this directory.
+# DockIQ API — built by Render (render.yaml) or any container host, from this directory.
 # Boot sequence: migrate to head → seed if empty → serve.
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build

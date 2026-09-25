@@ -17,7 +17,7 @@ customer's trailer load plan is drawn pallet by pallet.
 | Database | SQLite locally · Neon Postgres in production |
 | Frontend | React 19 · TypeScript (strict) · Vite 8 · Tailwind 4 · TanStack Query · React Router 8 |
 | Quality | pytest (SQLite + Postgres) · Vitest + Testing Library · ruff · ESLint · Prettier · GitHub Actions |
-| Hosting | Koyeb (API) · Vercel (frontend) · Neon (DB) — all free tiers, see [docs/deployment.md](docs/deployment.md) |
+| Hosting | Render (API) · Vercel (frontend) · Neon (DB) — all free tiers, see [docs/deployment.md](docs/deployment.md) |
 
 ## Run it locally
 

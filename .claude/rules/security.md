@@ -28,17 +28,17 @@ and in API payloads. Seeded names, companies and SKUs are fictional and stay tha
 ## 3. Secrets
 
 - Configuration is read by `pydantic-settings` (`app/config.py`) from the environment and, in
-  development only, from `backend/.env`. In production (Koyeb) every secret is a service secret —
+  development only, from `backend/.env`. In production (Render) every secret is a service secret —
   there is no `.env` file in the image (`.dockerignore` excludes it).
 - `NVIDIA_API_KEY` is a `SecretStr`: it never appears in `repr()`, logs or error pages.
-- `DATABASE_URL` for Neon contains a password. It lives only in the Koyeb secret store and a
+- `DATABASE_URL` for Neon contains a password. It lives only in the Render secret store and a
   developer's own `backend/.env`.
 - `.env` and `.env.*` are gitignored; `.env.example` is committed with placeholder values. Keep it
   that way.
 - **Never commit a key, and never paste one into a file, a commit message, or a chat.** The
   `check-secrets` hook warns on key-shaped strings (`nvapi-`, `sk-`, `AKIA`, long base64) in any
   write — treat a warning as a stop.
-- Deploy secrets (`DATABASE_URL`, `NVIDIA_API_KEY`) are set in the Koyeb dashboard, never in a
+- Deploy secrets (`DATABASE_URL`, `NVIDIA_API_KEY`) are set in the Render dashboard, never in a
   committed file. `docs/deployment.md` lists them.
 
 ## 4. Input handling

@@ -72,7 +72,7 @@ Demo sign-in locally: any seeded ID (`OP-001`, `SUP-001`, `QA-001` …) with pas
 1. **Restate every prompt as a brief before acting:** Objective · Context · Constraints ·
    Acceptance criteria · Out of scope · Open questions. Surface every bundled ask.
 2. **Check `docs/roadmap.md` before starting work.**
-3. **Everything stays free** — no paid services or card-required tiers (Koyeb, Neon, Vercel).
+3. **Everything stays free** — no paid services or card-required tiers (Render, Neon, Vercel; Koyeb closed its free tier in 2026).
 4. **A number in `app/domain/` or the seeded knowledge base changes with `business-rules.md`.**
 5. **Commit only when asked.** Work on a branch.
 

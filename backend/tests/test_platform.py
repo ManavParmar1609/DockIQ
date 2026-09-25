@@ -73,3 +73,27 @@ def test_a_blank_key_line_means_no_key() -> None:
 
     settings = Settings(_env_file=None, nvidia_api_key="  ", demo_password="")  # type: ignore[call-arg]
     assert (settings.nvidia_api_key, settings.demo_password) == (None, None)
+
+
+def test_neon_pooled_strings_are_accepted_as_neon_shows_them() -> None:
+    from sqlalchemy.pool import NullPool
+
+    from app.config import Settings
+    from app.db import engine_options
+
+    pooled = Settings(  # type: ignore[call-arg]
+        _env_file=None,
+        database_url="postgresql://u:p@ep-x-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+    )
+    assert (
+        pooled.database_url
+        == "postgresql+asyncpg://u:p@ep-x-pooler.c-7.us-east-2.aws.neon.tech/neondb?ssl=require"
+    )
+    assert pooled.behind_pgbouncer
+    options = engine_options(pooled)
+    assert options["poolclass"] is NullPool
+    assert options["connect_args"]["statement_cache_size"] == 0
+
+    direct = Settings(_env_file=None, database_url="postgresql://u:p@ep-x.us-east-2.aws.neon.tech/neondb")  # type: ignore[call-arg]
+    assert not direct.behind_pgbouncer
+    assert engine_options(direct)["pool_size"] == 5

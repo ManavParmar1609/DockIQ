@@ -1,0 +1,30 @@
+# Render Blueprint — the DockIQ API on Render's free web service (no card required).
+# Deploy: Render dashboard → New → Blueprint → pick this repository. Render reads this file,
+# builds backend/Dockerfile, and asks for every `sync: false` value (secrets are never committed).
+# The frontend is on Vercel; see docs/deployment.md.
+services:
+  - type: web
+    name: dockiq-api
+    runtime: docker
+    plan: free
+    region: ohio # next to Neon's us-east-2
+    branch: main
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL # Neon's connection string, pooled or direct, exactly as Neon shows it
+        sync: false
+      - key: CORS_ORIGINS # the Vercel URL, e.g. https://dockiq.vercel.app
+        sync: false
+      - key: DEMO_PASSWORD # what every demo account signs in with
+        sync: false
+      - key: NVIDIA_API_KEY # optional: without it the assistant runs on its rules-based router
+        sync: false
+      - key: JWT_SECRET # signs sign-in tokens; Render generates a random 256-bit value
+        generateValue: true
+      - key: NVIDIA_MODEL
+        value: nvidia/nemotron-3-ultra-550b-a55b
+      - key: WMS_MODE
+        value: simulated

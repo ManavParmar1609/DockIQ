@@ -103,6 +103,11 @@ class Settings(BaseSettings):
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
 
+    @property
+    def behind_pgbouncer(self) -> bool:
+        """Neon's pooled endpoint (host `ep-…-pooler…`) is PgBouncer in transaction mode."""
+        return "-pooler." in (make_url(self.database_url).host or "")
+
 
 @lru_cache
 def get_settings() -> Settings:
