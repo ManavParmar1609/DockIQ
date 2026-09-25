@@ -137,7 +137,7 @@ export default function Login() {
       <main className="mx-auto mt-6 max-w-md sm:mt-12">
         <div className="reveal flex flex-col items-center text-center">
           <span
-            className="grid h-20 w-20 place-items-center rounded-2xl bg-accent text-white shadow-float"
+            className="grid h-20 w-20 place-items-center rounded-2xl bg-accent text-on-accent shadow-float"
             aria-hidden="true"
           >
             <Warehouse size={42} strokeWidth={2} />

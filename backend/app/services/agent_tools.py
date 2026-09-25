@@ -78,7 +78,7 @@ async def _active_order(ctx: ToolContext) -> Order | None:
     return await ctx.session.scalar(
         select(Order)
         .where(Order.operator_id == ctx.user.id, Order.status == OrderStatus.IN_PROGRESS)
-        .order_by(Order.created_at.desc())
+        .order_by(Order.created_at.desc(), Order.id.desc())
         .limit(1)
     )
 
@@ -131,7 +131,7 @@ async def _issue_lines(ctx: ToolContext, *conditions: Any) -> list[IssueLine]:
         select(Issue, DockDoor.door_number)
         .outerjoin(DockDoor, DockDoor.id == Issue.dock_door_id)
         .where(issue_scope(ctx.user), *conditions)
-        .order_by(Issue.created_at.desc())
+        .order_by(Issue.created_at.desc(), Issue.id.desc())
         .limit(MAX_LIST)
     )
     return [
@@ -150,6 +150,22 @@ async def _issue_lines(ctx: ToolContext, *conditions: Any) -> list[IssueLine]:
 OPEN = (IssueStatus.RESOLUTION_IN_PROGRESS, IssueStatus.ESCALATED)
 
 
+def open_for(minutes: int) -> str:
+    """How long, the way a person says it: "45 minutes", "3 hours", "12 days"."""
+    if minutes < 90:
+        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+    if minutes < 48 * 60:
+        return f"{round(minutes / 60)} hours"
+    return f"{round(minutes / 1440)} days"
+
+
+def _line_data(line: IssueLine) -> dict[str, Any]:
+    """What the model reads about an issue: readable durations, never raw minute counts."""
+    data = line.model_dump(mode="json", exclude={"minutes_open"})
+    data["open_for"] = open_for(line.minutes_open)
+    return data
+
+
 # ── Tools ──
 
 
@@ -158,7 +174,7 @@ async def my_work(ctx: ToolContext, _: dict[str, Any]) -> ToolOutcome:
         order = await _active_order(ctx)
         mine = await _issue_lines(ctx, Issue.status.in_(OPEN))
         cards: list[AgentCard] = []
-        data: dict[str, Any] = {"open_issues_you_reported": [line.model_dump(mode="json") for line in mine]}
+        data: dict[str, Any] = {"open_issues_you_reported": [_line_data(line) for line in mine]}
         if order is not None:
             card = await _order_card(ctx, order)
             cards.append(card)
@@ -178,8 +194,8 @@ async def my_work(ctx: ToolContext, _: dict[str, Any]) -> ToolOutcome:
     title = "Escalated to you" if ctx.user.role is Role.SUPERVISOR else "Open quality issues"
     cards = [IssuesCard(title=title, issues=escalated or working)] if escalated or working else []
     data = {
-        "escalated": [line.model_dump(mode="json") for line in escalated],
-        "being_resolved_at_the_dock": [line.model_dump(mode="json") for line in working],
+        "escalated": [_line_data(line) for line in escalated],
+        "being_resolved_at_the_dock": [_line_data(line) for line in working],
         "trailers_being_worked": active or 0,
     }
     return ToolOutcome(data, f"{len(escalated)} escalated, {len(working)} in progress", cards)
@@ -490,7 +506,7 @@ async def shift_summary(ctx: ToolContext, _: dict[str, Any]) -> ToolOutcome:
         "by_status": by_status,
         "top_types": by_type,
         "top_carriers": carriers,
-        "still_escalated": [line.model_dump(mode="json") for line in escalated],
+        "still_escalated": [_line_data(line) for line in escalated],
     }
     cards: list[AgentCard] = [IssuesCard(title="Still escalated", issues=escalated)] if escalated else []
     total = sum(by_severity.values())

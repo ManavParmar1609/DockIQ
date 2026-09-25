@@ -151,7 +151,7 @@ def _author_select(
     return (
         select(*model.__table__.c, author.name.label("supervisor_name"))
         .join(author, model.supervisor_id == author.id)
-        .order_by(model.created_at.desc())
+        .order_by(model.created_at.desc(), model.id.desc())
         .limit(limit),
         author,
     )

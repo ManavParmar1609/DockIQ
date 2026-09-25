@@ -58,7 +58,12 @@ async def list_issues(
     severity: Severity | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> list[IssueOut]:
-    stmt = issue_select().where(issue_scope(user)).order_by(Issue.created_at.desc()).limit(limit)
+    stmt = (
+        issue_select()
+        .where(issue_scope(user))
+        .order_by(Issue.created_at.desc(), Issue.id.desc())
+        .limit(limit)
+    )
     if status == "active":
         stmt = stmt.where(Issue.status.in_(OPEN_STATUSES))
     elif status is not None:

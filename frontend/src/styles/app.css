@@ -1,116 +1,121 @@
 /*
- * DockIQ — Apple design language, for a tablet on a cold-storage dock.
- * System typography (SF Pro on Apple devices, Geist elsewhere), grouped light surfaces, one blue for
- * interaction, Apple's accessible system colours for severity, translucent chrome, iOS motion, and a
- * dark mode that follows the device. Rules: .claude/rules/frontend-aesthetics.md.
+ * DockIQ — Botanical / Organic Serif, for a tablet on a cold-storage dock.
+ * Rice-paper ground with a paper grain, deep forest ink, sage and terracotta from the garden,
+ * Playfair Display headlines with italic emphasis, Source Sans 3 for everything read at work,
+ * soft 24px cards, pill buttons, slow graceful reveals. Rules: .claude/rules/frontend-aesthetics.md.
  *
- * Tokens live here and nowhere else. Tailwind's default palette, radii and shadows are wiped so a
- * stray `gray-500` does not exist. The type scale starts at 14px: nothing smaller can be expressed.
+ * The dock outranks the style: severity is always label + shape + colour, critical is an earthy but
+ * unmistakable brick red, no grain or transparency touches an alert, targets stay >= 44px, 14px floor.
+ * Tokens live here and nowhere else; Tailwind's palette, radii and shadows are wiped.
  */
 @import 'tailwindcss';
 
 @theme {
   --color-*: initial;
-  /* Surfaces and text (light). Dark values are at the end of this file. */
-  --color-paper: #f5f5f7; /* the page: Apple's light gray */
+  /* Ground and ink (light). Dark values are at the end of this file. */
+  --color-paper: #f9f8f4; /* rice paper — the page */
   --color-surface: #ffffff; /* cards, sheets, fields */
-  --color-paper-sunk: #eeeef3; /* fills: gray buttons, hover, segmented tracks */
-  --color-paper-deep: #e1e1e6; /* pressed fills, empty meter cells */
-  --color-ink: #1d1d1f; /* primary text, 16:1 on paper */
-  --color-ink-soft: #424245; /* secondary text, 9.6:1 */
-  --color-ink-mute: #6e6e73; /* tertiary text and captions, 4.7:1 on paper */
-  --color-hairline: #d2d2d7; /* separators only, never text */
-  --color-white: #ffffff; /* text on coloured fills, in both modes */
+  --color-paper-sunk: #f2f0eb; /* soft clay: quiet fills, segmented tracks, inputs */
+  --color-paper-deep: #dccfc2; /* mushroom: pressed fills, empty meter cells */
+  --color-ink: #2d3a31; /* deep forest: primary text, 11.2:1 on paper */
+  --color-ink-soft: #46544a; /* secondary text */
+  --color-ink-mute: #636e65; /* captions, 5.0:1 on paper */
+  --color-hairline: #e6e2da; /* stone: separators only */
+  --color-white: #ffffff; /* text on dark or coloured fills */
   --color-black: #000000;
 
-  /* Interaction: one blue. Buttons, links, selection, focus. Never severity. */
-  --color-accent: #0071e3; /* fills; white text 4.6:1 */
-  --color-accent-ink: #0066cc; /* link and tinted-button text, 5.6:1 on white */
-  --color-accent-soft: #e8f1fd; /* selected tint */
+  /* Interaction. The primary action is deep forest; sage and terracotta decorate. */
+  --color-accent: #2d3a31; /* primary fills: buttons, selected navigation */
+  --color-on-accent: #ffffff; /* text on accent, 11.9:1 */
+  --color-accent-ink: #9a4f38; /* deep terracotta: links and tinted-button text, 5.9:1 */
+  --color-accent-soft: #e9ede4; /* sage mist: selection tint */
+  --color-sage: #8c9a84; /* icons, focus rings, rules — never text */
+  --color-sage-ink: #5e6e57; /* sage as text: italic emphasis, 5.1:1 */
+  --color-terracotta: #c27b66; /* hover blooms and decoration — never text */
 
-  /* Severity and alerts: Apple's accessible (increased-contrast) system colours. */
-  --color-hazard: #d70015; /* critical fill and destructive actions; white text 5.7:1 */
-  --color-hazard-bright: #ff3b30; /* graphic marks only (bars, dots), never behind text */
-  --color-hazard-deep: #b3000f; /* red text on white, 7.2:1 */
-  --color-hazard-soft: #fdecee; /* critical row tint */
-  --color-orange: #c93400; /* high: text 5.0:1 on its tint */
-  --color-orange-soft: #fff1e8;
-  --color-amber: #8a5a00; /* medium: text 5.6:1 on its tint */
-  --color-amber-soft: #fff5d9;
-  --color-orange-bright: #ff9500; /* graphic marks only (bars, dots), never text */
-  --color-amber-bright: #ffcc00; /* graphic marks only */
-  --color-green: #1a7f37; /* success and "live" */
-  --color-green-soft: #e7f6eb;
+  /* Severity and alerts: earthy, accessible, and never used for decoration. */
+  --color-hazard: #a8322a; /* critical fill (brick); white text 6.7:1 */
+  --color-hazard-bright: #c2412f; /* graphic marks only (the critical edge, bars) */
+  --color-hazard-deep: #8b2a22; /* critical text, 7.0:1 on its tint */
+  --color-hazard-soft: #f7e5e0; /* critical row tint */
+  --color-orange: #8f4e16; /* high: ochre text, 5.4:1 on its tint */
+  --color-orange-soft: #f6eadb;
+  --color-orange-bright: #d98a3d; /* graphic only */
+  --color-amber: #6f5b12; /* medium: olive-mustard text, 5.6:1 on its tint */
+  --color-amber-soft: #f3edd2;
+  --color-amber-bright: #c9a43b; /* graphic only */
+  --color-green: #46613c; /* moss: resolved and live, 5.8:1 on its tint */
+  --color-green-soft: #e7eee2;
 
-  /* Product identity in diagrams (never severity): Apple's accessible system hues, with tints. */
-  --color-teal: #0071a4;
-  --color-teal-soft: #e2f2f8;
-  --color-indigo: #3634a3;
-  --color-indigo-soft: #ecebfb;
-  --color-mint: #0c817b;
-  --color-mint-soft: #e0f4f2;
-  --color-purple: #8944ab;
-  --color-purple-soft: #f3e9f8;
-  --color-brown: #7f6545;
-  --color-brown-soft: #f2ede6;
+  /* Product identity in diagrams (never severity): garden hues with tints. */
+  --color-teal: #52677a; /* slate */
+  --color-teal-soft: #e6ebef;
+  --color-indigo: #6e4f6b; /* plum */
+  --color-indigo-soft: #efe7ee;
+  --color-mint: #56713f; /* moss */
+  --color-mint-soft: #e8efe1;
+  --color-purple: #9a5a3f; /* clay */
+  --color-purple-soft: #f5e9e2;
+  --color-brown: #8a6a2a; /* ochre */
+  --color-brown-soft: #f3ecdc;
 
-  /* Landing page (a dark product page, desk-viewed). Never inside the app. */
-  --color-night: #000000;
-  --color-night-raised: #161617;
-  --color-night-rule: #424245;
-  --color-night-mute: #a1a1a6; /* 7.9:1 on night */
-  --color-night-link: #2997ff; /* links on night, 6.9:1 */
+  /* The landing page's deep-forest bands. */
+  --color-night: #1f2a23;
+  --color-night-raised: #27332b;
+  --color-night-rule: #3b4a40;
+  --color-night-mute: #b9c2b4; /* 8.4:1 on night */
+  --color-night-link: #e3ad98; /* links on night, 7.4:1 */
 
   --font-*: initial;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Geist Variable', ui-sans-serif, sans-serif;
-  --font-display:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist Variable', ui-sans-serif, sans-serif;
-  --font-rounded:
-    ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Geist Variable', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Geist Mono Variable', monospace;
+  --font-serif: 'Playfair Display Variable', 'Playfair Display', Georgia, serif;
+  --font-sans: 'Source Sans 3 Variable', 'Source Sans 3', ui-sans-serif, sans-serif;
+  --font-display: 'Playfair Display Variable', 'Playfair Display', Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* Apple's text styles, with the 14px floor for arm's-length reading. */
+  /* Generous, with the 14px floor for arm's-length reading. */
   --text-*: initial;
   --text-xs: 0.875rem; /* 14 — the floor */
-  --text-sm: 0.9375rem; /* 15 — subheadline */
+  --text-sm: 0.9375rem; /* 15 */
   --text-base: 1.0625rem; /* 17 — body */
-  --text-lg: 1.25rem; /* 20 — title 3 */
-  --text-xl: 1.375rem; /* 22 — title 2 */
-  --text-2xl: 1.75rem; /* 28 — title 1 */
-  --text-3xl: 2.125rem; /* 34 — large title */
-  --text-4xl: 2.75rem; /* 44 */
-  --text-5xl: 3.5rem; /* 56 — product headline */
-  --text-6xl: 4.5rem; /* 72 */
+  --text-lg: 1.25rem; /* 20 */
+  --text-xl: 1.5rem; /* 24 */
+  --text-2xl: 1.875rem; /* 30 */
+  --text-3xl: 2.375rem; /* 38 */
+  --text-4xl: 3rem; /* 48 */
+  --text-5xl: 3.75rem; /* 60 */
+  --text-6xl: 4.75rem; /* 76 */
 
-  /* Continuous-feeling corners: tight inside, soft outside. */
+  /* Soft everywhere: 24px cards, pills for buttons and tags, arches on the landing page. */
   --radius-*: initial;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.75rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
   --radius-full: 9999px;
 
+  /* Diffused, forest-tinted shadows. No harsh drops. */
   --shadow-*: initial;
-  --shadow-card: 0 1px 1px rgb(0 0 0 / 0.02), 0 2px 14px rgb(0 0 0 / 0.05);
-  --shadow-float: 0 2px 6px rgb(0 0 0 / 0.06), 0 16px 44px rgb(0 0 0 / 0.14);
+  --shadow-card: 0 4px 6px -1px rgb(45 58 49 / 0.05), 0 10px 15px -3px rgb(45 58 49 / 0.05);
+  --shadow-float: 0 25px 50px -12px rgb(45 58 49 / 0.15);
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
 
-  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1); /* iOS sheet curve: critically damped feel */
-  --animate-rise: rise 0.6s var(--ease-apple) both;
-}
-
-@keyframes shimmer {
-  to {
-    background-position: -200% 0;
-  }
+  --ease-organic: cubic-bezier(0.22, 1, 0.36, 1); /* long, soft ease-out */
+  --animate-rise: rise 0.8s var(--ease-organic) both;
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
   }
 }
 
@@ -121,7 +126,6 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 16px;
-    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -130,9 +134,24 @@
   body {
     min-height: 100dvh;
     font-size: var(--text-base);
-    line-height: 1.47;
+    line-height: 1.55;
   }
-  /* Gloved hands: every control is at least 44pt, Apple's own minimum. */
+  /* The paper grain: fixed, behind everything, on the ground only. Cards and alerts are opaque and
+     sit above it, so no texture ever touches a severity badge or a critical alert. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+  /* Gloved hands: every control is at least 44px. */
   button,
   a,
   input,
@@ -141,11 +160,12 @@
     min-height: 44px;
   }
   :focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--color-accent) 65%, transparent);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-sage);
+    outline-offset: 3px;
   }
   ::selection {
-    background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+    background: var(--color-accent-soft);
+    color: var(--color-ink);
   }
   input[type='number'] {
     font-variant-numeric: tabular-nums;
@@ -155,109 +175,141 @@
   h3 {
     text-wrap: balance;
   }
+  /* Thin, calm icons (lucide), as the design system asks. */
+  .lucide {
+    stroke-width: 1.5;
+  }
 }
 
 @layer components {
-  /* Large title: SF Pro Display weight, tight negative tracking as it grows. Sentence case. */
+  /* Headlines: Playfair Display, with italic emphasis in sage (`<em>`). */
   .display {
     font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: -0.025em;
+    font-weight: 600;
+    letter-spacing: -0.015em;
     line-height: 1.08;
+  }
+  .display em,
+  .heading em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--color-sage-ink);
   }
   .heading {
     font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: -0.016em;
+    letter-spacing: -0.005em;
     line-height: 1.25;
   }
-  /* Secondary text: captions, metadata, table headers, kickers. */
+  /* Small uppercase kicker with wide tracking, as on botanical labels. */
+  .eyebrow {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-sage-ink);
+  }
+  /* Secondary text: captions, metadata, table headers. */
   .label {
     font-size: var(--text-sm);
     font-weight: 500;
-    letter-spacing: -0.005em;
-    line-height: 1.35;
+    line-height: 1.4;
     color: var(--color-ink-mute);
   }
   /* Every ID, count, temperature and time: tabular figures so columns never jitter. */
   .telemetry {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: 'tnum';
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: 'tnum', 'lnum';
+    font-weight: 600;
+  }
+  /* Headline numbers in the serif, lining so they read as figures. */
+  .num {
+    font-family: var(--font-display);
+    font-variant-numeric: lining-nums tabular-nums;
     font-weight: 600;
     letter-spacing: -0.01em;
-  }
-  /* Headline numbers, as in Health and Fitness: SF Pro Rounded where the device has it. */
-  .num {
-    font-family: var(--font-rounded);
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-    letter-spacing: -0.02em;
   }
   .mono {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0;
   }
 
-  /* A grouped surface: white on the gray page, soft shadow, 20pt corners. */
+  /* A card: white on rice paper, 24px corners, a hairline of stone, a soft forest shadow. */
   .card {
     background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-card);
   }
-  /* Translucent chrome: content scrolls underneath the bars. */
+  /* Interactive cards lift gently. */
+  .lift {
+    transition:
+      transform 500ms var(--ease-organic),
+      box-shadow 500ms var(--ease-organic);
+  }
+  .lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-float);
+  }
+  /* Soft frosted chrome: the bars over the page. */
   .material {
-    background: color-mix(in srgb, var(--color-surface) 72%, transparent);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
+    background: color-mix(in srgb, var(--color-paper) 82%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
   }
   .material-thick {
-    background: color-mix(in srgb, var(--color-surface) 86%, transparent);
-    -webkit-backdrop-filter: saturate(180%) blur(30px);
-    backdrop-filter: saturate(180%) blur(30px);
+    background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
   }
 
+  /* Pills: uppercase, widely tracked, the way the design system sets its buttons. */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     min-height: 50px;
-    padding: 0 1.375rem;
+    padding: 0 1.625rem;
+    border: 1px solid transparent;
     border-radius: var(--radius-full);
-    font-size: var(--text-base);
+    font-size: var(--text-xs);
     font-weight: 600;
-    letter-spacing: -0.016em;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     white-space: nowrap;
     cursor: pointer;
     transition:
-      transform 160ms var(--ease-apple),
-      background-color 160ms ease,
-      color 160ms ease;
+      transform 120ms ease-out,
+      background-color 300ms ease,
+      color 300ms ease,
+      border-color 300ms ease;
   }
-  /* Feedback on press, not on release. */
+  /* Press feedback is instant; the colour change is slow and soft. */
   .btn:not(:disabled):active {
     transform: scale(0.97);
   }
   .btn:disabled {
     cursor: not-allowed;
     background: var(--color-paper-sunk);
+    border-color: var(--color-hairline);
     color: var(--color-ink-mute);
   }
   .btn-primary {
     background: var(--color-accent);
-    color: var(--color-white);
+    color: var(--color-on-accent);
   }
   .btn-primary:not(:disabled):hover {
-    background: color-mix(in srgb, var(--color-accent) 88%, white);
+    background: color-mix(in srgb, var(--color-accent) 86%, var(--color-terracotta));
   }
-  /* iOS "gray" button: a tinted fill with blue text. */
   .btn-secondary {
-    background: var(--color-paper-sunk);
-    color: var(--color-accent-ink);
+    background: transparent;
+    border-color: var(--color-sage);
+    color: var(--color-ink);
   }
   .btn-secondary:not(:disabled):hover {
-    background: var(--color-paper-deep);
+    background: var(--color-accent-soft);
   }
   .btn-hazard {
     background: var(--color-hazard);
@@ -267,35 +319,38 @@
     background: var(--color-hazard-deep);
   }
 
+  /* Pill fields on soft clay; focus is a sage ring, never a harsh blue. */
   .field {
     width: 100%;
     min-height: 50px;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-    border: 1px solid var(--color-hairline);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background: var(--color-paper-sunk);
+    border: 1px solid transparent;
     color: var(--color-ink);
     font-size: var(--text-base);
     transition:
-      border-color 160ms ease,
-      box-shadow 160ms ease;
+      border-color 300ms ease,
+      box-shadow 300ms ease,
+      background-color 300ms ease;
   }
   .field::placeholder {
     color: var(--color-ink-mute);
   }
   .field:focus {
     outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 20%, transparent);
+    background: var(--color-surface);
+    border-color: var(--color-sage);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sage) 30%, transparent);
   }
 
-  /* A choice rendered as a tile: selected = blue ring and tint, the way iOS marks a selection. */
+  /* A choice rendered as a soft tile: selected = sage ring and mist tint. */
   .choice {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     min-height: 56px;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1.125rem;
     border-radius: var(--radius-lg);
     background: var(--color-surface);
     box-shadow: inset 0 0 0 1px var(--color-hairline);
@@ -303,9 +358,9 @@
     font-weight: 500;
     cursor: pointer;
     transition:
-      transform 160ms var(--ease-apple),
-      background-color 160ms ease,
-      box-shadow 160ms ease;
+      transform 120ms ease-out,
+      background-color 300ms ease,
+      box-shadow 300ms ease;
   }
   .choice:not(:disabled):active {
     transform: scale(0.98);
@@ -316,7 +371,7 @@
   .choice[aria-pressed='true'],
   .choice[aria-checked='true'] {
     background: var(--color-accent-soft);
-    box-shadow: inset 0 0 0 2px var(--color-accent);
+    box-shadow: inset 0 0 0 2px var(--color-sage);
     color: var(--color-ink);
     font-weight: 600;
   }
@@ -325,21 +380,20 @@
     opacity: 0.5;
   }
 
-  /* A capsule: status tags, suggestion chips. */
+  /* A capsule: status tags and chips. */
   .pill {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
     min-height: 1.75rem;
-    padding: 0 0.625rem;
+    padding: 0 0.75rem;
     border-radius: var(--radius-full);
     font-size: var(--text-xs);
     font-weight: 600;
-    letter-spacing: -0.005em;
     white-space: nowrap;
   }
 
-  /* Progress: a capsule track with a blue fill, as in Activity and Fitness. */
+  /* Progress: a soft capsule track with a sage fill. */
   .meter {
     height: 0.5rem;
     overflow: hidden;
@@ -349,8 +403,8 @@
   .meter-fill {
     height: 100%;
     border-radius: var(--radius-full);
-    background: var(--color-accent);
-    transition: width 400ms var(--ease-apple);
+    background: var(--color-sage-ink);
+    transition: width 700ms var(--ease-organic);
   }
 
   /* Loading placeholder in the shape of the content. */
@@ -360,28 +414,33 @@
     background: linear-gradient(
       90deg,
       var(--color-paper-sunk) 0%,
-      var(--color-paper-deep) 50%,
+      var(--color-hairline) 50%,
       var(--color-paper-sunk) 100%
     );
     background-size: 200% 100%;
-    animation: shimmer 1.4s ease-in-out infinite;
+    animation: shimmer 1.6s ease-in-out infinite;
   }
 
-  /* The critical edge: a solid red bar beside an alert — never behind its text. */
+  /* The critical edge: a solid brick bar beside an alert — never behind its text. */
   .hazard-tape {
     background: var(--color-hazard-bright);
   }
 
-  /* The one orchestrated moment: a staggered rise as a screen loads. Never on an alert. */
+  /* An arch: the classic Roman top, for the landing page's framed moments. */
+  .arch {
+    border-radius: 999px 999px var(--radius-xl) var(--radius-xl);
+  }
+
+  /* The one orchestrated moment: a slow staggered rise as a screen loads. Never on an alert. */
   .reveal {
     animation: var(--animate-rise);
-    animation-delay: calc(var(--i, 0) * 45ms);
+    animation-delay: calc(var(--i, 0) * 80ms);
   }
 
   .shell-grid {
     @media (width >= 64rem) {
       display: grid;
-      grid-template-columns: 17rem minmax(0, 1fr);
+      grid-template-columns: 17.5rem minmax(0, 1fr);
     }
   }
 
@@ -401,9 +460,9 @@
   }
 
   dialog::backdrop {
-    background: rgb(0 0 0 / 0.3);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
+    background: rgb(31 42 35 / 0.35);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
   }
 
   .tabbar-safe {
@@ -411,52 +470,56 @@
   }
 }
 
-/* Landing reveal: sections rise in as they enter the viewport (IntersectionObserver adds .in). */
+/* Landing reveal: sections float up into place as they enter the viewport. */
 .enter {
   opacity: 0;
   transform: translateY(24px);
   transition:
-    opacity 0.9s var(--ease-apple),
-    transform 0.9s var(--ease-apple);
+    opacity 1s var(--ease-organic),
+    transform 1s var(--ease-organic);
 }
 .enter.in {
   opacity: 1;
   transform: none;
 }
 
-/* ── Dark mode: follows the device, like every Apple app ── */
+/* ── Dark mode: the garden at night, following the device ── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-paper: #000000;
-    --color-surface: #1c1c1e;
-    --color-paper-sunk: #2c2c2e;
-    --color-paper-deep: #3a3a3c;
-    --color-ink: #f5f5f7;
-    --color-ink-soft: #d1d1d6;
-    --color-ink-mute: #98989d; /* 7.3:1 on black, 6.1:1 on surface */
-    --color-hairline: #38383a;
-    --color-accent-ink: #2997ff;
-    --color-accent-soft: #0c2a4a;
-    --color-hazard-deep: #ff6961;
-    --color-hazard-soft: #3b1216;
-    --color-orange: #ff9f0a;
-    --color-orange-soft: #3a2410;
-    --color-amber: #ffd60a;
-    --color-amber-soft: #33290a;
-    --color-green: #30d158;
-    --color-green-soft: #0e2a17;
-    --color-teal: #5ac8f5;
-    --color-teal-soft: #0f2a33;
-    --color-indigo: #8e8cff;
-    --color-indigo-soft: #1f1e44;
-    --color-mint: #63e1db;
-    --color-mint-soft: #0c2e2c;
-    --color-purple: #d49cf5;
-    --color-purple-soft: #2e1a38;
-    --color-brown: #c4a57f;
-    --color-brown-soft: #2d241a;
-    --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.04);
-    --shadow-float: 0 0 0 1px rgb(255 255 255 / 0.06), 0 16px 44px rgb(0 0 0 / 0.6);
+    --color-paper: #1b221d;
+    --color-surface: #242c26;
+    --color-paper-sunk: #2c352e;
+    --color-paper-deep: #3a453c;
+    --color-ink: #edeae0;
+    --color-ink-soft: #d3d6cb;
+    --color-ink-mute: #a3ac9f; /* 6.1:1 on surface */
+    --color-hairline: #36403a;
+    --color-accent: #9fae97; /* sage fills */
+    --color-on-accent: #1b221d; /* 6.9:1 */
+    --color-accent-ink: #e0a48f;
+    --color-accent-soft: #2f3a31;
+    --color-sage: #9fae97;
+    --color-sage-ink: #b7c4ae;
+    --color-hazard-deep: #f09a8c;
+    --color-hazard-soft: #3a211d;
+    --color-orange: #e8a76a;
+    --color-orange-soft: #2e2a20;
+    --color-amber: #dcc46a;
+    --color-amber-soft: #2d2b1c;
+    --color-green: #9cc08c;
+    --color-green-soft: #1e2a1e;
+    --color-teal: #9fb4c6;
+    --color-teal-soft: #232d35;
+    --color-indigo: #c7a6c3;
+    --color-indigo-soft: #302634;
+    --color-mint: #a9c48f;
+    --color-mint-soft: #25301f;
+    --color-purple: #dca78f;
+    --color-purple-soft: #352822;
+    --color-brown: #d6b777;
+    --color-brown-soft: #322b1c;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-float: 0 25px 50px -12px rgb(0 0 0 / 0.6);
   }
 }
 
@@ -480,6 +543,9 @@
     opacity: 1;
     transform: none;
   }
+  .lift:hover {
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -490,7 +556,7 @@
     backdrop-filter: none;
   }
   dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
+    background: rgb(31 42 35 / 0.7);
     backdrop-filter: none;
   }
 }
@@ -500,7 +566,7 @@
     --color-hairline: var(--color-ink-mute);
     --color-ink-mute: var(--color-ink-soft);
   }
-  .card {
-    box-shadow: 0 0 0 1px var(--color-ink-mute);
+  body::before {
+    display: none;
   }
 }

@@ -24,56 +24,51 @@ to a CRITICAL alert, a temperature, a count or a severity badge.
 
 ---
 
-## 2. The design system — Apple design language *(since 2026-09-25)*
+## 2. The design system — Botanical / Organic Serif *(since 2026-09-25)*
 
-Chosen by the product owner to replace "Freight Manifest" (rules §2.2). Built from Apple's Human
-Interface Guidelines and the `apple-design` skill, held to the dock-floor rules in §1. Tokens live
-only in `frontend/src/styles/app.css`; Tailwind's default palette, radii and shadows are **removed**,
-so an off-system colour cannot be written.
+Supplied by the product owner (after the Apple pass, which they judged generic). Tokens live only
+in `frontend/src/styles/app.css`; Tailwind's default palette, radii and shadows are **removed**.
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `paper` | `#F5F5F7` | `#000000` | The page |
-| `surface` | `#FFFFFF` | `#1C1C1E` | Cards, sheets, fields |
-| `paper-sunk` / `paper-deep` | `#EEEEF3` / `#E1E1E6` | `#2C2C2E` / `#3A3A3C` | Fills: gray buttons, segmented tracks, pressed |
-| `ink` / `ink-soft` / `ink-mute` | `#1D1D1F` / `#424245` / `#6E6E73` | `#F5F5F7` / `#D1D1D6` / `#98989D` | Text; `ink-mute` is 4.7:1 on the light page |
-| `hairline` | `#D2D2D7` | `#38383A` | Separators only |
-| `accent` / `accent-ink` / `accent-soft` | `#0071E3` / `#0066CC` / `#E8F1FD` | fill kept, `#2997FF`, `#0C2A4A` | **Interaction only**: buttons, links, selection, focus |
-| `hazard` / `hazard-deep` / `hazard-soft` | `#D70015` / `#B3000F` / `#FDECEE` | fill kept, `#FF6961`, `#3B1216` | Critical severity and destructive actions |
-| `orange` / `amber` (+ `-soft`) | `#C93400` / `#8A5A00` | `#FF9F0A` / `#FFD60A` | High / medium severity text on their tints |
-| `*-bright` | `#FF3B30`, `#FF9500`, `#FFCC00` | same | Graphic marks only (bars, dots, the critical edge) — never behind text |
-| `green` | `#1A7F37` | `#30D158` | Resolved, live |
-| `teal`, `indigo`, `mint`, `purple`, `brown` | Apple accessible hues | dark variants | Product identity in the load plan — never severity |
-| `night*` | `#000000` … | — | The landing page's black hero and close |
+| `paper` | `#F9F8F4` rice paper | `#1B221D` | The page, under a fixed paper-grain layer |
+| `surface` | `#FFFFFF` | `#242C26` | Cards (24px, stone hairline, soft forest shadow), sheets |
+| `paper-sunk` / `paper-deep` | `#F2F0EB` clay / `#DCCFC2` mushroom | `#2C352E` / `#3A453C` | Quiet fills, fields, tracks |
+| `ink` / `ink-soft` / `ink-mute` | `#2D3A31` forest / `#46544A` / `#636E65` | `#EDEAE0` / `#D3D6CB` / `#A3AC9F` | Text (11.2 / 8 / 5.0:1) |
+| `hairline` | `#E6E2DA` stone | `#36403A` | Separators |
+| `accent` + `on-accent` | forest `#2D3A31` + white | sage `#9FAE97` + forest | Primary pills, selected navigation |
+| `sage` / `sage-ink` | `#8C9A84` / `#5E6E57` | `#9FAE97` / `#B7C4AE` | Icons, focus rings, rules / italic emphasis text |
+| `terracotta` / `accent-ink` | `#C27B66` / `#9A4F38` | — / `#E0A48F` | Hover blooms / link text |
+| `hazard` (+ `-deep`, `-soft`, `-bright`) | brick `#A8322A` | text `#F09A8C` | **Critical only** — white on it is 6.7:1 |
+| `orange` / `amber` (+ tints) | ochre `#8F4E16` / olive `#6F5B12` | `#E8A76A` / `#DCC46A` | High / medium severity |
+| `green` | moss `#46613C` | `#9CC08C` | Resolved, live |
+| `teal`, `indigo`, `mint`, `purple`, `brown` | slate, plum, moss, clay, ochre | lighter | Product identity in the load plan — never severity |
+| `night*` | `#1F2A23` | — | The landing page's deep-forest band |
 
-- **Type:** the system stack — SF Pro on Apple devices, **Geist** elsewhere (self-hosted, Fontsource;
-  SF cannot be licensed for the web). SF Pro Rounded (`.num`) for headline numbers, tabular figures
-  (`.telemetry`) for every ID, count, weight, temperature and time. Size-specific tracking: large
-  titles −0.025em, body −0.011em. Scale: 14 floor · 15 · 17 body · 20 · 22 · 28 · 34 large title.
-- **Geometry:** continuous-feeling radii (8 · 12 · 16 · 20 · 28pt, capsules for buttons and tags),
-  white cards on the gray page with a soft shadow, hairline separators inset in grouped lists.
-- **Materials:** the navigation bar, tab bar, chat composer and alert banners are translucent
-  (`.material`, backdrop blur + saturate); content scrolls beneath. **Critical banners are solid.**
-- **Motion:** iOS easing `cubic-bezier(0.32, 0.72, 0, 1)`; press feedback `scale(0.97)` on
-  pointer-down; one staggered rise as a screen loads (`.reveal`, 45ms steps). Never on an alert.
-  `prefers-reduced-motion`, `prefers-reduced-transparency` (materials go solid) and
-  `prefers-contrast: more` are honoured. Dark mode follows the device.
-- **Components:** large-title page headers; grouped cards (`Panel`); Health-style metric tiles
-  (`Stat`); capsule tags; segmented controls for tabs and filters; inset grouped lists with chevrons;
-  iOS-style grouped form fields on sign-in; sheets for Quick request; iMessage-style chat bubbles.
+Sage (2.8:1) and terracotta (3.3:1) are too light for text on rice paper, so they decorate; their
+deeper `-ink` variants carry text.
+
+- **Type:** Playfair Display (600, italic 500 for emphasis in sage via `<em>`) for headings and headline
+  numerals (`.num`); Source Sans 3 for everything read at work, with tabular figures (`.telemetry`).
+  Uppercase, widely tracked `.eyebrow` kickers and pill buttons. Scale: 14 floor · 17 body · 24–76
+  headlines. Self-hosted via Fontsource.
+- **Shape:** 24px cards, pill buttons and tags, arches (`.arch`) on the landing page, thin 1.5 icons.
+- **Texture:** a fixed fractal-noise paper grain on the page ground only, **beneath** the opaque cards,
+  so it never touches a badge, a reading or an alert. Hidden under `prefers-contrast: more`.
+- **Motion:** slow and soft — reveals 800ms (`.reveal`, 80ms stagger), hovers 300–500ms with a gentle
+  lift (`.lift`); press feedback stays instant (`scale(.97)`). Never on an alert. Reduced motion,
+  reduced transparency and increased contrast are honoured. Dark mode is "the garden at night".
 
 ### 2.1 The severity and confidence channels
 
 | Level | Shape | Badge |
 |---|---|---|
-| Critical | ▲ | Solid red capsule, white text; red-tinted rows and a red edge in queues |
-| High | ◆ | Orange tint, orange text |
-| Medium | ■ | Amber tint, amber text |
-| Low | ○ | Gray tint, gray text |
+| Critical | ▲ | Solid brick capsule, white text; brick-tinted rows and a brick edge in queues |
+| High | ◆ | Ochre tint, ochre text |
+| Medium | ■ | Olive-mustard tint, olive text |
+| Low | ○ | Clay tint, muted text |
 
-Standing alone in a list, the shape takes the severity hue (`tinted`) and carries a screen-reader
-label. **Match confidence** is a separate channel: three ink signal bars labelled `Match: high|medium|low`.
-It never uses the severity palette.
+**Match confidence** is a separate channel: three ink signal bars labelled `Match: high|medium|low`.
 
 ---
 

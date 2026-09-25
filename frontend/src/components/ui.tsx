@@ -29,7 +29,7 @@ export function PageHeader({
 }) {
   return (
     <header className="pt-2">
-      {kicker && <p className="label mb-1">{kicker}</p>}
+      {kicker && <p className="eyebrow mb-2">{kicker}</p>}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className={`display ${size === 'lg' ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
           {title}

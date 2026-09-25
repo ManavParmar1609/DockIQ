@@ -17,15 +17,13 @@ from app.db import Database, utcnow
 from app.domain.enums import ChatRole
 from app.models import ChatMessage, User
 from app.schemas import AgentAction, AgentCard, AgentStep, ChatCreate, ChatMessageOut, ChatReply
-from app.services.agent import HISTORY_TURNS, Agent, Event, Turn
+from app.services.agent import HISTORY_TURNS, MODEL_SOURCE, RULES_SOURCE, Agent, Event, Turn
 from app.services.agent_tools import ToolContext
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 STREAM_ERROR = {"type": "error", "message": "The assistant hit a problem. Try again."}
-MODEL_SOURCE = "DockIQ assistant (model + your data)"
-RULES_SOURCE = "DockIQ assistant (rules + your data)"
 CARDS: TypeAdapter[AgentCard] = TypeAdapter(AgentCard)
 ACTIONS: TypeAdapter[AgentAction] = TypeAdapter(AgentAction)
 

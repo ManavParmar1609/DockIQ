@@ -66,7 +66,7 @@ async def _open_order(session: AsyncSession, user: User, order_id: int) -> Order
 async def list_orders(
     user: CurrentUser, session: SessionDep, status: OrderStatus | None = None, operator_id: int | None = None
 ) -> list[OrderOut]:
-    stmt = order_select().where(order_scope(user)).order_by(Order.created_at.desc())
+    stmt = order_select().where(order_scope(user)).order_by(Order.created_at.desc(), Order.id.desc())
     if status is not None:
         stmt = stmt.where(Order.status == status)
     if operator_id is not None:

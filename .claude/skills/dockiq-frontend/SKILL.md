@@ -1,6 +1,6 @@
 ---
 name: dockiq-frontend
-description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (Apple's design language: system type, grouped surfaces, one blue for interaction, translucent chrome, dark mode), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
+description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (Botanical / Organic Serif: Playfair Display + Source Sans 3, rice paper with grain, forest/sage/terracotta, 24px cards, pills, slow motion), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
 ---
 
 # DockIQ Frontend
@@ -17,16 +17,15 @@ dim light, glare, food-safety decisions. The product owner chose **Apple's desig
 
 ## The direction
 
-- **Surfaces:** `paper` gray page, white `surface` cards (`.card`), hairline separators, grouped
-  lists with chevrons. Dark mode follows the device through the same tokens.
-- **Type:** SF Pro (system stack) with Geist as the fallback. Large titles, sentence case, weight for
-  hierarchy. `.num` (SF Pro Rounded) for headline numbers, `.telemetry` (tabular) for data.
-- **Colour:** `accent` blue is for interaction only. Red (`hazard`) is critical severity and
-  destructive actions. Orange/amber tints for high/medium. Product hues only in diagrams.
-- **Chrome:** translucent `.material` bars; capsule buttons (`.btn-primary` blue fill,
-  `.btn-secondary` gray fill with blue text); segmented controls for tabs; sheets for small tasks.
-- **Motion:** press feedback on pointer-down, iOS easing, one staggered `.reveal` on load. Never on an
-  alert.
+- **Botanical / Organic Serif** (product owner's design system, 2026-09-25). Tokens and every value:
+  `docs/specs/ui-ux-spec.md` §2; rules and the documented departures: `.claude/rules/frontend-aesthetics.md`.
+- **Type:** Playfair Display for headings (`.display`, `.heading`, `<em>` for italic sage emphasis)
+  and headline numerals (`.num`); Source Sans 3 for everything read at work; `.telemetry` for data;
+  `.eyebrow` for small uppercase kickers.
+- **Surfaces:** rice-paper ground with grain beneath opaque `.card`s; `.lift` on interactive cards.
+- **Colour:** forest for primary pills; sage/terracotta decorate (their `-ink` variants carry text);
+  brick red only for critical severity and destructive actions.
+- **Motion:** slow reveals and hovers, instant press feedback, never on an alert.
 
 ## Non-negotiables — these outrank the aesthetic
 

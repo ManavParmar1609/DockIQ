@@ -119,7 +119,7 @@ def request_select() -> Select[Any]:
         )
         .outerjoin(User, QuickRequest.operator_id == User.id)
         .outerjoin(DockDoor, QuickRequest.dock_door_id == DockDoor.id)
-        .order_by(QuickRequest.created_at.desc())
+        .order_by(QuickRequest.created_at.desc(), QuickRequest.id.desc())
     )
 
 

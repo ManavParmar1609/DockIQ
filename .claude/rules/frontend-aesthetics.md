@@ -33,60 +33,45 @@ DockIQ runs on a tablet on a forklift in a **cold-storage warehouse**. Gloved ha
 glare, and decisions that are sometimes food-safety critical. Whatever the style, the interface has
 to be legible at arm's length, unmistakable about severity, and calm under pressure.
 
-### 2.2 The committed direction — Apple's design language *(chosen 2026-09-25)*
+### 2.2 The committed direction — Botanical / Organic Serif *(chosen 2026-09-25)*
 
-The product owner chose an Apple-like aesthetic, replacing "Freight Manifest" (Swiss Industrial
-Print, Phase 2). It is resolved against Part 1 as follows:
+The product owner supplied this design system after judging the Apple-style pass generic. Its
+character — rice paper and grain, deep forest ink, sage and terracotta, Playfair Display with italic
+emphasis, soft 24px cards, pills, arches, slow graceful motion — answers Part 1 directly: a
+distinctive serif pairing, a committed earthy palette with sharp accents, atmosphere from texture,
+one orchestrated reveal. Calm is also the right emotion for a stressful dock.
 
-- **Distinctive, not generic.** "Generic" in Part 1 means undesigned defaults. Apple's language is a
-  complete, deliberate system — grouped surfaces, materials, iOS motion, SF Pro Rounded numerals,
-  segmented controls — applied with Apple's own restraint. Copying its surface without its rigour
-  would be the slop; the rigour is the point.
-- **Typography.** Part 1 bans system fonts as a *default*. Here the system font is the *choice*: on
-  Apple devices it is SF Pro, which is the aesthetic. Elsewhere the fallback is **Geist**, not Inter
-  or Arial. Inter and Space Grotesk stay banned.
-- **Colour.** One dominant neutral system (Apple's grays) with one sharp accent, blue, for
-  interaction. Red is reserved for critical severity and destructive actions — nothing decorative is
-  red.
-- **Light and dark.** Both, following the device, from the same tokens. Light is the default, and it
-  survives warehouse glare; dark is there for night shifts and dim docks.
-- **Motion.** One orchestrated moment (the staggered rise on load) plus press feedback, on iOS
-  easing. No scattered micro-animation, never on an alert.
-- **The landing page** follows apple.com: black hero, light feature sections, a bento of roles.
+### 2.3 Where DockIQ departs from the design system
 
-### 2.3 Where DockIQ departs from Apple's defaults
-
-| Apple does | DockIQ does instead | Why |
+| The design system says | DockIQ does instead | Why |
 |---|---|---|
-| 10–12pt captions and tab labels | **14px floor**; 17px body | Gloves, distance, glare |
-| Translucency on alerts and banners | **Critical banners and badges are solid** | A degraded critical alert is a food-safety defect |
-| Colour-coded status dots | Severity is **label + shape + colour**, always | Colour alone fails colour-blind users and glare |
-| Tinted system red at full saturation behind text | Accessible (increased-contrast) system colours for any text or fill that carries text | WCAG AA on the real surfaces |
+| "No artificial brights"; muted palette only | Critical is a **brick red** (`#A8322A`), still earthy but unmistakable; high/medium get ochre and olive | A food-safety alert must never be timid |
+| Grain overlay fixed on top, `z-50` | Grain sits **beneath** the opaque cards | No texture may touch a badge, a reading or an alert |
+| Sage and terracotta as text/interactive colours | Used for decoration; **deeper `-ink` variants** carry text | They fail AA on rice paper (2.8 and 3.3:1) |
+| Slow 500–700ms motion everywhere | Reveals and hovers are slow; **press feedback is instant** | A gloved tap must feel answered at once |
+| Small uppercase button labels | 14px floor, 50px pill height | Gloves, distance, glare |
+| Staggered cards (`translate-y-12`) | On the landing page only, not in working screens | Scanning a queue needs straight rows |
 
 ### 2.4 Non-negotiables that outrank any aesthetic
 
-1. Severity is legible at a glance and **never conveyed by colour alone** — always paired with a
-   label and a shape.
-2. Touch targets ≥ 44pt.
-3. WCAG AA contrast on the app surfaces, in light and dark mode.
-4. The resolution screen keeps showing the **score derivation, the confidence, and the cited SOP
-   source** — the product's "explainable, not magic" claim made visible.
+1. Severity is legible at a glance and **never conveyed by colour alone** — always label + shape.
+2. Touch targets ≥ 44px.
+3. WCAG AA contrast on the actual surfaces, in light and dark mode.
+4. The resolution screen keeps the **score derivation, the confidence, and the cited SOP source**.
 5. Confidence has its own visual channel (signal bars), **not** the severity palette.
 6. **No emoji as icons.**
 7. Simulated data remains **visibly marked as simulated**.
+8. The barcode stays black on white in both modes.
 
 ### 2.5 History
 
-- **Phase 0:** an Apple-derived look (`.apple-*`, Inter, `#0071E3`) — generic defaults, replaced.
-- **Phase 2:** "Freight Manifest" (Archivo + Martian Mono, paper and ink, one hazard red).
-- **2026-09-25:** the Apple design language described above, built as a complete token system with
-  dark mode (tokens: `docs/specs/ui-ux-spec.md` §2).
+- Phase 0: an Apple-derived look with Inter. Phase 2: "Freight Manifest" (industrial print).
+- 2026-09-25: an Apple design-language pass, then **Botanical / Organic Serif**, the current system
+  (`docs/specs/ui-ux-spec.md` §2).
 
 ### 2.6 Skills to load for frontend work
 
-- `apple-design` (`.agents/skills/apple-design/`) — motion, materials, typography.
-- `redesign-existing-projects` — the audit checklist for any visual pass.
-- `impeccable` — the project's own design-quality pass; its hooks are wired in
-  `.claude/settings.local.json`.
-- `design-taste-frontend` — the landing page.
-- `dockiq-frontend` (`.claude/skills/dockiq-frontend/`) — this file's rules as an auto-loading skill.
+- `impeccable` — the project's design-quality pass (hooks wired in `.claude/settings.local.json`).
+- `design-taste-frontend` and `redesign-existing-projects` — taste and audit checklists.
+- `apple-design` (`.agents/skills/apple-design/`) — motion and interaction feel.
+- `dockiq-frontend` — this file's rules as an auto-loading skill.

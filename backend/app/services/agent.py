@@ -45,6 +45,8 @@ from app.services.assistant import FACILITY_INFO, keyword_answer
 logger = logging.getLogger(__name__)
 
 MAX_ROUNDS = 5
+MODEL_SOURCE = "DockIQ assistant (model + your data)"
+RULES_SOURCE = "DockIQ assistant (rules + your data)"
 HISTORY_TURNS = 6
 ROLE_LABEL = {
     Role.OPERATOR: "dock operator",
@@ -124,7 +126,7 @@ class Agent:
             self._client = AsyncOpenAI(
                 base_url=settings.nvidia_base_url,
                 api_key=settings.nvidia_api_key.get_secret_value(),
-                timeout=45.0,
+                timeout=60.0,
                 max_retries=1,
             )
         elif client is None:
@@ -146,6 +148,7 @@ class Agent:
         allowed = {tool.name: tool for tool in tools_for(ctx.user.role)}
         specs = [tool.spec() for tool in allowed.values()]
         answered = False
+        last_tool: tuple[str, dict[str, Any]] | None = None  # (name, result) of the last tool that ran
 
         for _ in range(MAX_ROUNDS):
             text = ""
@@ -180,6 +183,11 @@ class Agent:
             except OpenAIError:
                 # Never log the conversation: it is whatever a person typed.
                 logger.warning("assistant model request failed", exc_info=True)
+                if not answered and last_tool is not None:
+                    # A tool already answered the question; phrase its result instead of starting over.
+                    yield {"type": "source", "source": RULES_SOURCE, "confidence": "high"}
+                    yield {"type": "delta", "text": _describe(*last_tool)}
+                    return
                 if not answered:
                     async for event in rules_agent(ctx, message):
                         yield event
@@ -219,6 +227,7 @@ class Agent:
                         async for event in run_tool(tool, ctx, args):
                             if event["type"] == "_result":
                                 content = event["content"]
+                                last_tool = (tool.name, json.loads(content))
                             else:
                                 yield event
                 messages.append(
@@ -241,6 +250,8 @@ SUMMARY_WORDS = ("summary", "summarise", "summarize", "how is the shift", "hando
 
 
 async def rules_agent(ctx: ToolContext, message: str) -> AsyncIterator[Event]:
+    # Label the answer truthfully: whenever the rules answer, the reply says so.
+    yield {"type": "source", "source": RULES_SOURCE, "confidence": "high"}
     lowered = message.lower()
     plan: tuple[str, dict[str, Any]] | None = None
     if (match := TEMPERATURE.search(message)) and any(

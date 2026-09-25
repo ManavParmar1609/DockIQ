@@ -29,7 +29,9 @@ function RichText({ text }: { text: string }) {
 function Question({ text }: { text: string }) {
   return (
     <li className="flex justify-end">
-      <p className="max-w-2xl rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-lg text-white">{text}</p>
+      <p className="max-w-2xl rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-lg text-on-accent">
+        {text}
+      </p>
     </li>
   );
 }

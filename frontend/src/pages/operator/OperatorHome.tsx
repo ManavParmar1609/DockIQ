@@ -43,7 +43,7 @@ function Action({
   return (
     <Link
       to={to}
-      className="reveal group card flex items-center gap-4 p-4 transition-transform active:scale-99"
+      className="reveal group card lift flex items-center gap-4 p-5 active:scale-99"
       style={{ '--i': index } as CSSProperties}
     >
       <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-accent-soft text-accent-ink">

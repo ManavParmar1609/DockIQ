@@ -100,7 +100,7 @@ export function ProcedureCard({
       <ol className="flex flex-col gap-2">
         {resolution.steps.map((step, i) => (
           <li key={step} className="flex gap-3 text-lg">
-            <span className="telemetry grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-base text-white">
+            <span className="telemetry grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-base text-on-accent">
               {i + 1}
             </span>
             <span className="pt-0.5">{step}</span>

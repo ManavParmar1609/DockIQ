@@ -215,7 +215,12 @@ def test_stream_emits_steps_cards_text_and_done_and_keeps_history(client: TestCl
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/event-stream")
         events = [json.loads(line[6:]) for line in response.iter_lines() if line.startswith("data: ")]
-    kinds = [event["type"] for event in events]
+    kinds = [event["type"] for event in events if event["type"] != "source"]
+    assert events[0] == {
+        "type": "source",
+        "source": "DockIQ assistant (rules + your data)",
+        "confidence": "high",
+    }
     assert kinds[0] == "step"
     assert "card" in kinds
     assert "delta" in kinds
@@ -223,3 +228,36 @@ def test_stream_emits_steps_cards_text_and_done_and_keeps_history(client: TestCl
     history = client.get("/api/chat/history", headers=op).json()
     assert [message["role"] for message in history] == ["user", "assistant"]
     assert history[-1]["id"] == events[-1]["message_id"]
+
+
+def test_durations_reach_the_model_the_way_a_person_says_them() -> None:
+    from app.services.agent_tools import open_for
+
+    assert (open_for(1), open_for(45), open_for(180), open_for(40_440)) == (
+        "1 minute",
+        "45 minutes",
+        "3 hours",
+        "28 days",
+    )
+
+
+def test_a_fallback_answer_is_labelled_as_rules_not_model(client: TestClient, login: Login) -> None:
+    use_model(client, ScriptedModel(fail=True))
+    reply = ask(client, login("OP-001"), "what's next?")
+    assert reply["source"] == "DockIQ assistant (rules + your data)"
+
+
+def test_a_model_that_fails_after_a_tool_answers_from_that_tool(client: TestClient, login: Login) -> None:
+    class FailsSecondTime(ScriptedModel):
+        async def _create(self, **kwargs: Any) -> AsyncIterator[SimpleNamespace]:
+            if self.requests:
+                self.fail = True
+            return await super()._create(**kwargs)
+
+    model = FailsSecondTime([[_chunk(calls=_call(0, "my_work", "{}", "call_w"))]])
+    use_model(client, model)
+    reply = ask(client, login("OP-001"), "what's next?")
+    assert [step["tool"] for step in reply["steps"]] == ["my_work"], "the tool must not run twice"
+    assert [card["kind"] for card in reply["cards"]].count("order") == 1
+    assert "ORD-2026-4521" in reply["response"]
+    assert reply["source"] == "DockIQ assistant (rules + your data)"

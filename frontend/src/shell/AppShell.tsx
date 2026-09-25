@@ -50,12 +50,14 @@ function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
       <span
-        className="grid h-9 w-9 place-items-center rounded-md bg-accent text-white shadow-card"
+        className="grid h-10 w-10 place-items-center rounded-full bg-accent text-on-accent shadow-card"
         aria-hidden="true"
       >
         <Warehouse size={20} strokeWidth={2.2} />
       </span>
-      <span className={`display ${compact ? 'text-lg' : 'text-xl'}`}>DockIQ</span>
+      <span className={`display ${compact ? 'text-xl' : 'text-2xl'}`}>
+        Dock<em>IQ</em>
+      </span>
     </span>
   );
 }
@@ -167,7 +169,7 @@ function SignedInShell({
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors ${isActive ? 'bg-accent text-white' : 'text-ink hover:bg-paper-sunk'}`
+                `flex items-center gap-3 rounded-full px-4 py-2.5 text-base font-medium transition-colors duration-300 ${isActive ? 'bg-accent text-on-accent' : 'text-ink hover:bg-paper-sunk'}`
               }
             >
               <item.icon size={20} aria-hidden="true" />

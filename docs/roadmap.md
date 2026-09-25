@@ -255,6 +255,6 @@ makes that promise easier to accidentally break.
 ## Cross-cutting: frontend redesign
 
 **Done in Phase 2** as "Freight Manifest" (Archivo + Martian Mono, paper and ink). **Replaced on
-2026-09-25** by the Apple design language the product owner chose: system type (SF Pro / Geist),
-grouped surfaces, one blue for interaction, translucent chrome, dark mode. See
-[`docs/specs/ui-ux-spec.md`](specs/ui-ux-spec.md) §2.
+2026-09-25**, first by an Apple design-language pass and then by the product owner's **Botanical /
+Organic Serif** system (Playfair Display + Source Sans 3, rice paper with grain, forest, sage and
+terracotta). See [`docs/specs/ui-ux-spec.md`](specs/ui-ux-spec.md) §2.

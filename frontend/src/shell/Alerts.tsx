@@ -138,7 +138,7 @@ export function AlertStack({ alerts, dismiss }: { alerts: Alert[]; dismiss: (key
 export function BroadcastBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
     <div role="status" className="px-4 pt-4 sm:px-6 lg:px-10">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-xl bg-accent py-2 pr-2 pl-4 text-white shadow-card">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-xl bg-accent py-2 pr-2 pl-4 text-on-accent shadow-card">
         <Megaphone size={22} aria-hidden="true" className="shrink-0" />
         <p className="flex-1 text-base font-semibold">
           <span className="mr-2 font-normal opacity-90">Your supervisor:</span>

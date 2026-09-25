@@ -1,5 +1,6 @@
-import '@fontsource-variable/geist/index.css';
-import '@fontsource-variable/geist-mono/index.css';
+import '@fontsource-variable/playfair-display/index.css';
+import '@fontsource-variable/playfair-display/wght-italic.css';
+import '@fontsource-variable/source-sans-3/index.css';
 import './styles/app.css';
 
 import { QueryClientProvider } from '@tanstack/react-query';
