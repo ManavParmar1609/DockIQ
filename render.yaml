@@ -16,8 +16,7 @@ services:
     envVars:
       - key: DATABASE_URL # Neon's connection string, pooled or direct, exactly as Neon shows it
         sync: false
-      - key: CORS_ORIGINS # the Vercel URL, e.g. https://dockiq.vercel.app
-        sync: false
+      # No CORS_ORIGINS needed: the API already accepts a Vercel project named "dockiq".
       - key: DEMO_PASSWORD # what every demo account signs in with
         sync: false
       - key: NVIDIA_API_KEY # optional: without it the assistant runs on its rules-based router

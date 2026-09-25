@@ -5,6 +5,7 @@ import asyncio
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
+from fastapi.testclient import TestClient
 from sqlalchemy import inspect
 
 from app.config import Settings
@@ -97,3 +98,19 @@ def test_neon_pooled_strings_are_accepted_as_neon_shows_them() -> None:
     direct = Settings(_env_file=None, database_url="postgresql://u:p@ep-x.us-east-2.aws.neon.tech/neondb")  # type: ignore[call-arg]
     assert not direct.behind_pgbouncer
     assert engine_options(direct)["pool_size"] == 5
+
+
+def test_the_projects_own_vercel_sites_are_allowed_without_listing_them(client: TestClient) -> None:
+    def preflight(origin: str) -> str | None:
+        response = client.options(
+            "/api/health", headers={"Origin": origin, "Access-Control-Request-Method": "GET"}
+        )
+        return response.headers.get("access-control-allow-origin")
+
+    assert preflight("https://dockiq.vercel.app") == "https://dockiq.vercel.app"
+    assert (
+        preflight("https://dockiq-git-main-someone.vercel.app")
+        == "https://dockiq-git-main-someone.vercel.app"
+    )
+    assert preflight("https://evil.vercel.app") is None
+    assert preflight("https://dockiq.vercel.app.evil.example") is None

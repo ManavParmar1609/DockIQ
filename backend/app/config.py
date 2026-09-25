@@ -32,6 +32,10 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+    # Also allowed without listing: the project's own Vercel site and its preview deployments,
+    # provided the Vercel project is named "dockiq". This is what lets the API be deployed first,
+    # before the frontend's address exists (docs/deployment.md). Set to "" to allow only the list.
+    cors_origin_regex: str = r"https://dockiq(-[a-z0-9-]+)?\.vercel\.app"
 
     # Signs access tokens. Production must set a long random value (see docs/deployment.md).
     jwt_secret: SecretStr = SecretStr(DEV_JWT_SECRET)
