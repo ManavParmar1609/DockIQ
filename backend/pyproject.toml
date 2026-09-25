@@ -43,6 +43,7 @@ ignore = ["S101", "RUF001", "RUF002", "RUF003"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "DTZ"]
 "app/seed/**" = ["S311"]
+"app/wms/**" = ["S311"]  # deterministic simulation, not cryptography
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

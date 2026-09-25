@@ -1,7 +1,7 @@
 """Request and response models. Responses are explicit so a column rename cannot leak to clients."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -119,6 +119,7 @@ class UserOut(Schema):
     zone: str | None
     experience_level: str | None
     supervisor_id: int | None
+    simulated: bool = False
 
 
 class MeOut(UserOut):
@@ -232,6 +233,8 @@ class OrderOut(Schema):
     carrier_name: str
     operator_name: str | None
     door_number: int | None
+    simulated: bool = False
+    wms_synced: bool = True
 
 
 class OrderDetailOut(OrderOut):
@@ -262,6 +265,7 @@ class IssueOut(Schema):
     company_id: int | None
     carrier_id: int | None
     estimated_cost_impact: float
+    simulated: bool = False
     escalated_at: datetime | None
     acknowledged_at: datetime | None
     resolved_at: datetime | None
@@ -481,3 +485,81 @@ class AnalyticsSummary(BaseModel):
     by_company: list[NameCount]
     by_carrier: list[NameCount]
     over_time: list[DateCount]
+
+
+# ── Simulation and WMS (business-rules §12) ──
+
+
+class SimEventOut(BaseModel):
+    minute: float
+    clock: str
+    kind: str
+    message: str
+    issue_id: int | None
+
+
+class SimTrailerCounts(BaseModel):
+    scheduled: int
+    in_yard: int
+    at_door: int
+    departed: int
+
+
+class SimStatusOut(BaseModel):
+    simulated: bool = True
+    seed: int
+    speed: float
+    running: bool
+    minute: float
+    clock: str
+    shift: int
+    shift_progress: float
+    wms_online: bool
+    trailers: SimTrailerCounts
+    events: list[SimEventOut]
+
+
+class SimSpeed(BaseModel):
+    speed: Literal[1, 5, 15, 60]
+
+
+class SimStep(BaseModel):
+    minutes: float = Field(gt=0, le=480)
+
+
+class SimReset(BaseModel):
+    seed: int | None = Field(default=None, ge=0, le=999_999)
+
+
+class SimInject(BaseModel):
+    scenario: Literal["temperature_emergency", "wrong_product", "damaged_pallet", "injury", "wms_outage"]
+
+
+class SimInjected(BaseModel):
+    message: str
+
+
+class WmsStatusOut(BaseModel):
+    mode: str
+    online: bool
+    message: str
+
+
+class YardEntryOut(BaseModel):
+    ref: str
+    order_number: str
+    door: int
+    type: str
+    customer: str
+    carrier: str
+    trailer: str
+    state: Literal["scheduled", "in_yard", "at_door", "departed"]
+    due_in_minutes: float | None
+    simulated: bool
+
+
+class PalletOut(BaseModel):
+    pallet_id: str
+    sku: str
+    location: str
+    cases: int

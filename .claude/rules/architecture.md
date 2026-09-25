@@ -50,8 +50,9 @@ styles/app.css  every token; Tailwind palette wiped
 1. **All HTTP routes are namespaced under `/api`.**
 2. **`frontend/src/api/` is the only client-side gateway.** No `fetch` anywhere else — ESLint
    enforces it. Types come from `npm run gen:api`; never hand-write a response shape.
-3. **`/ws` carries exactly six event types** — `new_issue`, `issue_escalated`, `issue_resolved`,
-   `order_complete`, `new_request`, `broadcast` — each built by a constructor in `app/realtime.py`.
+3. **`/ws` carries exactly seven event types** — `new_issue`, `issue_escalated`, `issue_resolved`,
+   `order_complete`, `new_request`, `broadcast`, `floor_update` — each built by a constructor in
+   `app/realtime.py`. Only the data-free `floor_update` goes to every socket.
    Adding one means a new constructor *and* both layout handlers *and* the functional spec.
 4. **Domain logic lives in `app/domain/` only, and it is pure.** No database session, no I/O, no
    framework imports. Routers fetch, call the domain, persist. `queries.py` may *count*; the domain
@@ -79,9 +80,10 @@ There is no polling. Components never call the API directly — they use the hoo
 
 ---
 
-## 4. The WMS adapter boundary *(planned — Phase 3)*
+## 4. The WMS adapter boundary *(built — Phase 3)*
 
-Written down before it is built, so nothing is built that contradicts it.
+`app/wms/client.py` defines the protocol; `app/wms/simulated.py` implements it; `NoWms` is the
+`WMS_MODE=none` stand-in. Routes receive it as `WmsDep` and never import the simulator.
 
 ```
 routes  →  WmsClient (protocol)  →  SimulatedWms   ← the live warehouse simulator
@@ -94,7 +96,10 @@ that single interface. **Do not let simulator concepts leak into route handlers.
 boundary is that a real WMS becomes a config change rather than a rewrite.
 
 The simulator is a **deterministic virtual clock**: state is a function of
-`(seed, simulated_elapsed_time)`, not a background tick loop. See `docs/roadmap.md` Phase 3.
+`(seed, simulated_elapsed_time)`. A background tick (`SIM_TICK_SECONDS`, default 2) only makes it
+*timely*; correctness never depends on it, because every call catches up from the clock, exactly
+once. The simulator controls (`/api/sim/*`) are a demo surface, not part of the WMS boundary.
+Business rules: `docs/architecture/business-rules.md` §12.
 
 ---
 

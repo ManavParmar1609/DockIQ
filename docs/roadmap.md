@@ -185,6 +185,13 @@ DOCX.
 
 ## Phase 3 — Live simulated Warehouse Management Service
 
+> **Delivered 2026-09-25.** A deterministic shift simulator behind a `WmsClient` boundary: a
+> virtual clock (play, pause, speed, step, next shift), a pure per-seed shift plan, an exactly-once
+> materialiser that files exceptions through the real severity formula, four simulated crew, human
+> takeover, WMS outages with queued write-back, scenarios on cue, a yard board, pallet lookup, and
+> the `floor_update` realtime event. Rules: business-rules §12. The plan below is kept as the
+> design record.
+
 Today the backend is static: `app/seed` loads a fixed set of orders and nothing moves unless a
 human clicks. The goal is a warehouse that runs.
 
@@ -233,7 +240,7 @@ waiting for the RNG.
 
 ### Realtime
 
-Simulated events publish through the existing `/ws` fan-out and its six event types, so the frontend
+Simulated events publish through the existing `/ws` fan-out (plus one data-free `floor_update`), so the frontend
 needs no new transport — but it does need the reconnect and parse guards the current inline
 WebSocket code lacks. A live simulation will expose that fragility immediately.
 

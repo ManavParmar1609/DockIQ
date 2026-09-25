@@ -17,6 +17,7 @@ import {
   PageHeader,
   Panel,
   QueryBoundary,
+  SimulatedTag,
   Tag,
 } from '../components/ui';
 import { elapsed, formatDateTime, formatMoney } from '../lib/format';
@@ -177,6 +178,7 @@ function Detail({ issue }: { issue: Issue }) {
           <>
             <SeverityBadge severity={issue.severity} />
             <IssueStatusTag status={issue.status} />
+            {issue.simulated && <SimulatedTag compact />}
             {open && <Tag>Open {elapsed(since)}</Tag>}
           </>
         }

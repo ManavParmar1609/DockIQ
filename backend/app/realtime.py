@@ -20,7 +20,8 @@ SUBPROTOCOL = "dockiq"
 
 
 class ConnectionManager:
-    """Authenticated sockets, grouped by user. Events are addressed to users, never broadcast to all."""
+    """Authenticated sockets, grouped by user. Events carrying data are addressed to users; only the
+    data-free `floor_update` signal goes to every socket (each client refetches through its own scope)."""
 
     def __init__(self) -> None:
         self._sockets: dict[int, set[WebSocket]] = defaultdict(set)
@@ -39,6 +40,9 @@ class ConnectionManager:
     @property
     def connection_count(self) -> int:
         return sum(len(sockets) for sockets in self._sockets.values())
+
+    async def send_all(self, event: dict[str, Any]) -> None:
+        await self.send(list(self._sockets), event)
 
     async def send(self, user_ids: Iterable[int | None], event: dict[str, Any]) -> None:
         payload = jsonable_encoder(event)
@@ -81,3 +85,9 @@ def new_request(request_id: int, request_type: str) -> dict[str, Any]:
 
 def broadcast_message(broadcast_id: int, message: str) -> dict[str, Any]:
     return {"type": "broadcast", "message": message, "id": broadcast_id}
+
+
+def floor_update() -> dict[str, Any]:
+    """Something on the floor changed (a trailer arrived or left, the simulator moved on). No payload:
+    clients refetch docks and orders through their own row scope."""
+    return {"type": "floor_update"}

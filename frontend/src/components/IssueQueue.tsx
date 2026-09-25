@@ -6,7 +6,7 @@ import { elapsed, formatMoney } from '../lib/format';
 import { useNow } from '../lib/useNow';
 import { bySeverityThenAge } from '../lib/vocab';
 import { SeverityBadge } from './Severity';
-import { EmptyState } from './ui';
+import { EmptyState, SimulatedTag } from './ui';
 
 /** Critical first, then oldest first — the triage order from Scenario 5. */
 export function IssueQueue({ issues, empty }: { issues: Issue[]; empty: string }) {
@@ -31,6 +31,7 @@ export function IssueQueue({ issues, empty }: { issues: Issue[]; empty: string }
                 <span className="flex flex-wrap items-center gap-2">
                   <SeverityBadge severity={issue.severity} size="sm" />
                   <span className="heading text-lg">{issue.issue_subtype ?? issue.issue_type}</span>
+                  {issue.simulated && <SimulatedTag compact />}
                 </span>
                 <span className="mt-1 block truncate text-base text-ink-soft">
                   {issue.operator_name}

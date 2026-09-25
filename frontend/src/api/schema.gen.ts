@@ -646,6 +646,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wms/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wms Status */
+        get: operations["wms_status_api_wms_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Appointments */
+        get: operations["appointments_api_wms_appointments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inventory */
+        get: operations["inventory_api_wms_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wms/pallets/{pallet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pallet */
+        get: operations["pallet_api_wms_pallets__pallet_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sim Status */
+        get: operations["sim_status_api_sim_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/play": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Play */
+        post: operations["play_api_sim_play_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause */
+        post: operations["pause_api_sim_pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/speed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Speed */
+        post: operations["speed_api_sim_speed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Step */
+        post: operations["step_api_sim_step_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/next-shift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Next Shift */
+        post: operations["next_shift_api_sim_next_shift_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset */
+        post: operations["reset_api_sim_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/inject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inject */
+        post: operations["inject_api_sim_inject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1007,6 +1211,11 @@ export interface components {
             carrier_id: number | null;
             /** Estimated Cost Impact */
             estimated_cost_impact: number;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated?: boolean;
             /** Escalated At */
             escalated_at: string | null;
             /** Acknowledged At */
@@ -1142,6 +1351,11 @@ export interface components {
             experience_level: string | null;
             /** Supervisor Id */
             supervisor_id: number | null;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated?: boolean;
             /** Supervisor Name */
             supervisor_name: string | null;
         };
@@ -1229,6 +1443,16 @@ export interface components {
             operator_name: string | null;
             /** Door Number */
             door_number: number | null;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated?: boolean;
+            /**
+             * Wms Synced
+             * @default true
+             */
+            wms_synced?: boolean;
             /** Items */
             items: components["schemas"]["OrderItemOut"][];
         };
@@ -1326,6 +1550,16 @@ export interface components {
             operator_name: string | null;
             /** Door Number */
             door_number: number | null;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated?: boolean;
+            /**
+             * Wms Synced
+             * @default true
+             */
+            wms_synced?: boolean;
         };
         /**
          * OrderStatus
@@ -1337,6 +1571,17 @@ export interface components {
          * @enum {string}
          */
         OrderType: "inbound" | "outbound";
+        /** PalletOut */
+        PalletOut: {
+            /** Pallet Id */
+            pallet_id: string;
+            /** Sku */
+            sku: string;
+            /** Location */
+            location: string;
+            /** Cases */
+            cases: number;
+        };
         /** PhotoOut */
         PhotoOut: {
             /** Id */
@@ -1536,6 +1781,88 @@ export interface components {
             /** Supervisor Name */
             supervisor_name: string;
         };
+        /** SimEventOut */
+        SimEventOut: {
+            /** Minute */
+            minute: number;
+            /** Clock */
+            clock: string;
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+            /** Issue Id */
+            issue_id: number | null;
+        };
+        /** SimInject */
+        SimInject: {
+            /**
+             * Scenario
+             * @enum {string}
+             */
+            scenario: "temperature_emergency" | "wrong_product" | "damaged_pallet" | "injury" | "wms_outage";
+        };
+        /** SimInjected */
+        SimInjected: {
+            /** Message */
+            message: string;
+        };
+        /** SimReset */
+        SimReset: {
+            /** Seed */
+            seed?: number | null;
+        };
+        /** SimSpeed */
+        SimSpeed: {
+            /**
+             * Speed
+             * @enum {integer}
+             */
+            speed: 1 | 5 | 15 | 60;
+        };
+        /** SimStatusOut */
+        SimStatusOut: {
+            /**
+             * Simulated
+             * @default true
+             */
+            simulated?: boolean;
+            /** Seed */
+            seed: number;
+            /** Speed */
+            speed: number;
+            /** Running */
+            running: boolean;
+            /** Minute */
+            minute: number;
+            /** Clock */
+            clock: string;
+            /** Shift */
+            shift: number;
+            /** Shift Progress */
+            shift_progress: number;
+            /** Wms Online */
+            wms_online: boolean;
+            trailers: components["schemas"]["SimTrailerCounts"];
+            /** Events */
+            events: components["schemas"]["SimEventOut"][];
+        };
+        /** SimStep */
+        SimStep: {
+            /** Minutes */
+            minutes: number;
+        };
+        /** SimTrailerCounts */
+        SimTrailerCounts: {
+            /** Scheduled */
+            scheduled: number;
+            /** In Yard */
+            in_yard: number;
+            /** At Door */
+            at_door: number;
+            /** Departed */
+            departed: number;
+        };
         /** StatusOut */
         StatusOut: {
             /** Status */
@@ -1607,6 +1934,11 @@ export interface components {
             experience_level: string | null;
             /** Supervisor Id */
             supervisor_id: number | null;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated?: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -1620,6 +1952,41 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WmsStatusOut */
+        WmsStatusOut: {
+            /** Mode */
+            mode: string;
+            /** Online */
+            online: boolean;
+            /** Message */
+            message: string;
+        };
+        /** YardEntryOut */
+        YardEntryOut: {
+            /** Ref */
+            ref: string;
+            /** Order Number */
+            order_number: string;
+            /** Door */
+            door: number;
+            /** Type */
+            type: string;
+            /** Customer */
+            customer: string;
+            /** Carrier */
+            carrier: string;
+            /** Trailer */
+            trailer: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "scheduled" | "in_yard" | "at_door" | "departed";
+            /** Due In Minutes */
+            due_in_minutes: number | null;
+            /** Simulated */
+            simulated: boolean;
         };
     };
     responses: never;
@@ -2792,6 +3159,320 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalyticsSummary"];
+                };
+            };
+        };
+    };
+    wms_status_api_wms_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WmsStatusOut"];
+                };
+            };
+        };
+    };
+    appointments_api_wms_appointments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["YardEntryOut"][];
+                };
+            };
+        };
+    };
+    inventory_api_wms_inventory_get: {
+        parameters: {
+            query: {
+                sku: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PalletOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pallet_api_wms_pallets__pallet_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PalletOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sim_status_api_sim_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimStatusOut"];
+                };
+            };
+        };
+    };
+    play_api_sim_play_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimStatusOut"];
+                };
+            };
+        };
+    };
+    pause_api_sim_pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimStatusOut"];
+                };
+            };
+        };
+    };
+    speed_api_sim_speed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimSpeed"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    step_api_sim_step_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimStep"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    next_shift_api_sim_next_shift_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimStatusOut"];
+                };
+            };
+        };
+    };
+    reset_api_sim_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimReset"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inject_api_sim_inject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimInject"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimInjected"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

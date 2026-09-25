@@ -15,6 +15,7 @@ from app.models import User
 from app.realtime import ConnectionManager
 from app.security import decode_access_token
 from app.services.assistant import Assistant
+from app.wms.client import WmsClient
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
@@ -33,9 +34,14 @@ def get_assistant(request: Request) -> Assistant:
     return request.app.state.assistant
 
 
+def get_wms(request: Request) -> WmsClient:
+    return request.app.state.wms
+
+
 SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
 RealtimeDep = Annotated[ConnectionManager, Depends(get_realtime)]
 AssistantDep = Annotated[Assistant, Depends(get_assistant)]
+WmsDep = Annotated[WmsClient, Depends(get_wms)]
 
 UNAUTHORIZED = HTTPException(
     http.HTTP_401_UNAUTHORIZED, "Not authenticated", headers={"WWW-Authenticate": "Bearer"}

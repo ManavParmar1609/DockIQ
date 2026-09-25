@@ -106,5 +106,45 @@
     "zone": null,
     "experience_level": null,
     "supervisor": null
+  },
+  {
+    "name": "Priya Raman",
+    "role": "operator",
+    "employee_id": "OP-009",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "experienced",
+    "supervisor": "SUP-001",
+    "simulated": true
+  },
+  {
+    "name": "Owen Castillo",
+    "role": "operator",
+    "employee_id": "OP-010",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "senior",
+    "supervisor": "SUP-002",
+    "simulated": true
+  },
+  {
+    "name": "Hana Kowalski",
+    "role": "operator",
+    "employee_id": "OP-011",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "experienced",
+    "supervisor": "SUP-003",
+    "simulated": true
+  },
+  {
+    "name": "Marcus Bell",
+    "role": "operator",
+    "employee_id": "OP-012",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "new",
+    "supervisor": "SUP-003",
+    "simulated": true
   }
 ]

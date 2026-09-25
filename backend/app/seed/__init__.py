@@ -212,6 +212,7 @@ async def sync_reference(session: AsyncSession, *, demo_password: str | None) ->
     await session.flush()
     for row in user_rows:
         user = existing[row["employee_id"]]
+        user.simulated = bool(row.get("simulated", False))
         if row.get("supervisor") and user.supervisor_id is None:
             user.supervisor_id = existing[row["supervisor"]].id
 

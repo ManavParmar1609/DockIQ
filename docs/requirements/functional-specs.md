@@ -153,6 +153,28 @@ Every foreign-key column is indexed, as are `issues.created_at`, `status`, `seve
 `issue_type`. The elapsed-minutes average compiles to portable SQL for both SQLite and Postgres
 (`app/queries.py` → `minutes_between`).
 
+### 2.9 Simulation and WMS *(Phase 3)*
+
+The WMS as the app sees it, through `WmsClient` only. `WMS_MODE=simulated` (default) serves the live
+simulator; `WMS_MODE=none` answers every lookup 503 and hides the simulator (404).
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/api/wms/status` | everyone | `{mode, online, message}`; drives the shell's *WMS offline* banner |
+| GET | `/api/wms/appointments` | staff | Yard board: scheduled (next 90 min), in yard, at door, recently left. 503 when offline |
+| GET | `/api/wms/inventory?sku=` | everyone | Pallet locations for a SKU (*Where is it stored* on an outbound line). 503 when offline |
+| GET | `/api/wms/pallets/{id}` | everyone | One pallet by ID. 404 unknown, 503 offline |
+| GET | `/api/sim/status` | staff | Clock, seed, speed, WMS state, trailer counts, the last 15 events |
+| POST | `/api/sim/play`, `/pause`, `/next-shift` | staff | Clock control; each returns the new status |
+| POST | `/api/sim/speed` `{speed}` | staff | 1, 5, 15 or 60 |
+| POST | `/api/sim/step` `{minutes}` | staff | Jump the clock forward, up to 480 (stops at shift end) |
+| POST | `/api/sim/reset` `{seed?}` | staff | Remove everything simulated; 06:00, paused |
+| POST | `/api/sim/inject` `{scenario}` | staff | A scenario on cue (business-rules §12.4). 409 with no simulated trailer to use |
+
+`OrderOut` gains `simulated` and `wms_synced`; `IssueOut` and `UserOut` gain `simulated`. Completing
+an order calls `WmsClient.confirm_order`; while the WMS is down the completion is kept with
+`wms_synced = false` and written back later.
+
 ---
 
 ## 3. Realtime — `WS /ws`
@@ -169,6 +191,7 @@ concerns:
 | `order_complete` | `POST /api/orders/{id}/complete` → operator and supervisor |
 | `new_request` | `POST /api/requests` → operator and supervisor |
 | `broadcast` | `POST /api/broadcasts` → the supervisor's team |
+| `floor_update` | the simulator, whenever trailers move → **every** connected user. It carries no data; each client refetches docks, orders and the WMS through its own row scope |
 
 **Adding an event means changing both ends:** a constructor in `backend/app/realtime.py` and the
 client in `frontend/src/api/realtime.ts`, which authenticates, reconnects with backoff (1 s → 30 s),

@@ -9,8 +9,10 @@ import {
   useOrder,
   useScan,
   useCounter,
+  useInventory,
   useTemperatureCheck,
 } from '../../api/hooks';
+import { ApiError } from '../../api/client';
 import type { OrderDetail, OrderItem, ScanResult, TemperatureCheck } from '../../api/types';
 import { Barcode } from '../../components/Barcode';
 import { LoadPlanView } from '../../components/LoadPlanView';
@@ -88,10 +90,40 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
 
 // ── Counting ──
 
+/** Pick locations from the WMS. When the WMS is down, say so plainly: the paper pick list still works. */
+function StockLocations({ sku }: { sku: string }) {
+  const stock = useInventory(sku);
+  if (stock.isPending) return <p className="label">Asking the WMS…</p>;
+  if (stock.isError) {
+    const offline = stock.error instanceof ApiError && stock.error.status === 503;
+    return (
+      <p className="border-2 border-ink bg-paper-sunk p-3 text-base">
+        {offline
+          ? 'WMS offline. Pick from the paper pick list; your counts are kept and sent when it is back.'
+          : 'Could not read locations from the WMS.'}
+      </p>
+    );
+  }
+  if (stock.data.length === 0) return <p className="text-base">No stock on hand in the WMS.</p>;
+  return (
+    <ul className="grid gap-0.5 border-2 border-ink bg-ink sm:grid-cols-2">
+      {stock.data.map((pallet) => (
+        <li key={pallet.pallet_id} className="flex items-baseline justify-between gap-3 bg-light px-3 py-2">
+          <span className="telemetry text-lg">{pallet.location}</span>
+          <span className="telemetry text-sm text-ink-mute">
+            {pallet.cases} cs · {pallet.pallet_id.slice(-6)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
   const counter = useCounter(order.id);
   const [manual, setManual] = useState('');
   const [showCode, setShowCode] = useState(false);
+  const [showStock, setShowStock] = useState(false);
   const outbound = order.type === 'outbound';
   // Loading cannot exceed the plan; receiving can, because an overage is a real discrepancy.
   const clamp = (value: number) => Math.max(0, outbound ? Math.min(value, item.expected_quantity) : value);
@@ -122,15 +154,32 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
             {item.is_allergen && ' · ALLERGEN'}
           </p>
         </div>
-        <button
-          type="button"
-          className="label underline"
-          onClick={() => setShowCode((value) => !value)}
-          aria-expanded={showCode}
-        >
-          {showCode ? 'Hide' : 'Show'} case barcode
-        </button>
+        <div className="flex flex-wrap gap-x-4">
+          {outbound && (
+            <button
+              type="button"
+              className="label underline"
+              onClick={() => setShowStock((value) => !value)}
+              aria-expanded={showStock}
+            >
+              {showStock ? 'Hide' : 'Where is it'} stored
+            </button>
+          )}
+          <button
+            type="button"
+            className="label underline"
+            onClick={() => setShowCode((value) => !value)}
+            aria-expanded={showCode}
+          >
+            {showCode ? 'Hide' : 'Show'} case barcode
+          </button>
+        </div>
       </div>
+      {showStock && (
+        <div className="border-b-2 border-ink p-4">
+          <StockLocations sku={item.sku} />
+        </div>
+      )}
       {showCode && item.gtin && (
         <div className="border-b-2 border-ink p-4">
           <Barcode code={item.gtin} label={`Case barcode for ${item.product_name}`} />

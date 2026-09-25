@@ -32,6 +32,13 @@ export type Handoff = Schemas['ShiftHandoffOut'];
 export type ChatMessage = Schemas['ChatMessageOut'];
 export type ChatReply = Schemas['ChatReply'];
 export type Analytics = Schemas['AnalyticsSummary'];
+export type SimStatus = Schemas['SimStatusOut'];
+export type SimEvent = Schemas['SimEventOut'];
+export type SimScenario = Schemas['SimInject']['scenario'];
+export type SimSpeed = Schemas['SimSpeed']['speed'];
+export type WmsStatus = Schemas['WmsStatusOut'];
+export type YardEntry = Schemas['YardEntryOut'];
+export type Pallet = Schemas['PalletOut'];
 
 export interface AiResolution {
   found: boolean;

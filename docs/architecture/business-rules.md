@@ -417,6 +417,89 @@ subtype *Short count* or *Overage* — scored by the normal formula, in the same
 completion. Lines with `expected = 0` are skipped. *(Phase 2 — previously done in the browser, which
 filed overages as "Count Shortage" with a negative quantity.)*
 
+## 12. The shift simulation (Phase 3)
+
+Everything below lives in `backend/app/wms/`: `clock.py`, `plan.py` (both pure) and `engine.py` (the
+materialiser). The simulator stands behind the `WmsClient` boundary (architecture §4); nothing here
+changes how an issue is scored. **Every simulated exception is filed through the same
+`file_issue` → `classify_severity` path as a person's report.**
+
+### 12.1 The clock
+
+| Rule | Value |
+|---|---|
+| Shift length | 480 simulated minutes, shown as 06:00–14:00 |
+| Speeds | 1×, 5×, 15× (default), 60× |
+| Start state | paused at 06:00 of shift 1, seed 42 |
+| End of shift | the clock stops at 13:59; *Next shift* is an explicit action |
+| Definition | `minutes = anchor_minutes + (now − anchor_real) × speed` while running. Play, pause, speed, step and next-shift re-anchor; nothing increments a counter |
+
+### 12.2 The plan: a pure function of (seed, shift)
+
+| Rule | Value |
+|---|---|
+| Lanes | one per simulated crew member, from the top door of each zone (4 crew → doors 4, 8, 11, 12) |
+| First arrival per lane | 4–45 min into the shift |
+| Last arrival | at least 70 min before the shift ends |
+| Load | 1–3 of the customer's products; 2–5 pallets each, less 0–8 cases on some lines |
+| Inspection | 4–9 min |
+| Work per pallet | senior 2.0 min · experienced 2.6 · new 3.4 (the crew member's `experience_level`) |
+| Turn pacing | inspection + work at the *slowest* rate + a 12–30 min gap |
+| Exception chance | 0.3 per trailer |
+| Exception mix (weights) | damage 25 · temperature 15 (inbound cold loads only) · count 15 · SKU 10 · barcode 10 · equipment 10 · safety 8 · paperwork 7 |
+| Temperature exceptions | +2.5, +7 or +14 °F over the product's limit |
+| When it surfaces | 15–85% of the way through the work |
+| Operator follow-up | 3–12 min later |
+| WMS outage | one per shift, starting 90–390 min in, lasting 5–10 min |
+
+### 12.3 Materialising the plan
+
+- **Exactly once.** Each event has a key (`s0-d4-12:arrive`, `:work`, `:exc`, `:fu`, `:done`,
+  `s0-outage0`, `s0-outage0-end`) recorded in `sim_events`; re-running the engine never repeats one.
+- **Timed by simulated minutes, not by when the engine runs.** A trailer arrives at
+  `max(planned arrival, minute its door came free, minute a crew member came free)`; departure is
+  stamped at the computed finish. Stepping a shift in 5-minute or 30-minute steps produces the same
+  floor.
+- **Door choice.** The planned door if free, otherwise whichever door frees first. A person working a
+  trailer holds their door.
+- **Follow-up.** The crew member escalates if the issue scored **high or critical**, or its type has
+  no dock-level resolution (Safety, Seal/Trailer Condition, …). Otherwise it is self-resolved with:
+  Damaged Pallet → Product Segregated · Count Discrepancy → Partial Accept · Barcode Issue → Manual
+  Entry · Equipment Failure → Equipment Swapped · Temperature Deviation → Temp Re-check OK · SKU
+  Mismatch and Paperwork Mismatch → Corrected and Continued.
+- **An escalated trailer waits at its door** until the supervisor decides. No trailer leaves before
+  its follow-up.
+- **WMS outage.** A crew member files *WMS/System Issue: WMS offline or not responding*; lookups
+  answer 503; completions are stored with `wms_synced = false` and written back when the WMS returns,
+  when the outage issue is self-resolved as *Manual Entry*.
+- **Human takeover.** Anyone who counts, scans, inspects, reports on or completes a simulated trailer
+  clears `sim_managed`, and the simulator stops driving it.
+- **Crew only.** The simulator assigns trailers only to users with `simulated = true` (OP-009 to
+  OP-012) and files reports only in their names. The demo accounts' own orders are never touched.
+
+### 12.4 Scenarios on cue: `POST /api/sim/inject`
+
+Only a simulated crew member's trailer is ever used; with none at a door the call answers 409.
+
+| Scenario | Filed as | Target |
+|---|---|---|
+| `temperature_emergency` | Temperature Deviation, product 28 °F over its limit, 24 cases | the coldest inbound load at a door |
+| `wrong_product` | SKU Mismatch: Wrong product staged, 12 cases | an outbound load |
+| `damaged_pallet` | Damaged Pallet: Crushed or collapsed pallet, 8 cases | any |
+| `injury` | Safety Incident: Employee injury (always critical, §1.8) | any |
+| `wms_outage` | WMS offline for 8 simulated minutes | none |
+
+A high or critical injected issue is escalated at once.
+
+### 12.5 Marking
+
+`simulated: true` on every order, issue and crew member the simulator creates; `SIM-` order numbers;
+a *Sim* tag in the UI; the demo login list leaves out simulated crew. `POST /api/sim/reset` removes
+all of it and rewinds to 06:00.
+
+*Known limitation:* the dwell modifier (§1.3) reads wall-clock time since the trailer arrived, so at
+15× a simulated trailer's dwell counts slower than its simulated time.
+
 ---
 
 ## Change log
@@ -424,4 +507,5 @@ filed overages as "Count Shortage" with a negative quantity.)*
 | Date | Change |
 |---|---|
 | 2026-09-25 | Initial extraction from code and source documents. |
+| 2026-09-25 | Phase 3: §12, the shift simulation: clock, plan, materialisation, scenarios, marking. |
 | 2026-09-25 | Phase 2: Safety and WMS types, 87 subtypes, severity floors and people risk, zero-count and dwell fixes, company bonus reaches retrieval, load-aware inspection gate, persisted recurrence, lifecycle guard, photo evidence, load plans. |

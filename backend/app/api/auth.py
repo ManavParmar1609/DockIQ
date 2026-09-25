@@ -68,7 +68,7 @@ async def demo_accounts(session: SessionDep, settings: SettingsDep) -> list[Demo
     rows = await session.execute(
         select(User.employee_id, User.name, User.role, User.zone, supervisor.name.label("supervisor_name"))
         .outerjoin(supervisor, User.supervisor_id == supervisor.id)
-        .where(User.is_active, User.password_hash.is_not(None))
+        .where(User.is_active, User.password_hash.is_not(None), User.simulated.is_(False))
         .order_by(User.role, User.employee_id)
     )
     return [DemoAccount.model_validate(dict(row._mapping)) for row in rows]

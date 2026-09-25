@@ -60,6 +60,7 @@ export const router = createBrowserRouter([
       { path: 'log', lazy: gated(STAFF, () => import('./pages/staff/IssueLog')) },
       { path: 'analytics', lazy: gated(STAFF, () => import('./pages/staff/Analytics')) },
       { path: 'handoff', lazy: gated(SUPERVISOR, () => import('./pages/staff/Handoff')) },
+      { path: 'sim', lazy: gated(STAFF, () => import('./pages/staff/Simulator')) },
       { path: '*', Component: NotFound },
     ],
   },

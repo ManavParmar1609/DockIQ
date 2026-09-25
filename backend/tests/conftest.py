@@ -28,6 +28,7 @@ def make_settings(database_url: str) -> Settings:
         database_url=database_url,
         nvidia_api_key=None,
         log_level="WARNING",
+        sim_tick_seconds=0,  # tests drive the simulator explicitly
     )
 
 

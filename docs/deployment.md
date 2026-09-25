@@ -48,7 +48,9 @@ Environment variables:
 | `CORS_ORIGINS` | your Vercel URL, e.g. `https://dockiq.vercel.app` (comma-separate several) | no |
 | `JWT_SECRET` | a random 32+ character string — e.g. `python -c "import secrets; print(secrets.token_urlsafe(48))"`. **The API refuses to start without it** | **yes** |
 | `DEMO_PASSWORD` | the password every seeded demo account signs in with. Unset = accounts are created without passwords and cannot sign in | **yes** |
-| `NVIDIA_API_KEY` | optional | **yes** |
+| `NVIDIA_API_KEY` | optional: enables the assistant's model; without it chat answers from the knowledge base | **yes** |
+| `NVIDIA_MODEL` | optional: defaults to the model in `app/config.py` | no |
+| `WMS_MODE` | optional: `simulated` (default) runs the live shift simulator; `none` disconnects it | no |
 
 `ENVIRONMENT=production` is baked into the image. On every boot the container runs
 `python -m app.seed` — migrate to head, then load the demo data **only if the database is empty** —

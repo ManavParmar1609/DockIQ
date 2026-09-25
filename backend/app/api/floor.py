@@ -51,7 +51,8 @@ async def create_inspection(body: InspectionCreate, user: Operator, session: Ses
     order_id = body.order_id if body.order_id is not None else dock.current_order_id
     limits: list[float | None] = []
     if order_id is not None:
-        await visible_order(session, user, order_id)
+        order = await visible_order(session, user, order_id)
+        order.sim_managed = False  # a person is inspecting: the simulator hands this trailer over
         limits = list(
             await session.scalars(
                 select(Product.temp_max)

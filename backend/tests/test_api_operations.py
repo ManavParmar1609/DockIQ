@@ -70,7 +70,7 @@ def test_taxonomy_is_the_single_source_of_lists(client: TestClient, login: Login
 
 def test_users_are_scoped_to_the_team(client: TestClient, login: Login) -> None:
     team = client.get("/api/users", headers=login("SUP-001")).json()
-    assert {u["employee_id"] for u in team} == {"SUP-001", "OP-001", "OP-002", "OP-005"}
+    assert {u["employee_id"] for u in team} == {"SUP-001", "OP-001", "OP-002", "OP-005", "OP-009"}
     own = client.get("/api/users", headers=login("OP-001")).json()
     assert {u["employee_id"] for u in own} == {"OP-001", "SUP-001"}
 

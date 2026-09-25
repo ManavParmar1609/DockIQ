@@ -1,6 +1,6 @@
 /**
  * The /ws channel: authenticated, reconnecting, and wired into the query cache so a screen updates
- * the moment someone else changes what it shows. The six event types are the complete vocabulary —
+ * the moment someone else changes what it shows. The seven event types are the complete vocabulary —
  * see docs/requirements/functional-specs.md §3.
  */
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,7 +16,8 @@ export type RealtimeEvent =
   | { type: 'issue_resolved'; issue_id: number; method: string }
   | { type: 'order_complete'; order_id: number }
   | { type: 'new_request'; request_id: number; request_type: string }
-  | { type: 'broadcast'; id: number; message: string };
+  | { type: 'broadcast'; id: number; message: string }
+  | { type: 'floor_update' };
 
 const EVENT_TYPES = new Set<RealtimeEvent['type']>([
   'new_issue',
@@ -25,6 +26,7 @@ const EVENT_TYPES = new Set<RealtimeEvent['type']>([
   'order_complete',
   'new_request',
   'broadcast',
+  'floor_update',
 ]);
 
 export type Connection = 'connecting' | 'live' | 'offline';
@@ -83,6 +85,13 @@ export function useRealtime(onEvent: (event: RealtimeEvent) => void): Connection
           break;
         case 'broadcast':
           void client.invalidateQueries({ queryKey: keys.broadcasts });
+          break;
+        case 'floor_update':
+          // Trailers moved (usually the simulator): refetch what the floor shows, through your own scope.
+          void client.invalidateQueries({ queryKey: keys.docks });
+          void client.invalidateQueries({ queryKey: keys.orders });
+          void client.invalidateQueries({ queryKey: keys.sim });
+          void client.invalidateQueries({ queryKey: keys.wms });
           break;
       }
     };

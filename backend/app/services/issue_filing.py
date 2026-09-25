@@ -21,7 +21,7 @@ from app.domain.recurrence import RECURRENCE_WINDOW_DAYS, carrier_pattern, dock_
 from app.domain.retrieval import find_resolution
 from app.domain.severity import classify_severity
 from app.domain.taxonomy import ISSUE_TYPES, is_valid_subtype
-from app.models import Carrier, Company, DockDoor, Issue, Product
+from app.models import Carrier, Company, DockDoor, Issue, Order, Product
 from app.queries import count_recent_issues, load_kb_entries
 from app.schemas import IssueCreate
 
@@ -30,7 +30,9 @@ def _unprocessable(detail: str) -> HTTPException:
     return HTTPException(http.HTTP_422_UNPROCESSABLE_CONTENT, detail)
 
 
-async def file_issue(session: AsyncSession, reporter_id: int, body: IssueCreate) -> Issue:
+async def file_issue(
+    session: AsyncSession, reporter_id: int, body: IssueCreate, *, simulated: bool = False
+) -> Issue:
     if body.issue_type not in ISSUE_TYPES:
         raise _unprocessable(f"Unknown issue type '{body.issue_type}'")
     if not is_valid_subtype(body.issue_type, body.issue_subtype):
@@ -117,9 +119,14 @@ async def file_issue(session: AsyncSession, reporter_id: int, body: IssueCreate)
         company_id=body.company_id,
         carrier_id=body.carrier_id,
         estimated_cost_impact=cost,
+        simulated=simulated,
         created_at=now,
     )
     session.add(issue)
+    # A person reporting on a simulated trailer takes it over from the simulator.
+    order = await session.get(Order, body.order_id) if body.order_id is not None else None
+    if order is not None and not simulated:
+        order.sim_managed = False
     dock.status, dock.lifecycle_phase = transition(
         dock.status, dock.lifecycle_phase, DockEvent.ISSUE_REPORTED
     )

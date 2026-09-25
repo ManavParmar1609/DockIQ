@@ -152,11 +152,14 @@ export function DockStatusTag({ status }: { status: Dock['status'] }) {
   return <Tag tone={tone}>{DOCK_STATUS[status]}</Tag>;
 }
 
-/** Rules §2.4.7 — simulated data stays visibly marked as simulated. */
-export function SimulatedTag() {
+/** Rules §2.4.7 — simulated data stays visibly marked as simulated. `compact` marks one record. */
+export function SimulatedTag({ compact = false }: { compact?: boolean }) {
   return (
-    <span className="label inline-flex min-h-7 items-center gap-2 border-2 border-dashed border-ink-mute px-2">
-      Simulated data
+    <span
+      className="label inline-flex min-h-7 items-center gap-2 border-2 border-dashed border-ink-mute px-2"
+      title={compact ? 'Created by the shift simulator' : undefined}
+    >
+      {compact ? 'Sim' : 'Simulated data'}
     </span>
   );
 }

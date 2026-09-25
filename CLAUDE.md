@@ -61,7 +61,9 @@ Demo sign-in locally: any seeded ID (`OP-001`, `SUP-001`, `QA-001` …) with pas
   tokens in `frontend/src/styles/app.css`; no hex, no arbitrary values.
 - **The uvicorn `--reload` watcher on Windows sometimes misses edits** — restart it if an endpoint
   looks stale.
-- **The WMS is Phase 3** and goes behind `WmsClient` — never into route handlers.
+- **The WMS sits behind `WmsClient`** (`app/wms/client.py`), never in route handlers. The shift
+  simulator is `app/wms/engine.py`; its rules are business-rules §12. Tests set
+  `sim_tick_seconds=0` and drive it with `POST /api/sim/step`.
 - **context7 is configured at user scope** (with its key), so there is deliberately no project
   `.mcp.json` — a keyless project entry would shadow the keyed user one.
 

@@ -22,12 +22,18 @@ import type {
   LoadPlan,
   Order,
   OrderDetail,
+  Pallet,
   Photo,
   QuickRequest,
   ScanResult,
   Severity,
+  SimScenario,
+  SimSpeed,
+  SimStatus,
   Taxonomy,
   TemperatureCheck,
+  WmsStatus,
+  YardEntry,
 } from './types';
 
 export const queryClient = new QueryClient({
@@ -58,6 +64,10 @@ export const keys = {
   handoffs: ['handoffs'] as const,
   analytics: ['analytics'] as const,
   chat: ['chat'] as const,
+  sim: ['sim'] as const,
+  wms: ['wms'] as const,
+  yard: ['wms', 'yard'] as const,
+  inventory: (sku: string) => ['wms', 'inventory', sku] as const,
 };
 
 // ── Reference ──
@@ -404,5 +414,92 @@ export function useAnalytics() {
   return useQuery<Analytics>({
     queryKey: keys.analytics,
     queryFn: () => unwrap(api.GET('/api/analytics/summary')),
+  });
+}
+
+// ── Simulation and WMS (business-rules §12) ──
+
+export function useSimStatus() {
+  return useQuery<SimStatus>({
+    queryKey: keys.sim,
+    queryFn: () => unwrap(api.GET('/api/sim/status')),
+    // The clock moves by itself while playing; poll so it reads live between floor_update events.
+    refetchInterval: (query) => (query.state.data?.running ? 2_000 : false),
+    staleTime: 0,
+  });
+}
+
+type SimControl =
+  | { action: 'play' | 'pause' | 'next-shift' }
+  | { action: 'speed'; speed: SimSpeed }
+  | { action: 'step'; minutes: number }
+  | { action: 'reset'; seed?: number | null };
+
+function simRequest(control: SimControl) {
+  switch (control.action) {
+    case 'play':
+      return api.POST('/api/sim/play');
+    case 'pause':
+      return api.POST('/api/sim/pause');
+    case 'next-shift':
+      return api.POST('/api/sim/next-shift');
+    case 'speed':
+      return api.POST('/api/sim/speed', { body: { speed: control.speed } });
+    case 'step':
+      return api.POST('/api/sim/step', { body: { minutes: control.minutes } });
+    case 'reset':
+      return api.POST('/api/sim/reset', { body: { seed: control.seed ?? null } });
+  }
+}
+
+/** Every control returns the new status, written straight into the cache. */
+export function useSimControl() {
+  const client = useQueryClient();
+  return useMutation<SimStatus, Error, SimControl>({
+    mutationFn: (control) => unwrap(simRequest(control)),
+    onSuccess: (status) => {
+      client.setQueryData(keys.sim, status);
+      void client.invalidateQueries({ queryKey: keys.wms });
+    },
+  });
+}
+
+export function useInjectScenario() {
+  const client = useQueryClient();
+  return useMutation<{ message: string }, Error, SimScenario>({
+    mutationFn: (scenario) => unwrap(api.POST('/api/sim/inject', { body: { scenario } })),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: keys.sim });
+      void client.invalidateQueries({ queryKey: keys.wms });
+    },
+  });
+}
+
+export function useWmsStatus() {
+  return useQuery<WmsStatus>({
+    queryKey: [...keys.wms, 'status'],
+    queryFn: () => unwrap(api.GET('/api/wms/status')),
+    refetchInterval: 20_000,
+  });
+}
+
+/** `enabled` false while the WMS is known to be down: no point asking it. */
+export function useYard(enabled = true) {
+  return useQuery<YardEntry[]>({
+    queryKey: keys.yard,
+    enabled,
+    queryFn: () => unwrap(api.GET('/api/wms/appointments')),
+    refetchInterval: 10_000,
+    retry: false, // a 503 is the WMS being down, not a blip
+  });
+}
+
+/** Where a SKU is stored. A 503 means the WMS is offline — shown, not retried. */
+export function useInventory(sku: string | null) {
+  return useQuery<Pallet[]>({
+    queryKey: keys.inventory(sku ?? ''),
+    queryFn: () => unwrap(api.GET('/api/wms/inventory', { params: { query: { sku: sku ?? '' } } })),
+    enabled: Boolean(sku),
+    retry: false,
   });
 }

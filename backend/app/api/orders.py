@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import realtime
 from app.api.access import ensure, issue_audience, order_scope, supervisor_of, visible_order
-from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, get_or_404
+from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, WmsDep, get_or_404
 from app.db import utcnow
 from app.domain.barcodes import decide_scan, normalize_code
 from app.domain.dock import DockEvent, transition
@@ -32,6 +32,7 @@ from app.schemas import (
     TemperatureCheckOut,
 )
 from app.services.issue_filing import file_issue
+from app.wms.client import WmsUnavailable
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -42,9 +43,11 @@ async def _items(session: AsyncSession, order_id: int) -> list[OrderItemOut]:
 
 
 async def _open_order(session: AsyncSession, user: User, order_id: int) -> Order:
-    """An order the operator is assigned to, still open for counting."""
+    """An order the operator is assigned to, still open for counting. A person working a simulated
+    trailer takes it over: the simulator stops driving it (business-rules §12)."""
     order = await visible_order(session, user, order_id)
     ensure(order.status is not OrderStatus.COMPLETE, "This order is already complete")
+    order.sim_managed = False
     return order
 
 
@@ -216,7 +219,12 @@ async def temperature_check(
 
 @router.post("/{order_id}/complete")
 async def complete_order(
-    order_id: int, body: OrderComplete, user: Operator, session: SessionDep, events: RealtimeDep
+    order_id: int,
+    body: OrderComplete,
+    user: Operator,
+    session: SessionDep,
+    events: RealtimeDep,
+    wms: WmsDep,
 ) -> OrderCompleted:
     """Sign the order off. On an inbound order, every line outside the customer's count tolerance is
     filed as a Count Discrepancy issue in the same transaction (business-rules §11)."""
@@ -252,6 +260,15 @@ async def complete_order(
     order.seal_number = body.seal_number
     order.notes = body.notes
     order.completed_at = now
+    counts = await session.execute(
+        select(Product.sku, OrderItem.actual_quantity).join(Product).where(OrderItem.order_id == order_id)
+    )
+    try:
+        final = {sku: quantity for sku, quantity in counts}
+        await wms.confirm_order(order.external_ref or order.order_number, final)
+        order.wms_synced = True
+    except WmsUnavailable:
+        order.wms_synced = False  # queued: written back when the WMS is reachable again
     if order.dock_door_id is not None:
         dock = await get_or_404(session, DockDoor, order.dock_door_id, "Dock")
         dock.status, dock.lifecycle_phase = transition(

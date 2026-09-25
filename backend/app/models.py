@@ -79,6 +79,8 @@ class User(Base):
     # An operator's supervisor; supervisors and quality staff have none. This is the team.
     supervisor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Simulated crew (Phase 3): worked by the shift simulator, never by a person logging in.
+    simulated: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class Carrier(Base):
@@ -128,6 +130,14 @@ class Order(Base):
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # Simulation (Phase 3). `external_ref` is the WMS appointment key; `sim_managed` is cleared the
+    # moment a person works the order, and the simulator stops driving it.
+    simulated: Mapped[bool] = mapped_column(Boolean, default=False)
+    external_ref: Mapped[str | None] = mapped_column(String(64), unique=True)
+    sim_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    sim_arrived_minute: Mapped[float | None] = mapped_column(Float)
+    sim_departed_minute: Mapped[float | None] = mapped_column(Float)
+    wms_synced: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class OrderItem(Base):
@@ -170,6 +180,7 @@ class Issue(Base):
     company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id"), index=True)
     carrier_id: Mapped[int | None] = mapped_column(ForeignKey("carriers.id"), index=True)
     estimated_cost_impact: Mapped[float] = mapped_column(Money, default=0)
+    simulated: Mapped[bool] = mapped_column(Boolean, default=False)
     escalated_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     acknowledged_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
@@ -277,4 +288,32 @@ class ScanEvent(Base):
     code: Mapped[str] = mapped_column(String(64))
     result: Mapped[ScanResult] = mapped_column(enum_column(ScanResult))
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+
+class SimState(Base):
+    """The simulation clock: one row. See app/wms/clock.py."""
+
+    __tablename__ = "sim_state"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    seed: Mapped[int] = mapped_column(Integer)
+    speed: Mapped[float] = mapped_column(Float)
+    running: Mapped[bool] = mapped_column(Boolean)
+    anchor_real: Mapped[datetime] = mapped_column(UTCDateTime)
+    anchor_minutes: Mapped[float] = mapped_column(Float)
+    outage_until_minute: Mapped[float | None] = mapped_column(Float)
+
+
+class SimEvent(Base):
+    """The ledger of simulated events already applied. `key` makes every event happen exactly once."""
+
+    __tablename__ = "sim_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(96), unique=True)
+    kind: Mapped[str] = mapped_column(String(32), index=True)
+    minute: Mapped[float] = mapped_column(Float)
+    message: Mapped[str] = mapped_column(Text)
+    issue_id: Mapped[int | None] = mapped_column(ForeignKey("issues.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)

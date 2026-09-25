@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # Public list of demo accounts (names and employee IDs only) on the login screen.
     demo_accounts_listed: bool = True
 
+    # The warehouse system behind the WmsClient boundary. "simulated" runs the live shift simulator;
+    # "none" means no WMS is connected. A real WMS adapter would add a mode here.
+    wms_mode: Literal["simulated", "none"] = "simulated"
+    # How often the simulator catches up with its clock. 0 disables the background tick (tests drive
+    # it explicitly); correctness never depends on it, only timeliness.
+    sim_tick_seconds: float = 2.0
+
     nvidia_api_key: SecretStr | None = None
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
     nvidia_model: str = "meta/llama-3.1-70b-instruct"

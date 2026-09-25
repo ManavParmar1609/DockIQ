@@ -2,7 +2,7 @@ import { LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
 
-import { useBroadcasts } from '../api/hooks';
+import { useBroadcasts, useWmsStatus } from '../api/hooks';
 import type { Broadcast } from '../api/types';
 import { useRealtime, type Connection } from '../api/realtime';
 import { useAuth } from '../auth/AuthProvider';
@@ -67,6 +67,21 @@ function LiveIndicator({ connection }: { connection: Connection }) {
       />
       {label}
     </span>
+  );
+}
+
+/** The WMS boundary is down: say what still works. Only for a connected (simulated or real) WMS. */
+function WmsOfflineBanner() {
+  const wms = useWmsStatus();
+  if (!wms.data || wms.data.online || wms.data.mode === 'none') return null;
+  return (
+    <div role="status" className="flex items-stretch border-b-2 border-hazard bg-light">
+      <div className="hazard-tape w-3 shrink-0" aria-hidden="true" />
+      <p className="px-4 py-3 text-base">
+        <span className="heading mr-2 text-hazard-deep">WMS offline</span>
+        Work from the paper load sheet. Counts and sign-offs are saved here and sent when it is back.
+      </p>
+    </div>
   );
 }
 
@@ -176,6 +191,8 @@ function SignedInShell({
             </button>
           </div>
         </header>
+
+        <WmsOfflineBanner />
 
         {shown && shown.id !== dismissedId && (
           <BroadcastBanner

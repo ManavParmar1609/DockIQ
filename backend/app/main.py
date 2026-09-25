@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -6,17 +8,31 @@ from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api import analytics, auth, chat, floor, issues, orders, reference
+from app.api import analytics, auth, chat, floor, issues, orders, reference, sim, wms
 from app.api.deps import RateLimit, SessionDep, user_from_token
 from app.config import Settings, get_settings
 from app.db import Database
 from app.realtime import SUBPROTOCOL, ConnectionManager
 from app.services.assistant import Assistant
+from app.wms.client import NoWms, WmsClient
+from app.wms.engine import SimulationEngine
+from app.wms.simulated import SimulatedWms
 
 logger = logging.getLogger("dockiq")
 
 LOGIN_ATTEMPTS_PER_MINUTE = 10
 CHAT_MESSAGES_PER_MINUTE = 12
+
+
+async def _tick(engine: SimulationEngine, seconds: float) -> None:
+    """Keeps the floor moving while someone watches. Correctness never depends on this loop: the
+    engine catches up from the clock on every call, so a sleeping host just catches up later."""
+    while True:
+        await asyncio.sleep(seconds)
+        try:
+            await engine.tick()
+        except Exception:
+            logger.exception("simulation tick failed")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -31,8 +47,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.assistant = Assistant(settings)
         app.state.login_limit = RateLimit(LOGIN_ATTEMPTS_PER_MINUTE, 60)
         app.state.chat_limit = RateLimit(CHAT_MESSAGES_PER_MINUTE, 60)
-        logger.info("DockIQ API starting (%s)", settings.environment)
+        engine: SimulationEngine | None = None
+        wms_client: WmsClient = NoWms()
+        if settings.wms_mode == "simulated":
+            engine = SimulationEngine(app.state.db, app.state.realtime)
+            wms_client = SimulatedWms(app.state.db, engine)
+        app.state.sim, app.state.wms = engine, wms_client
+        ticker = (
+            asyncio.create_task(_tick(engine, settings.sim_tick_seconds))
+            if engine is not None and settings.sim_tick_seconds > 0
+            else None
+        )
+        logger.info("DockIQ API starting (%s, WMS %s)", settings.environment, settings.wms_mode)
         yield
+        if ticker is not None:
+            ticker.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await ticker
         await app.state.db.dispose()
 
     app = FastAPI(title="DockIQ.AI", version="2.0.0", lifespan=lifespan)
@@ -50,7 +81,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await session.execute(text("SELECT 1"))
         return {"status": "ok"}
 
-    for module in (auth, reference, orders, issues, floor, chat, analytics):
+    for module in (auth, reference, orders, issues, floor, chat, analytics, wms, sim):
         api.include_router(module.router)
     app.include_router(api)
 
