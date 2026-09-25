@@ -20,7 +20,7 @@ export function SeverityDerivation({
   severity: Severity;
   score: number | null | undefined;
   reason: string | null | undefined;
-  cost: number;
+  cost?: number;
   index?: number;
 }) {
   const { factors } = parseSeverityReason(reason);
@@ -33,7 +33,7 @@ export function SeverityDerivation({
             {score.toFixed(1)} <span className="label">points</span>
           </p>
         )}
-        {cost > 0 && (
+        {cost !== undefined && cost > 0 && (
           <p className="ml-auto text-right">
             <span className="label block">Est. cost impact</span>
             <span className="telemetry text-2xl">{formatMoney(cost)}</span>

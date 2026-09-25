@@ -403,15 +403,14 @@ function ResultStep({
     <div className="flex flex-col gap-4">
       {critical && (
         <Notice tone="alert" title="Critical: escalated to your supervisor">
-          They have been alerted and decide what happens next. Follow the procedure below while they come to
-          you.
+          They have been alerted and decide what happens next, so a critical issue cannot be resolved on your
+          own. Follow the procedure below while they come to you.
         </Notice>
       )}
       <SeverityDerivation
         severity={created.severity}
         score={created.severity_score}
         reason={created.severity_reason}
-        cost={created.estimated_cost_impact}
         index={0}
       />
       <RecurringPatterns patterns={created.recurring_patterns} />
@@ -433,8 +432,10 @@ function ResultStep({
           </button>
         </Panel>
       ) : (
-        <Panel title="Did the procedure fix it?" index={2}>
-          <p className="label mb-2">Yes — how:</p>
+        <Panel title="Resolve it yourself" index={2}>
+          <p className="mb-3 text-base">
+            Did the procedure fix it? Tap what you did and the issue is closed.
+          </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
               <button

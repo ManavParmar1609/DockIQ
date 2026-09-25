@@ -6,7 +6,7 @@ import { useIssues } from '../../api/hooks';
 import type { Issue } from '../../api/types';
 import { SeverityBadge } from '../../components/Severity';
 import { EmptyState, IssueStatusTag, PageHeader, QueryBoundary } from '../../components/ui';
-import { formatDateTime, formatMoney } from '../../lib/format';
+import { formatDateTime } from '../../lib/format';
 import { ISSUE_STATUS } from '../../lib/vocab';
 
 const FILTERS = [
@@ -27,11 +27,13 @@ function IssueCard({ issue }: { issue: Issue }) {
           <p className="heading text-xl">{issue.issue_subtype ?? issue.issue_type}</p>
           <p className="mt-0.5 text-ink-soft">{issue.issue_type}</p>
           {issue.description && <p className="mt-2 line-clamp-2 text-base">{issue.description}</p>}
+          {issue.status === 'resolution_in_progress' && issue.severity !== 'critical' && (
+            <p className="mt-2 text-base font-semibold text-accent-ink">Open it to resolve it yourself</p>
+          )}
           <p className="telemetry mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-mute">
             <span>#{issue.id}</span>
             <span>Dock {issue.door_number ?? '—'}</span>
             <span>{formatDateTime(issue.created_at)}</span>
-            {issue.estimated_cost_impact > 0 && <span>{formatMoney(issue.estimated_cost_impact)}</span>}
             {issue.photo_count > 0 && (
               <span className="flex items-center gap-1">
                 <Camera size={14} aria-hidden="true" /> {issue.photo_count}
@@ -39,7 +41,7 @@ function IssueCard({ issue }: { issue: Issue }) {
             )}
           </p>
           {issue.supervisor_notes && (
-            <p className="mt-3 border-l-4 border-ink pl-3 text-base">
+            <p className="mt-3 rounded-lg bg-paper-sunk px-3 py-2 text-base">
               <span className="label block">
                 {issue.supervisor_name} · {issue.resolution_type}
               </span>

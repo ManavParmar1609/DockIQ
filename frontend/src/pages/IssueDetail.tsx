@@ -149,14 +149,15 @@ function OperatorActions({ issue }: { issue: Issue }) {
   const selfResolve = useSelfResolve();
   const escalate = useEscalate();
   return (
-    <Panel title="Close it out">
+    <Panel title="Resolve it yourself">
       {issue.severity === 'critical' ? (
         <p className="text-lg">
-          <strong>Critical: your supervisor decides.</strong> They have been alerted and have your report.
+          <strong>Critical: your supervisor decides.</strong> Critical issues cannot be resolved on your own;
+          your supervisor has been alerted and has your report.
         </p>
       ) : (
         <>
-          <p className="label mb-2">Resolved it yourself:</p>
+          <p className="mb-3 text-base">Fixed it? Tap what you did and the issue is closed.</p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
               <button
@@ -249,9 +250,11 @@ function Detail({ issue }: { issue: Issue }) {
               <Definition term="SKU" mono>
                 {issue.product_sku ?? '—'}
               </Definition>
-              <Definition term="Cost impact" mono>
-                {formatMoney(issue.estimated_cost_impact)}
-              </Definition>
+              {user.role !== 'operator' && (
+                <Definition term="Cost impact" mono>
+                  {formatMoney(issue.estimated_cost_impact)}
+                </Definition>
+              )}
               <Definition term="Reported" mono>
                 {formatDateTime(issue.created_at)}
               </Definition>
@@ -272,7 +275,7 @@ function Detail({ issue }: { issue: Issue }) {
             severity={issue.severity}
             score={issue.severity_score}
             reason={issue.severity_reason}
-            cost={issue.estimated_cost_impact}
+            cost={user.role === 'operator' ? undefined : issue.estimated_cost_impact}
             index={1}
           />
           <RecurringPatterns patterns={issue.recurring_patterns} />

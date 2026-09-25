@@ -93,7 +93,7 @@ function Answer({ exchange }: { exchange: Exchange }) {
   const waiting = exchange.status === 'streaming' && exchange.steps.length === 0 && !exchange.text;
   return (
     <li
-      className="flex flex-col gap-3 border-l-4 border-ink pl-4"
+      className="flex flex-col gap-3 border-t border-hairline pt-4"
       aria-live="polite"
       aria-busy={exchange.status === 'streaming'}
     >

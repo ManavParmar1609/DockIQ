@@ -178,7 +178,7 @@ export default function Handoff() {
             ) : (
               <ul className="flex flex-col gap-3">
                 {list.map((handoff) => (
-                  <li key={handoff.id} className="border-l-4 border-ink pl-4">
+                  <li key={handoff.id} className="rounded-lg bg-paper-sunk px-4 py-3">
                     <p className="label">
                       {handoff.supervisor_name} · {handoff.shift} shift · {formatDateTime(handoff.created_at)}
                     </p>
