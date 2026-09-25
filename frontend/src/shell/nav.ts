@@ -46,6 +46,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { to: '/app/log', label: 'Issue log', icon: FileText },
     { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/app/sim', label: 'Simulator', short: 'Sim', icon: RadioTower },
+    { to: '/app/chat', label: 'Assistant', short: 'Ask', icon: MessageSquare },
   ],
 };
 

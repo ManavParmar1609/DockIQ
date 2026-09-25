@@ -9,7 +9,6 @@ import type {
   Analytics,
   Broadcast,
   ChatMessage,
-  ChatReply,
   DemoAccount,
   Dock,
   Handoff,
@@ -395,18 +394,6 @@ export function useChatHistory() {
   return useQuery<ChatMessage[]>({
     queryKey: keys.chat,
     queryFn: () => unwrap(api.GET('/api/chat/history')),
-  });
-}
-
-export function useSendChat() {
-  const client = useQueryClient();
-  return useMutation<
-    ChatReply,
-    Error,
-    { message: string; company_id?: number | null; product_category?: string | null }
-  >({
-    mutationFn: (body) => unwrap(api.POST('/api/chat', { body })),
-    onSettled: () => void client.invalidateQueries({ queryKey: keys.chat }),
   });
 }
 

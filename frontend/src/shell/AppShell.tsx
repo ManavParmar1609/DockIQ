@@ -122,6 +122,7 @@ function SignedInShell({
   onLogout: () => void;
 }) {
   const { alerts, dismiss, broadcast, onEvent } = useAlerts(role);
+  const onAssistant = useLocation().pathname.startsWith('/app/chat');
   const connection = useRealtime(onEvent);
   const broadcasts = useBroadcasts();
   const [dismissedId, setDismissedId] = useDismissedBroadcast();
@@ -233,7 +234,8 @@ function SignedInShell({
         </nav>
       </div>
 
-      {role === 'operator' && <QuickRequest />}
+      {/* The assistant has its own input along the bottom; the floating button would cover it. */}
+      {role === 'operator' && !onAssistant && <QuickRequest />}
       <AlertStack alerts={alerts} dismiss={dismiss} />
     </div>
   );

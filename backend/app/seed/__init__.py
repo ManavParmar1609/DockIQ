@@ -216,9 +216,12 @@ async def sync_reference(session: AsyncSession, *, demo_password: str | None) ->
         if row.get("supervisor") and user.supervisor_id is None:
             user.supervisor_id = existing[row["supervisor"]].id
 
-    gtins = {row["sku"]: demo_gtin(number) for number, row in enumerate(load("products"), start=1)}
-    for product in await session.scalars(select(Product).where(Product.gtin.is_(None))):
-        product.gtin = gtins.get(product.sku)
+    rows = load("products")
+    gtins = {row["sku"]: demo_gtin(number) for number, row in enumerate(rows, start=1)}
+    names = {row["sku"]: row["name"] for row in rows}
+    for product in await session.scalars(select(Product)):
+        product.gtin = product.gtin or gtins.get(product.sku)
+        product.name = names.get(product.sku, product.name)  # fictional names are corrected in place
     await session.commit()
 
 

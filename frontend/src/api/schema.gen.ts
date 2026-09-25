@@ -589,6 +589,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stream Chat
+         * @description Events, one JSON object per `data:` line: `step` (a tool running / done / failed), `card`,
+         *     `action` (a draft to confirm), `delta` (answer text), `source`, and finally `done`.
+         */
+        post: operations["stream_chat_api_chat_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chat": {
         parameters: {
             query?: never;
@@ -598,7 +619,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post Chat */
+        /**
+         * Post Chat
+         * @description The same agent, collected into one reply.
+         */
         post: operations["post_chat_api_chat_post"];
         delete?: never;
         options?: never;
@@ -854,6 +878,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentStep */
+        AgentStep: {
+            /** Tool */
+            tool: string;
+            /** Label */
+            label: string;
+            /** Ok */
+            ok: boolean;
+            /** Summary */
+            summary: string;
+        };
         /** AnalyticsSummary */
         AnalyticsSummary: {
             /** Total Issues */
@@ -917,6 +952,16 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** BroadcastDraft */
+        BroadcastDraft: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "send_broadcast";
+            /** Message */
+            message: string;
+        };
         /** BroadcastOut */
         BroadcastOut: {
             /** Id */
@@ -976,6 +1021,21 @@ export interface components {
             source: string;
             /** Confidence */
             confidence: string;
+            /**
+             * Steps
+             * @default []
+             */
+            steps?: components["schemas"]["AgentStep"][];
+            /**
+             * Cards
+             * @default []
+             */
+            cards?: (components["schemas"]["ProcedureCard"] | components["schemas"]["TemperatureCard"] | components["schemas"]["StockCard"] | components["schemas"]["IssuesCard"] | components["schemas"]["OrderCard"])[];
+            /**
+             * Actions
+             * @default []
+             */
+            actions?: (components["schemas"]["IssueDraft"] | components["schemas"]["BroadcastDraft"] | components["schemas"]["HandoffDraft"])[];
         };
         /**
          * ChatRole
@@ -1072,6 +1132,16 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HandoffDraft */
+        HandoffDraft: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "handoff_note";
+            /** Notes */
+            notes: string;
+        };
         /** InspectionCreate */
         InspectionCreate: {
             /** Order Id */
@@ -1160,6 +1230,40 @@ export interface components {
             estimated_cost_impact: number;
             /** Recurring Patterns */
             recurring_patterns: components["schemas"]["RecurringPattern"][];
+        };
+        /**
+         * IssueDraft
+         * @description A report the assistant prepared. Severity is the formula's preview, recomputed when filed.
+         */
+        IssueDraft: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "file_issue";
+            payload: components["schemas"]["IssueCreate"];
+            severity: components["schemas"]["Severity"];
+            /** Severity Score */
+            severity_score: number;
+            /** Severity Reason */
+            severity_reason: string;
+            /** Steps */
+            steps: string[];
+            /** Source */
+            source: string;
+        };
+        /** IssueLine */
+        IssueLine: {
+            /** Id */
+            id: number;
+            severity: components["schemas"]["Severity"];
+            /** Title */
+            title: string;
+            /** Door */
+            door: number | null;
+            status: components["schemas"]["IssueStatus"];
+            /** Minutes Open */
+            minutes_open: number;
         };
         /** IssueOut */
         IssueOut: {
@@ -1288,6 +1392,18 @@ export interface components {
                 [key: string]: components["schemas"]["Severity"];
             };
         };
+        /** IssuesCard */
+        IssuesCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "issues";
+            /** Title */
+            title: string;
+            /** Issues */
+            issues: components["schemas"]["IssueLine"][];
+        };
         /**
          * LifecyclePhase
          * @enum {string}
@@ -1374,6 +1490,28 @@ export interface components {
             total: number;
             /** Self Resolved */
             self_resolved: number;
+        };
+        /** OrderCard */
+        OrderCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "order";
+            /** Order Id */
+            order_id: number;
+            /** Order Number */
+            order_number: string;
+            /** Customer */
+            customer: string;
+            type: components["schemas"]["OrderType"];
+            /** Door */
+            door: number | null;
+            status: components["schemas"]["OrderStatus"];
+            /** Lines */
+            lines: components["schemas"]["OrderLine"][];
+            /** Simulated */
+            simulated: boolean;
         };
         /** OrderComplete */
         OrderComplete: {
@@ -1498,6 +1636,17 @@ export interface components {
             actual_quantity: number;
             /** Product Id */
             product_id: number;
+        };
+        /** OrderLine */
+        OrderLine: {
+            /** Sku */
+            sku: string;
+            /** Name */
+            name: string;
+            /** Counted */
+            counted: number;
+            /** Expected */
+            expected: number;
         };
         /** OrderOut */
         OrderOut: {
@@ -1626,6 +1775,25 @@ export interface components {
             partial: boolean;
             /** Stop */
             stop: number;
+        };
+        /** ProcedureCard */
+        ProcedureCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "procedure";
+            /** Title */
+            title: string;
+            /** Steps */
+            steps: string[];
+            /** Source */
+            source: string;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "low" | "medium" | "high";
         };
         /**
          * ProductCategory
@@ -1868,6 +2036,31 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** StockCard */
+        StockCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "stock";
+            /** Sku */
+            sku: string;
+            /** Product Name */
+            product_name: string | null;
+            /** Pallets */
+            pallets: components["schemas"]["StockPallet"][];
+            /** Wms Online */
+            wms_online: boolean;
+        };
+        /** StockPallet */
+        StockPallet: {
+            /** Pallet Id */
+            pallet_id: string;
+            /** Location */
+            location: string;
+            /** Cases */
+            cases: number;
+        };
         /** TaxonomyOut */
         TaxonomyOut: {
             /** Issue Types */
@@ -1878,6 +2071,26 @@ export interface components {
             supervisor_decisions: string[];
             /** Request Types */
             request_types: string[];
+        };
+        /** TemperatureCard */
+        TemperatureCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "temperature";
+            /** Status */
+            status: string;
+            /** Reading */
+            reading: number;
+            /** Limit */
+            limit: number | null;
+            /** Delta */
+            delta: number | null;
+            /** Guidance */
+            guidance: string;
+            /** Order Number */
+            order_number: string | null;
         };
         /** TemperatureCheckCreate */
         TemperatureCheckCreate: {
@@ -3077,6 +3290,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_chat_api_chat_stream_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatCreate"];
+            };
+        };
+        responses: {
+            /** @description Server-sent agent events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
                 };
             };
             /** @description Validation Error */

@@ -13,7 +13,7 @@ from app.api.deps import RateLimit, SessionDep, user_from_token
 from app.config import Settings, get_settings
 from app.db import Database
 from app.realtime import SUBPROTOCOL, ConnectionManager
-from app.services.assistant import Assistant
+from app.services.agent import Agent
 from app.wms.client import NoWms, WmsClient
 from app.wms.engine import SimulationEngine
 from app.wms.simulated import SimulatedWms
@@ -44,7 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.settings = settings
         app.state.db = Database(settings)
         app.state.realtime = ConnectionManager()
-        app.state.assistant = Assistant(settings)
+        app.state.agent = Agent(settings)
         app.state.login_limit = RateLimit(LOGIN_ATTEMPTS_PER_MINUTE, 60)
         app.state.chat_limit = RateLimit(CHAT_MESSAGES_PER_MINUTE, 60)
         engine: SimulationEngine | None = None

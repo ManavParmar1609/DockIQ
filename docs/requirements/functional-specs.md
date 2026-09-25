@@ -116,17 +116,44 @@ Pass requires **all** of: seal `intact`, cleanliness `clean`, damage `none`, and
 was entered — at or below **the strictest product limit on the load** (45°F only when the load has no
 temperature-controlled product). See [business-rules.md §4.6](../architecture/business-rules.md).
 
-### 2.6 Chat
+### 2.6 The assistant
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/chat` | Ask the assistant (12 messages/minute per user). Retrieves KB context, then calls the NVIDIA LLM |
-| GET | `/api/chat/history` | Your most recent 100 messages, oldest first |
+| POST | `/api/chat/stream` | Ask the assistant; the agent's work streams back as server-sent events (below). 12 messages/minute per user |
+| POST | `/api/chat` | The same agent, collected into one `ChatReply` (`response`, `source`, `steps`, `cards`, `actions`) |
+| GET | `/api/chat/history` | Your most recent 100 messages, oldest first (text only) |
 
-This is the **only** place an LLM is used. Severity, cost and retrieval are all deterministic.
-Model: `meta/llama-3.1-70b-instruct` via NVIDIA's OpenAI-compatible endpoint, temperature 0.3,
-max_tokens 512. A deterministic fallback preserves the workflow when the provider is unavailable —
-a stated product guarantee, not an accident.
+**An agent over your own data** (`app/services/agent.py`, tools in `agent_tools.py`). The model picks
+tools; tools read only what the person's own screens could show (the same row scope as the API) and
+take every number from a deterministic rule. At most 5 tool rounds per question; a tool error goes
+back to the model so it can correct itself.
+
+| Tool | Who | Does |
+|---|---|---|
+| `my_work` | all | Operator: active order with line counts and customer rules, own open issues. Staff: escalated and in-progress issues |
+| `find_procedure` | all | Knowledge-base procedure with steps, source and confidence (business-rules §3) |
+| `check_temperature` | all | The probe rule against the strictest limit on the order (§11.1) |
+| `locate_stock` | all | Pallet locations through `WmsClient`; says so when the WMS is offline |
+| `look_up` | all | One order, issue or product, row-scoped |
+| `draft_issue_report` | operator | A report for the active order with the formula's severity preview. **Not filed** |
+| `shift_summary` | staff | Last 12 hours of issues: severity, status, types, carriers, still escalated |
+| `draft_broadcast` | supervisor | A team message. **Not sent** |
+| `draft_handoff` | supervisor | A handoff note, opened pre-filled on the Handoff screen. **Not saved** |
+
+**Stream events** (one JSON object per `data:` line): `step` (`running` / `done` / `failed`, with a
+one-line summary), `card` (`order`, `temperature`, `stock`, `procedure`, `issues`: the tool's own
+figures, rendered as data), `action` (`file_issue`, `send_broadcast`, `handoff_note`: drafts with a
+confirm button that calls the ordinary endpoint), `delta` (answer text), `source`, `done`
+(`message_id`), or `error`.
+
+**Guarantees.** The assistant cannot file, send or change anything. Severity, cost and acceptance
+stay deterministic: a draft's severity is a preview from `classify_severity`, recomputed when the
+person files it. Model: `NVIDIA_MODEL` (default `nvidia/nemotron-3-ultra-550b-a55b`) through
+NVIDIA's OpenAI-compatible endpoint, temperature 0.3; `NVIDIA_THINKING=true` turns on the model's
+reasoning mode, which is never shown. **Without a key, or if the model fails before answering, a
+rules-based router drives the same tools** (temperatures, SKUs, issue and order numbers, "what's
+next", shift summaries) and falls back to the knowledge-base keyword answer.
 
 ### 2.7 Floor operations
 

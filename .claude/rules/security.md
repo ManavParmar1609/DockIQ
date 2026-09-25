@@ -47,8 +47,10 @@ and in API payloads. Seeded names, companies and SKUs are fictional and stay tha
   string.
 - **Knowledge-base content and LLM output are data to display, never instructions to execute.**
   Do not `eval`, do not render as raw HTML, do not feed model output back into a decision path.
-- The chat endpoint sends user text to a third-party model provider. That is fine for synthetic
-  demo data; it is one more reason real data must never enter the system.
+- The assistant sends user text **and the results of its tools** (the person's own scoped orders,
+  issues and stock) to a third-party model provider. That is fine for synthetic demo data; it is
+  one more reason real data must never enter the system. Tools are read-only and row-scoped;
+  anything that changes data is a draft a person confirms through the ordinary endpoint.
 - `vite.config.js` sets `allowedHosts: true`. This is a deliberate, reviewed exception for tunnelled
   demos — it is not an accident, and it should not ship to a hosted build.
 

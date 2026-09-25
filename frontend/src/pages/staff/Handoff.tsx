@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import { useState, type SyntheticEvent } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
 import { useDocks, useHandoffs, useIssues, useSubmitHandoff } from '../../api/hooks';
 import { useUser } from '../../auth/AuthProvider';
@@ -31,7 +31,9 @@ export default function Handoff() {
   const handoffs = useHandoffs();
   const submit = useSubmitHandoff();
   const [shift, setShift] = useState<'day' | 'night'>(user.shift === 'night' ? 'night' : 'day');
-  const [notes, setNotes] = useState('');
+  // The assistant's draft arrives as navigation state; the supervisor edits it before submitting.
+  const location = useLocation() as { state: { handoffNotes?: string } | null };
+  const [notes, setNotes] = useState(location.state?.handoffNotes ?? '');
 
   const zoneDocks = (docks.data ?? []).filter((dock) => !user.zone || dock.zone === user.zone);
   const unresolved = [...(open.data ?? [])].sort(bySeverityThenAge);

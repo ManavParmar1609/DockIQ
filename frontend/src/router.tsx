@@ -55,7 +55,7 @@ export const router = createBrowserRouter([
       { path: 'issues', lazy: gated(OPERATOR, () => import('./pages/operator/MyIssues')) },
       // Everyone
       { path: 'issues/:issueId', lazy: gated(ALL, () => import('./pages/IssueDetail')) },
-      { path: 'chat', lazy: gated(['operator', 'supervisor'], () => import('./pages/Chat')) },
+      { path: 'chat', lazy: gated(ALL, () => import('./pages/Chat')) },
       // Supervisor and quality
       { path: 'log', lazy: gated(STAFF, () => import('./pages/staff/IssueLog')) },
       { path: 'analytics', lazy: gated(STAFF, () => import('./pages/staff/Analytics')) },

@@ -19,8 +19,8 @@ export function wsUrl(): string {
 export class ApiError extends Error {
   readonly status: number;
 
-  constructor(status: number, message: string) {
-    super(message);
+  constructor(status: number, message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'ApiError';
     this.status = status;
   }
@@ -125,4 +125,73 @@ export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
   return 'Something went wrong.';
+}
+
+// ── Server-sent events: the assistant streams its work ──
+
+/**
+ * POST a JSON body and hand each `data:` event to `onEvent` as it arrives. openapi-fetch buffers
+ * whole responses, so the assistant stream uses fetch directly — still here, the one gateway.
+ */
+export async function postEventStream(
+  path: '/api/chat/stream',
+  body: unknown,
+  onEvent: (event: unknown) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${ORIGIN}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (error) {
+    if (signal?.aborted) return;
+    throw new ApiError(0, 'The server could not be reached. Check the connection and retry.', {
+      cause: error,
+    });
+  }
+  if (response.status === 401 && token) {
+    session.clear();
+    unauthorizedListeners.forEach((listener) => {
+      listener();
+    });
+  }
+  if (!response.ok || !response.body) {
+    let detail: unknown;
+    try {
+      detail = await response.json();
+    } catch {
+      detail = undefined;
+    }
+    throw new ApiError(response.status, messageFrom(detail, response.status));
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    let boundary = buffer.indexOf('\n\n');
+    while (boundary !== -1) {
+      const frame = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      for (const line of frame.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          onEvent(JSON.parse(line.slice(6)));
+        } catch {
+          /* a malformed frame is dropped, never fatal */
+        }
+      }
+      boundary = buffer.indexOf('\n\n');
+    }
+  }
 }

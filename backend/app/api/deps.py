@@ -14,7 +14,7 @@ from app.domain.enums import Role
 from app.models import User
 from app.realtime import ConnectionManager
 from app.security import decode_access_token
-from app.services.assistant import Assistant
+from app.services.agent import Agent
 from app.wms.client import WmsClient
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -30,8 +30,8 @@ def get_realtime(request: Request) -> ConnectionManager:
     return request.app.state.realtime
 
 
-def get_assistant(request: Request) -> Assistant:
-    return request.app.state.assistant
+def get_agent(request: Request) -> Agent:
+    return request.app.state.agent
 
 
 def get_wms(request: Request) -> WmsClient:
@@ -40,7 +40,7 @@ def get_wms(request: Request) -> WmsClient:
 
 SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
 RealtimeDep = Annotated[ConnectionManager, Depends(get_realtime)]
-AssistantDep = Annotated[Assistant, Depends(get_assistant)]
+AgentDep = Annotated[Agent, Depends(get_agent)]
 WmsDep = Annotated[WmsClient, Depends(get_wms)]
 
 UNAUTHORIZED = HTTPException(

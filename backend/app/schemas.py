@@ -1,7 +1,7 @@
 """Request and response models. Responses are explicit so a column rename cannot leak to clients."""
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -388,10 +388,121 @@ class TaxonomyOut(BaseModel):
     request_types: list[str]
 
 
+# ── The assistant (an agent over the user's own scoped data) ──
+# Cards carry the tool's numbers, rendered as data, so a figure on screen never comes from model text.
+# Actions are drafts: the assistant cannot file or send anything; a person confirms with a button.
+
+
+class ProcedureCard(BaseModel):
+    kind: Literal["procedure"] = "procedure"
+    title: str
+    steps: list[str]
+    source: str
+    confidence: Literal["low", "medium", "high"]
+
+
+class TemperatureCard(BaseModel):
+    kind: Literal["temperature"] = "temperature"
+    status: str
+    reading: float
+    limit: float | None
+    delta: float | None
+    guidance: str
+    order_number: str | None
+
+
+class StockPallet(BaseModel):
+    pallet_id: str
+    location: str
+    cases: int
+
+
+class StockCard(BaseModel):
+    kind: Literal["stock"] = "stock"
+    sku: str
+    product_name: str | None
+    pallets: list[StockPallet]
+    wms_online: bool
+
+
+class IssueLine(BaseModel):
+    id: int
+    severity: Severity
+    title: str
+    door: int | None
+    status: IssueStatus
+    minutes_open: int
+
+
+class IssuesCard(BaseModel):
+    kind: Literal["issues"] = "issues"
+    title: str
+    issues: list[IssueLine]
+
+
+class OrderLine(BaseModel):
+    sku: str
+    name: str
+    counted: int
+    expected: int
+
+
+class OrderCard(BaseModel):
+    kind: Literal["order"] = "order"
+    order_id: int
+    order_number: str
+    customer: str
+    type: OrderType
+    door: int | None
+    status: OrderStatus
+    lines: list[OrderLine]
+    simulated: bool
+
+
+AgentCard = Annotated[
+    ProcedureCard | TemperatureCard | StockCard | IssuesCard | OrderCard, Field(discriminator="kind")
+]
+
+
+class IssueDraft(BaseModel):
+    """A report the assistant prepared. Severity is the formula's preview, recomputed when filed."""
+
+    kind: Literal["file_issue"] = "file_issue"
+    payload: IssueCreate
+    severity: Severity
+    severity_score: float
+    severity_reason: str
+    steps: list[str]
+    source: str
+
+
+class BroadcastDraft(BaseModel):
+    kind: Literal["send_broadcast"] = "send_broadcast"
+    message: str
+
+
+class HandoffDraft(BaseModel):
+    kind: Literal["handoff_note"] = "handoff_note"
+    notes: str
+
+
+AgentAction = Annotated[IssueDraft | BroadcastDraft | HandoffDraft, Field(discriminator="kind")]
+
+
+class AgentStep(BaseModel):
+    tool: str
+    label: str
+    ok: bool
+    summary: str
+
+
 class ChatReply(BaseModel):
     response: str
     source: str
     confidence: str
+    steps: list[AgentStep] = []
+    cards: list[AgentCard] = []
+    actions: list[AgentAction] = []
 
 
 class ChatMessageOut(Schema):

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { checkDigit, encodeEan13, toEan13 } from './ean13';
-import { elapsed, formatTemp, greeting, initials, percent, timeAgo } from './format';
+import { duration, elapsed, formatTemp, greeting, initials, percent, timeAgo } from './format';
 import { ISSUE_STATUS, bySeverityThenAge, parseSeverityReason } from './vocab';
 
 const NOW = Date.parse('2026-09-25T12:00:00Z');
@@ -22,6 +22,11 @@ describe('elapsed', () => {
     expect(elapsed(ago(7 * MIN), NOW)).toBe('7m');
     expect(elapsed(ago(65 * MIN), NOW)).toBe('1h 05m');
     expect(elapsed(ago(51 * 60 * MIN), NOW)).toBe('2d 3h');
+  });
+
+  it('formats a count of minutes the same way', () => {
+    expect(duration(16203)).toBe('11d 6h');
+    expect(duration(-4)).toBe('0m');
   });
 });
 
