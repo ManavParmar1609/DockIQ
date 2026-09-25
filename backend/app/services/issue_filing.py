@@ -17,6 +17,7 @@ from app.db import utcnow
 from app.domain.cost import estimate_cost_impact
 from app.domain.dock import DockEvent, transition
 from app.domain.enums import Confidence, IssueStatus
+from app.domain.lifecycle import requires_supervisor
 from app.domain.recurrence import RECURRENCE_WINDOW_DAYS, carrier_pattern, dock_pattern
 from app.domain.retrieval import find_resolution
 from app.domain.severity import classify_severity
@@ -130,6 +131,12 @@ async def file_issue(
     dock.status, dock.lifecycle_phase = transition(
         dock.status, dock.lifecycle_phase, DockEvent.ISSUE_REPORTED
     )
+    if requires_supervisor(issue.severity):  # critical: straight to the supervisor (§7.1)
+        issue.status = IssueStatus.ESCALATED
+        issue.escalated_at = now
+        dock.status, dock.lifecycle_phase = transition(
+            dock.status, dock.lifecycle_phase, DockEvent.ISSUE_ESCALATED, severity=issue.severity
+        )
     dock.last_activity_at = now
     await session.flush()
     return issue

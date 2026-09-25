@@ -44,7 +44,9 @@ def test_reporting_scores_the_issue_and_flags_the_dock(client: TestClient, login
     assert "Trailer dwell time" in body["severity_reason"]
     assert body["estimated_cost_impact"] == 85.5  # 28.50 × 10 × 0.3
     assert body["ai_resolution"]["source"].startswith("Company SOP")
-    assert dock(client, op, 1)["status"] == "issue"
+    # Critical goes straight to the supervisor (business-rules §7.1).
+    assert body["status"] == "escalated"
+    assert dock(client, op, 1)["status"] == "critical"
 
     stored = client.get(f"/api/issues/{body['id']}", headers=op).json()
     assert stored["operator_id"] == 1  # identity comes from the token, never the body
@@ -88,9 +90,12 @@ def test_unknown_type_or_mismatched_subtype_is_rejected(client: TestClient, logi
 
 def test_escalation_reaches_the_team_supervisor_only(client: TestClient, login: Login) -> None:
     op, own_supervisor, other_supervisor = login("OP-001"), login("SUP-001"), login("SUP-002")
-    issue_id = report(client, op)["id"]
+    # No product: 4 × 1.5 (tier 1) + 2 dwell = 8 → medium, so the operator escalates it by hand.
+    created = report(client, op, product_id=None)
+    issue_id = created["id"]
+    assert (created["severity"], created["status"]) == ("medium", "resolution_in_progress")
     assert client.put(f"/api/issues/{issue_id}/escalate", headers=op).json() == {"status": "escalated"}
-    assert dock(client, op, 1)["status"] == "critical"
+    assert dock(client, op, 1)["status"] == "issue"
 
     queue = client.get("/api/issues", params={"status": "escalated"}, headers=own_supervisor).json()
     assert issue_id in {issue["id"] for issue in queue}
@@ -101,8 +106,7 @@ def test_escalation_reaches_the_team_supervisor_only(client: TestClient, login: 
 
 def test_supervisor_resolution_records_who_and_reopens_the_dock(client: TestClient, login: Login) -> None:
     op, sup = login("OP-001"), login("SUP-001")
-    issue_id = report(client, op)["id"]
-    client.put(f"/api/issues/{issue_id}/escalate", headers=op)
+    issue_id = report(client, op)["id"]  # critical: already escalated
     response = client.put(
         f"/api/issues/{issue_id}/supervisor-resolve",
         json={"resolution_type": "Partial Accept", "supervisor_notes": "3 cases out"},
@@ -126,13 +130,23 @@ def test_other_teams_supervisor_cannot_resolve(client: TestClient, login: Login)
 
 def test_lifecycle_forbids_double_resolution(client: TestClient, login: Login) -> None:
     op = login("OP-001")
-    issue_id = report(client, op)["id"]
+    issue_id = report(client, op, product_id=None)["id"]
     ok = client.put(
         f"/api/issues/{issue_id}/self-resolve", json={"resolution_type": "Partial Accept"}, headers=op
     )
     assert ok.status_code == 200
     again = client.put(f"/api/issues/{issue_id}/escalate", headers=op)
     assert again.status_code == 409
+
+
+def test_a_critical_issue_cannot_be_self_resolved(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    issue_id = report(client, op)["id"]
+    refused = client.put(
+        f"/api/issues/{issue_id}/self-resolve", json={"resolution_type": "Partial Accept"}, headers=op
+    )
+    assert refused.status_code == 409
+    assert "supervisor" in refused.json()["detail"]
 
 
 def test_resolution_lists_are_enforced(client: TestClient, login: Login) -> None:

@@ -457,6 +457,7 @@ function SignOffTab({ order }: { order: OrderDetail }) {
   const [seal, setSeal] = useState('');
   const outbound = order.type === 'outbound';
   const uncounted = order.items.filter((item) => item.actual_quantity === 0);
+  const blockers = order.completion_blockers ?? [];
 
   if (complete.data) {
     const filed = complete.data.discrepancy_issue_ids;
@@ -524,12 +525,25 @@ function SignOffTab({ order }: { order: OrderDetail }) {
           />
         </div>
       )}
+      {blockers.length > 0 && (
+        <div className="mt-3">
+          <Notice tone="alert" title="Waiting on your supervisor">
+            <ul className="flex flex-col gap-1">
+              {blockers.map((blocker) => (
+                <li key={blocker}>{blocker}</li>
+              ))}
+            </ul>
+          </Notice>
+        </div>
+      )}
       <div className="mt-4 flex flex-col gap-3">
         <MutationError error={complete.error} />
         <button
           type="button"
           className="btn btn-primary text-lg"
-          disabled={complete.isPending || uncounted.length > 0 || (outbound && !seal.trim())}
+          disabled={
+            complete.isPending || uncounted.length > 0 || blockers.length > 0 || (outbound && !seal.trim())
+          }
           onClick={() => complete.mutate({ seal_number: seal.trim() || null, notes: '' })}
         >
           {complete.isPending

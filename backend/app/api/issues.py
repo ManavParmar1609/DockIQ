@@ -12,7 +12,7 @@ from app.db import utcnow
 from app.domain.dock import DockEvent, transition
 from app.domain.enums import IssueStatus, Role, Severity
 from app.domain.evidence import MAX_PHOTO_BYTES, MAX_PHOTOS_PER_ISSUE, sniff_image_type
-from app.domain.lifecycle import OPEN_STATUSES, can_transition
+from app.domain.lifecycle import OPEN_STATUSES, can_transition, requires_supervisor
 from app.domain.taxonomy import OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS
 from app.models import DockDoor, Issue, IssuePhoto
 from app.queries import issue_select
@@ -89,6 +89,7 @@ async def create_issue(
     await events.send(await issue_audience(session, issue), realtime.new_issue(created.model_dump()))
     return IssueCreated(
         id=issue.id,
+        status=issue.status,
         severity=issue.severity,
         severity_score=issue.severity_score or 0,
         severity_reason=issue.severity_reason or "",
@@ -114,6 +115,8 @@ async def self_resolve_issue(
     issue = await visible_issue(session, user, issue_id)
     if body.resolution_type not in OPERATOR_RESOLUTIONS:
         raise unprocessable(f"Unknown resolution '{body.resolution_type}'")
+    if requires_supervisor(issue.severity):
+        raise HTTPException(http.HTTP_409_CONFLICT, "A critical issue needs your supervisor's decision")
     _move(issue, IssueStatus.SELF_RESOLVED)
     issue.resolution_type = body.resolution_type
     issue.resolution_notes = body.resolution_notes

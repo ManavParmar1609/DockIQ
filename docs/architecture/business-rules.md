@@ -308,6 +308,22 @@ supervisor** may supervisor-resolve.
 
 **Timestamp trail:** `created_at` → `escalated_at` → `acknowledged_at` → `resolved_at`.
 
+### 7.1 Guardrails: critical work is a supervisor's decision
+
+From the source documents: *"Critical issues require supervisor action"* and *"open critical issues,
+failed inspections … stop workflow completion."* Rules in `domain/lifecycle.py`:
+
+| Rule | Behaviour |
+|---|---|
+| Critical is escalated on filing | An issue scored **critical** is created `escalated` (with `escalated_at`), the dock goes `critical`, and the supervisor and Quality are alerted with `new_issue`. There is no window in which it waits on the operator |
+| Critical cannot be self-resolved | `PUT /self-resolve` on a critical issue answers **409**; only the team supervisor resolves it |
+| Sign-off waits on critical issues | `POST /orders/{id}/complete` answers **409** while any critical issue on the order is open |
+| Sign-off waits on a failed inspection | If the order's most recent inspection failed, sign-off answers **409** until a supervisor resolves an issue on the order after that inspection, or a later inspection passes |
+
+`GET /orders/{id}` returns `completion_blockers`, the plain-language reasons above, so the sign-off
+screen explains itself instead of failing on tap. Count discrepancies filed *by* sign-off never block
+it: they are recorded with the completion.
+
 **Dock lifecycle** (`dock_doors.lifecycle_phase`):
 
 ```
@@ -507,5 +523,6 @@ all of it and rewinds to 06:00.
 | Date | Change |
 |---|---|
 | 2026-09-25 | Initial extraction from code and source documents. |
+| 2026-09-25 | §7.1 guardrails: critical issues escalate on filing and cannot be self-resolved; sign-off waits on open critical issues and on a failed inspection a supervisor has not cleared. |
 | 2026-09-25 | Phase 3: §12, the shift simulation: clock, plan, materialisation, scenarios, marking. |
 | 2026-09-25 | Phase 2: Safety and WMS types, 87 subtypes, severity floors and people risk, zero-count and dwell fixes, company bonus reaches retrieval, load-aware inspection gate, persisted recurrence, lifecycle guard, photo evidence, load plans. |

@@ -371,8 +371,9 @@ function ResultStep({
   return (
     <div className="flex flex-col gap-4">
       {critical && (
-        <Notice tone="alert" title="Critical — your supervisor has been alerted">
-          Follow the procedure below while they come to you.
+        <Notice tone="alert" title="Critical: escalated to your supervisor">
+          They have been alerted and decide what happens next. Follow the procedure below while they come to
+          you.
         </Notice>
       )}
       <SeverityDerivation
@@ -390,48 +391,60 @@ function ResultStep({
         </Notice>
       )}
 
-      <Panel title="Did the procedure fix it?" index={2}>
-        <p className="label mb-2">Yes — how:</p>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="choice justify-center"
-              disabled={selfResolve.isPending || escalate.isPending}
-              onClick={() =>
-                selfResolve.mutate(
-                  {
-                    id: created.id,
-                    resolution_type: option,
-                    resolution_notes: 'Resolved with the suggested procedure',
-                  },
-                  { onSuccess: () => onDone('resolved') },
-                )
-              }
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-        <div className="mt-5 border-t-2 border-ink pt-5">
-          <button
-            type="button"
-            className="btn btn-hazard w-full text-lg"
-            disabled={escalate.isPending || selfResolve.isPending}
-            onClick={() => escalate.mutate(created.id, { onSuccess: () => onDone('escalated') })}
-          >
-            <ArrowUpRight size={22} aria-hidden="true" /> No — escalate to my supervisor
-          </button>
-          <p className="mt-2 text-sm text-ink-mute">
-            They get the full context, the procedure you were shown, and your photos.
+      {created.status === 'escalated' ? (
+        <Panel title="What happens now" index={2}>
+          <p className="text-lg">
+            Your supervisor has the full context, the procedure you were shown, and your photos. Keep the
+            product where it is until they decide.
           </p>
-        </div>
-        <div className="mt-3 flex flex-col gap-2">
-          <MutationError error={selfResolve.error} />
-          <MutationError error={escalate.error} />
-        </div>
-      </Panel>
+          <button type="button" className="btn btn-primary mt-4" onClick={() => onDone('escalated')}>
+            Done
+          </button>
+        </Panel>
+      ) : (
+        <Panel title="Did the procedure fix it?" index={2}>
+          <p className="label mb-2">Yes — how:</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
+              <button
+                key={option}
+                type="button"
+                className="choice justify-center"
+                disabled={selfResolve.isPending || escalate.isPending}
+                onClick={() =>
+                  selfResolve.mutate(
+                    {
+                      id: created.id,
+                      resolution_type: option,
+                      resolution_notes: 'Resolved with the suggested procedure',
+                    },
+                    { onSuccess: () => onDone('resolved') },
+                  )
+                }
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="mt-5 border-t-2 border-ink pt-5">
+            <button
+              type="button"
+              className="btn btn-hazard w-full text-lg"
+              disabled={escalate.isPending || selfResolve.isPending}
+              onClick={() => escalate.mutate(created.id, { onSuccess: () => onDone('escalated') })}
+            >
+              <ArrowUpRight size={22} aria-hidden="true" /> No — escalate to my supervisor
+            </button>
+            <p className="mt-2 text-sm text-ink-mute">
+              They get the full context, the procedure you were shown, and your photos.
+            </p>
+          </div>
+          <div className="mt-3 flex flex-col gap-2">
+            <MutationError error={selfResolve.error} />
+            <MutationError error={escalate.error} />
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }

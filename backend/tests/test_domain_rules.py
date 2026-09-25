@@ -280,3 +280,25 @@ def test_count_discrepancies_respect_the_tolerance_both_ways() -> None:
         (2, "Short count", 4),
         (3, "Overage", 5),
     ]
+
+
+# ── Guardrails (business-rules §7.1) ──
+
+
+def test_only_critical_requires_a_supervisor() -> None:
+    from app.domain.enums import IssueStatus, Severity
+    from app.domain.lifecycle import can_self_resolve, requires_supervisor
+
+    assert [requires_supervisor(s) for s in Severity] == [s is Severity.CRITICAL for s in Severity]
+    assert can_self_resolve(IssueStatus.RESOLUTION_IN_PROGRESS, Severity.HIGH)
+    assert not can_self_resolve(IssueStatus.RESOLUTION_IN_PROGRESS, Severity.CRITICAL)
+    assert not can_self_resolve(IssueStatus.ESCALATED, Severity.LOW)
+
+
+def test_completion_blockers() -> None:
+    from app.domain.lifecycle import completion_blockers
+
+    assert completion_blockers(0, inspection_failed=False, inspection_cleared=False) == []
+    assert completion_blockers(0, inspection_failed=True, inspection_cleared=True) == []
+    assert len(completion_blockers(2, inspection_failed=True, inspection_cleared=False)) == 2
+    assert completion_blockers(2, False, False)[0].startswith("2 critical issues are still open")

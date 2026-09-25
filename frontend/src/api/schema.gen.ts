@@ -1217,6 +1217,7 @@ export interface components {
         IssueCreated: {
             /** Id */
             id: number;
+            status: components["schemas"]["IssueStatus"];
             severity: components["schemas"]["Severity"];
             /** Severity Score */
             severity_score: number;
@@ -1593,6 +1594,11 @@ export interface components {
             wms_synced?: boolean;
             /** Items */
             items: components["schemas"]["OrderItemOut"][];
+            /**
+             * Completion Blockers
+             * @default []
+             */
+            completion_blockers?: string[];
         };
         /** OrderItemOut */
         OrderItemOut: {

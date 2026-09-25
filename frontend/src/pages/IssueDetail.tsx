@@ -113,26 +113,34 @@ function OperatorActions({ issue }: { issue: Issue }) {
   const escalate = useEscalate();
   return (
     <Panel title="Close it out">
-      <p className="label mb-2">Resolved it yourself:</p>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
-          <button
-            key={option}
-            type="button"
-            className="choice justify-center"
-            disabled={selfResolve.isPending}
-            onClick={() =>
-              selfResolve.mutate({
-                id: issue.id,
-                resolution_type: option,
-                resolution_notes: 'Resolved by operator',
-              })
-            }
-          >
-            {option}
-          </button>
-        ))}
-      </div>
+      {issue.severity === 'critical' ? (
+        <p className="text-lg">
+          <strong>Critical: your supervisor decides.</strong> They have been alerted and have your report.
+        </p>
+      ) : (
+        <>
+          <p className="label mb-2">Resolved it yourself:</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
+              <button
+                key={option}
+                type="button"
+                className="choice justify-center"
+                disabled={selfResolve.isPending}
+                onClick={() =>
+                  selfResolve.mutate({
+                    id: issue.id,
+                    resolution_type: option,
+                    resolution_notes: 'Resolved by operator',
+                  })
+                }
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {issue.status === 'resolution_in_progress' && (
         <button
           type="button"

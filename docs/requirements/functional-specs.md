@@ -80,7 +80,7 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 | POST | `/api/orders/{id}/temperature-check` | assigned operator | `{reading}` → status, limit, delta and guidance (business-rules §11.1) | — |
 | POST | `/api/orders/{id}/scan` | assigned operator | `{code}` — GTIN-14/13, UPC-A, or SKU. Returns `match` (case counted), `mismatch` (a real product **not on this order — do not load**), or `unknown`. Every scan is logged in `scan_events` | `order_items`, `scan_events` |
 | PUT | `/api/orders/{id}/items` | assigned operator | Record `actual_quantity` for a line | `order_items` |
-| POST | `/api/orders/{id}/complete` | assigned operator | Sign off, capture seal number. Inbound: lines outside tolerance are filed as Count Discrepancy issues (returned as `discrepancy_issue_ids`). A complete order is closed to further counting (403) | `orders`, `issues`, dock → `idle`/`complete`; emits `new_issue` per discrepancy and `order_complete` |
+| POST | `/api/orders/{id}/complete` | assigned operator | Sign off, capture seal number. **409** while a critical issue is open or a failed inspection is uncleared (business-rules §7.1; `GET` returns `completion_blockers`). Inbound: lines outside tolerance are filed as Count Discrepancy issues (returned as `discrepancy_issue_ids`). A complete order is closed to further counting (403) | `orders`, `issues`, dock → `idle`/`complete`; emits `new_issue` per discrepancy and `order_complete` |
 
 ### 2.4 Issues — the core entity
 
@@ -89,7 +89,7 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 | GET | `/api/issues` | scoped | Filters: `status` (or `active`), `operator_id`, `severity`, `limit` | — |
 | GET | `/api/issues/{id}` | scoped | Full issue with joined context, `issue_subtype`, `recurring_patterns`, `photo_count` | — |
 | POST | `/api/issues` | operator | **Create and classify** — see below. `issue_type` and `issue_subtype` must come from the taxonomy (422) | `issues`, dock → `issue`; emits `new_issue` |
-| PUT | `/api/issues/{id}/self-resolve` | the reporter | `resolution_type` must be an operator resolution (422) | `status='self_resolved'`, dock → `active`; emits `issue_resolved` |
+| PUT | `/api/issues/{id}/self-resolve` | the reporter | `resolution_type` must be an operator resolution (422). A critical issue answers 409: its supervisor decides | `status='self_resolved'`, dock → `active`; emits `issue_resolved` |
 | PUT | `/api/issues/{id}/escalate` | the reporter or their supervisor | Hand to the supervisor. No body | `status='escalated'`; dock → `critical` if severity is critical; emits `issue_escalated` |
 | PUT | `/api/issues/{id}/supervisor-resolve` | the reporter's supervisor | `resolution_type` must be a supervisor decision (422) | `status='supervisor_resolved'`; emits `issue_resolved` |
 | POST | `/api/issues/{id}/photos` | reporter or their supervisor | Multipart `file`. ≤ 600 kB, ≤ 4 per issue, JPEG/PNG/WebP by content | `issue_photos` |

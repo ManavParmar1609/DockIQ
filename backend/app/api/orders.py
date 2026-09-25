@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi import status as http
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import realtime
@@ -9,10 +9,21 @@ from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, WmsDep,
 from app.db import utcnow
 from app.domain.barcodes import decide_scan, normalize_code
 from app.domain.dock import DockEvent, transition
-from app.domain.enums import OrderStatus, OrderType, ScanResult
+from app.domain.enums import IssueStatus, OrderStatus, OrderType, ScanResult, Severity
+from app.domain.lifecycle import OPEN_STATUSES, completion_blockers
 from app.domain.load_plan import OrderLine, plan_load, rules_from_pattern
 from app.domain.receiving import CountLine, check_probe_temperature, count_discrepancies
-from app.models import Company, DockDoor, Issue, Order, OrderItem, Product, ScanEvent, User
+from app.models import (
+    Company,
+    DockDoor,
+    Issue,
+    Order,
+    OrderItem,
+    Product,
+    ScanEvent,
+    TrailerInspection,
+    User,
+)
 from app.queries import issue_select, order_items_select, order_select
 from app.schemas import (
     IssueCreate,
@@ -63,11 +74,46 @@ async def list_orders(
     return [OrderOut.model_validate(dict(row._mapping)) for row in await session.execute(stmt)]
 
 
+async def _blockers(session: AsyncSession, order_id: int) -> list[str]:
+    """What stops sign-off: open critical issues, or a failed inspection no supervisor has cleared."""
+    open_critical = await session.scalar(
+        select(func.count(Issue.id)).where(
+            Issue.order_id == order_id, Issue.severity == Severity.CRITICAL, Issue.status.in_(OPEN_STATUSES)
+        )
+    )
+    inspection = await session.scalar(
+        select(TrailerInspection)
+        .where(TrailerInspection.order_id == order_id)
+        .order_by(TrailerInspection.created_at.desc(), TrailerInspection.id.desc())
+        .limit(1)
+    )
+    failed = inspection is not None and not inspection.overall_pass
+    cleared = failed and (
+        await session.scalar(
+            select(Issue.id)
+            .where(
+                Issue.order_id == order_id,
+                Issue.status == IssueStatus.SUPERVISOR_RESOLVED,
+                Issue.resolved_at >= inspection.created_at,
+            )
+            .limit(1)
+        )
+        is not None
+    )
+    return completion_blockers(open_critical or 0, failed, cleared)
+
+
 @router.get("/{order_id}")
 async def get_order(order_id: int, user: CurrentUser, session: SessionDep) -> OrderDetailOut:
     await visible_order(session, user, order_id)
     row = (await session.execute(order_select().where(Order.id == order_id))).one()
-    return OrderDetailOut.model_validate({**row._mapping, "items": await _items(session, order_id)})
+    return OrderDetailOut.model_validate(
+        {
+            **row._mapping,
+            "items": await _items(session, order_id),
+            "completion_blockers": await _blockers(session, order_id),
+        }
+    )
 
 
 @router.get("/{order_id}/load-plan")
@@ -229,6 +275,8 @@ async def complete_order(
     """Sign the order off. On an inbound order, every line outside the customer's count tolerance is
     filed as a Count Discrepancy issue in the same transaction (business-rules §11)."""
     order = await _open_order(session, user, order_id)
+    if blockers := await _blockers(session, order_id):
+        raise HTTPException(http.HTTP_409_CONFLICT, " ".join(blockers))
     now = utcnow()
     filed = []
     if order.type is OrderType.INBOUND:

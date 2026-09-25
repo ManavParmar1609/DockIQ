@@ -239,6 +239,8 @@ class OrderOut(Schema):
 
 class OrderDetailOut(OrderOut):
     items: list[OrderItemOut]
+    # Why it cannot be signed off yet (business-rules §7.1). Empty when it can.
+    completion_blockers: list[str] = []
 
 
 class IssueOut(Schema):
@@ -288,6 +290,7 @@ class RecurringPattern(BaseModel):
 
 class IssueCreated(BaseModel):
     id: int
+    status: IssueStatus  # escalated already when critical (business-rules §7.1)
     severity: Severity
     severity_score: float
     severity_reason: str

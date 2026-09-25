@@ -261,3 +261,71 @@ def test_analytics_are_team_scoped_for_supervisors(client: TestClient, login: Lo
     assert 0 < team["total_issues"] < 50
     assert sum(row["count"] for row in facility["by_type"]) == 50
     assert client.get("/api/analytics/summary", headers=login("OP-001")).status_code == 403
+
+
+# ── Guardrails: critical and failed-inspection work waits for a supervisor (business-rules §7.1) ──
+
+CRUSHED_FROZEN = {
+    "dock_door_id": 1,
+    "order_id": 1,
+    "issue_type": "Damaged Pallet",
+    "issue_subtype": "Crushed or collapsed pallet",
+    "description": "crushed",
+    "product_id": 1,
+    "company_id": 1,
+    "quantity_affected": 10,
+}
+
+
+def test_an_open_critical_issue_blocks_sign_off_until_the_supervisor_decides(
+    client: TestClient, login: Login
+) -> None:
+    op, sup = login("OP-001"), login("SUP-001")
+    issue = client.post("/api/issues", json=CRUSHED_FROZEN, headers=op).json()
+    assert issue["severity"] == "critical"
+
+    detail = client.get("/api/orders/1", headers=op).json()
+    assert detail["completion_blockers"] == ["1 critical issue is still open: your supervisor decides first."]
+    blocked = client.post("/api/orders/1/complete", json={"seal_number": "SL-1"}, headers=op)
+    assert blocked.status_code == 409
+
+    client.put(
+        f"/api/issues/{issue['id']}/supervisor-resolve",
+        json={"resolution_type": "Partial Accept", "supervisor_notes": "2 cases out"},
+        headers=sup,
+    )
+    assert client.get("/api/orders/1", headers=op).json()["completion_blockers"] == []
+    assert client.post("/api/orders/1/complete", json={"seal_number": "SL-1"}, headers=op).status_code == 200
+
+
+def test_a_failed_inspection_blocks_sign_off_until_a_supervisor_clears_it(
+    client: TestClient, login: Login
+) -> None:
+    op, sup = login("OP-001"), login("SUP-001")
+    failed = client.post("/api/inspections", json=inspection(seal_condition="broken"), headers=op).json()
+    assert failed["overall_pass"] is False
+    assert client.post("/api/orders/1/complete", json={}, headers=op).status_code == 409
+
+    # The operator reports it and escalates; the supervisor decides.
+    report = {
+        **CRUSHED_FROZEN,
+        "issue_type": "Seal/Trailer Condition",
+        "issue_subtype": None,
+        "product_id": None,
+    }
+    issue = client.post("/api/issues", json=report, headers=op).json()
+    assert issue["status"] == "resolution_in_progress"  # 4 × 1.5 + 2 dwell = 8, medium
+    client.put(f"/api/issues/{issue['id']}/escalate", headers=op)
+    client.put(
+        f"/api/issues/{issue['id']}/supervisor-resolve",
+        json={"resolution_type": "Accept", "supervisor_notes": "Seal logged, carrier notified"},
+        headers=sup,
+    )
+    assert client.post("/api/orders/1/complete", json={}, headers=op).status_code == 200
+
+
+def test_a_passing_reinspection_clears_the_gate(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    client.post("/api/inspections", json=inspection(seal_condition="broken"), headers=op)
+    client.post("/api/inspections", json=inspection(interior_temperature=-5), headers=op)
+    assert client.get("/api/orders/1", headers=op).json()["completion_blockers"] == []
