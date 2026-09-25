@@ -9,7 +9,7 @@ export function Barcode({ code, label }: { code: string; label?: string }) {
   const width = bits.length + quiet * 2;
   return (
     <figure
-      className="inline-flex flex-col items-center bg-light px-2 pt-2"
+      className="inline-flex flex-col items-center rounded-md bg-white px-2 pt-2"
       aria-label={label ?? `Barcode ${ean}`}
     >
       <svg
@@ -20,14 +20,14 @@ export function Barcode({ code, label }: { code: string; label?: string }) {
         aria-hidden="true"
         shapeRendering="crispEdges"
       >
-        <rect width={width} height="50" fill="var(--color-light)" />
+        <rect width={width} height="50" fill="var(--color-white)" />
         {Array.from(bits).map((bit, index) =>
           bit === '1' ? (
-            <rect key={index} x={quiet + index} y="0" width="1" height="50" fill="var(--color-ink)" />
+            <rect key={index} x={quiet + index} y="0" width="1" height="50" fill="var(--color-black)" />
           ) : null,
         )}
       </svg>
-      <figcaption className="telemetry pb-1 text-sm tracking-widest text-ink">{ean}</figcaption>
+      <figcaption className="telemetry pb-1 text-sm tracking-widest text-black">{ean}</figcaption>
     </figure>
   );
 }

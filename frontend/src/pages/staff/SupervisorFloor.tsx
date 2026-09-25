@@ -133,7 +133,7 @@ export default function SupervisorFloor() {
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {list.map((request) => (
-                      <li key={request.id} className="flex items-center gap-3 border-2 border-ink p-3">
+                      <li key={request.id} className="flex items-center gap-3 rounded-lg bg-paper p-3">
                         <div className="min-w-0 flex-1">
                           <p className="font-bold">{request.request_type}</p>
                           <p className="telemetry text-sm text-ink-mute">

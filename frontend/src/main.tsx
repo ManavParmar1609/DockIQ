@@ -1,5 +1,5 @@
-import '@fontsource-variable/archivo/wdth.css';
-import '@fontsource-variable/martian-mono/index.css';
+import '@fontsource-variable/geist/index.css';
+import '@fontsource-variable/geist-mono/index.css';
 import './styles/app.css';
 
 import { QueryClientProvider } from '@tanstack/react-query';

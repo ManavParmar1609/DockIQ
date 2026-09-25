@@ -1,8 +1,7 @@
 # Frontend Aesthetics Rules
 
 This file has two parts. **Part 1 is the standing directive, verbatim, as supplied by the user.**
-Part 2 is how DockIQ resolves it — including where it deliberately overrides the design skills it
-draws on.
+Part 2 is how DockIQ resolves it, for the direction the product owner chose.
 
 ---
 
@@ -31,77 +30,63 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 ### 2.1 The context, which decides everything
 
 DockIQ runs on a tablet on a forklift in a **cold-storage warehouse**. Gloved hands, dim light,
-glare, and decisions that are sometimes food-safety critical. "Genuinely designed for the context"
-therefore means: the interface should feel like an **operations document or a control panel**, not
-a consumer app. The original Apple-derived look (`.apple-*` classes, `--brand: #0071e3`, Inter) was
-exactly the safe, on-distribution choice the directive rules out — and it is also the wrong genre
-for the setting.
+glare, and decisions that are sometimes food-safety critical. Whatever the style, the interface has
+to be legible at arm's length, unmistakable about severity, and calm under pressure.
 
-### 2.2 The committed direction
+### 2.2 The committed direction — Apple's design language *(chosen 2026-09-25)*
 
-**Application shell — Swiss Industrial Print.** Drawn from the `industrial-brutalist-ui` skill's
-first archetype: unbleached-paper substrate, carbon-ink foreground, a single hazard-red accent,
-rigid visible grid, monolithic uppercase headers at extreme scale, monospaced telemetry for every ID,
-count, temperature and timestamp. It reads as a declassified operations manual, which is what a
-dock-door control surface *is*. Chosen over the dark "Tactical Telemetry" archetype for one concrete
-reason: **a light substrate survives glare on a warehouse tablet; a dark one does not.**
+The product owner chose an Apple-like aesthetic, replacing "Freight Manifest" (Swiss Industrial
+Print, Phase 2). It is resolved against Part 1 as follows:
 
-**Landing page — the dark archetype is permitted.** The landing page is a marketing surface viewed
-on a desk, not a dock. The `design-taste-frontend` skill applies there (its own scope note excludes
-dashboards and product UI). Going dark on the landing and light in the app satisfies "vary between
-light and dark" **without mixing substrates inside one interface**, which the industrial skill
-correctly forbids.
+- **Distinctive, not generic.** "Generic" in Part 1 means undesigned defaults. Apple's language is a
+  complete, deliberate system — grouped surfaces, materials, iOS motion, SF Pro Rounded numerals,
+  segmented controls — applied with Apple's own restraint. Copying its surface without its rigour
+  would be the slop; the rigour is the point.
+- **Typography.** Part 1 bans system fonts as a *default*. Here the system font is the *choice*: on
+  Apple devices it is SF Pro, which is the aesthetic. Elsewhere the fallback is **Geist**, not Inter
+  or Arial. Inter and Space Grotesk stay banned.
+- **Colour.** One dominant neutral system (Apple's grays) with one sharp accent, blue, for
+  interaction. Red is reserved for critical severity and destructive actions — nothing decorative is
+  red.
+- **Light and dark.** Both, following the device, from the same tokens. Light is the default, and it
+  survives warehouse glare; dark is there for night shifts and dim docks.
+- **Motion.** One orchestrated moment (the staggered rise on load) plus press feedback, on iOS
+  easing. No scattered micro-animation, never on an alert.
+- **The landing page** follows apple.com: black hero, light feature sections, a bento of roles.
 
-**One accent.** Hazard red (`#E61919` family) is the only accent, and it is reserved for severity
-and alerts. Nothing decorative may be red. This is what makes CRITICAL unmistakable.
+### 2.3 Where DockIQ departs from Apple's defaults
 
-### 2.3 Where DockIQ overrides the skills it draws on
-
-The `industrial-brutalist-ui` skill is the right structural reference, and it is **wrong for this
-context in four specific places.** These overrides are not negotiable:
-
-| Skill says | DockIQ does instead | Why |
+| Apple does | DockIQ does instead | Why |
 |---|---|---|
-| Inter (Extra Bold/Black) is an "optimal" macro font | **Inter is banned.** Part 1 names it explicitly. Use another heavy neo-grotesque — Archivo Black or Monument Extended are the skill's own alternatives | The directive outranks the skill |
-| Micro-type at 10–14px | **Floor of 14px for anything read at arm's length; 16px+ for values an operator acts on** (temperatures, counts, severity) | Gloves, distance, glare |
-| Global grain, CRT scanlines, halftone dithering | **No texture, grain, scanline, dither, blend-mode or opacity effect on any severity badge, temperature reading, count, CRITICAL alert, or primary action.** Sparing use on chrome and landing only, if at all | A degraded critical alert is a food-safety defect, not a style |
-| Rejects all `border-radius`; 1px dividing lines | Keep the rigid grid, **but touch targets stay ≥ 44px** with clear hit areas. Razor-thin dividers are fine; razor-thin *targets* are not | `styles/app.css` enforces 44px on every control |
-
-And two the directive itself requires:
-
-- **Do not default to Space Grotesk.** Part 1 calls it out by name. The typeface is proposed with a
-  reason, not picked from habit.
-- **Motion is for one orchestrated moment** — a staggered reveal on dashboard load — not scattered
-  micro-interactions, and never on a critical alert. Respect `prefers-reduced-motion` (already in
-  `styles/app.css`; keep it).
+| 10–12pt captions and tab labels | **14px floor**; 17px body | Gloves, distance, glare |
+| Translucency on alerts and banners | **Critical banners and badges are solid** | A degraded critical alert is a food-safety defect |
+| Colour-coded status dots | Severity is **label + shape + colour**, always | Colour alone fails colour-blind users and glare |
+| Tinted system red at full saturation behind text | Accessible (increased-contrast) system colours for any text or fill that carries text | WCAG AA on the real surfaces |
 
 ### 2.4 Non-negotiables that outrank any aesthetic
 
 1. Severity is legible at a glance and **never conveyed by colour alone** — always paired with a
-   label and a shape/weight.
-2. Touch targets ≥ 44px.
-3. WCAG AA contrast minimum on the app substrate. Test on the actual off-white, not on pure white.
+   label and a shape.
+2. Touch targets ≥ 44pt.
+3. WCAG AA contrast on the app surfaces, in light and dark mode.
 4. The resolution screen keeps showing the **score derivation, the confidence, and the cited SOP
-   source** — that is the product's "explainable, not magic" claim made visible.
-5. Confidence gets its own visual channel (weight, outline, a meter) — **not** the severity palette.
-   Today a red "LOW confidence" badge reads as more alarming than an amber MEDIUM severity beside it.
-6. **No emoji as icons.** The supervisor dashboard currently uses 🚨 ⚡ 🚪 📋 📍 👤 🏢 📦 💰 as
-   functional icons. They are inaccessible, render inconsistently, and are a generic-AI tell.
+   source** — the product's "explainable, not magic" claim made visible.
+5. Confidence has its own visual channel (signal bars), **not** the severity palette.
+6. **No emoji as icons.**
 7. Simulated data remains **visibly marked as simulated**.
 
-### 2.5 The shipped direction — "Freight Manifest" *(chosen 2026-09-25, built in Phase 2)*
+### 2.5 History
 
-Archivo (width axis 112–125% for uppercase display) + Martian Mono for telemetry, on unbleached paper
-`#EFECE4` with carbon ink `#111110` and one hazard red. Text-bearing red is `#D4161A` (5.1:1 with
-light text; the brighter `#E61919` is kept for graphic marks only). The Apple-derived system was
-replaced in one pass: the `.apple-*` classes, Inter and the unused Tailwind palettes are gone, and the
-`prefers-*`, `:focus-visible` and safe-area rules carried over. Details: `docs/specs/ui-ux-spec.md` §2.
+- **Phase 0:** an Apple-derived look (`.apple-*`, Inter, `#0071E3`) — generic defaults, replaced.
+- **Phase 2:** "Freight Manifest" (Archivo + Martian Mono, paper and ink, one hazard red).
+- **2026-09-25:** the Apple design language described above, built as a complete token system with
+  dark mode (tokens: `docs/specs/ui-ux-spec.md` §2).
 
 ### 2.6 Skills to load for frontend work
 
-- `industrial-brutalist-ui` — structural reference for the app shell (with the overrides above).
-- `design-taste-frontend` — landing page only.
-- `impeccable` — the project's own design-quality pass; its hooks are already wired in
+- `apple-design` (`.agents/skills/apple-design/`) — motion, materials, typography.
+- `redesign-existing-projects` — the audit checklist for any visual pass.
+- `impeccable` — the project's own design-quality pass; its hooks are wired in
   `.claude/settings.local.json`.
-- `dockiq-frontend` (`.claude/skills/dockiq-frontend/`) — this file's rules as an auto-loading
-  skill, so they apply without being pasted.
+- `design-taste-frontend` — the landing page.
+- `dockiq-frontend` (`.claude/skills/dockiq-frontend/`) — this file's rules as an auto-loading skill.

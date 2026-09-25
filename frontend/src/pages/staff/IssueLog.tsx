@@ -123,9 +123,9 @@ export default function IssueLog() {
           filtered.length === 0 ? (
             <EmptyState title="No issues match" />
           ) : (
-            <div className="overflow-x-auto border-2 border-ink bg-light">
+            <div className="overflow-x-auto card">
               <table className="w-full min-w-max text-left">
-                <thead className="border-b-2 border-ink bg-paper-sunk">
+                <thead className="border-b border-hairline bg-paper-sunk">
                   <tr>
                     {[
                       '#',

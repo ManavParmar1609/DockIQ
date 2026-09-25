@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react';
+import { CloudOff, LogOut, Warehouse } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
 
@@ -49,22 +49,32 @@ function useDismissedBroadcast(): [number | null, (id: number) => void] {
 function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 place-items-center bg-ink" aria-hidden="true">
-        <span className="h-3 w-4 border-2 border-light" />
+      <span
+        className="grid h-9 w-9 place-items-center rounded-md bg-accent text-white shadow-card"
+        aria-hidden="true"
+      >
+        <Warehouse size={20} strokeWidth={2.2} />
       </span>
-      <span className={`display ${compact ? 'text-xl' : 'text-2xl'}`}>DockIQ</span>
+      <span className={`display ${compact ? 'text-lg' : 'text-xl'}`}>DockIQ</span>
     </span>
   );
 }
 
+const CONNECTION = {
+  live: { label: 'Live', dot: 'bg-green' },
+  connecting: { label: 'Connecting', dot: 'bg-amber' },
+  offline: { label: 'Reconnecting', dot: 'bg-ink-mute' },
+} as const;
+
 function LiveIndicator({ connection }: { connection: Connection }) {
-  const label = { live: 'Live', connecting: 'Connecting', offline: 'Offline — reconnecting' }[connection];
+  const { label, dot } = CONNECTION[connection];
   return (
-    <span className="label flex items-center gap-2" role="status" aria-live="polite">
-      <span
-        aria-hidden="true"
-        className={`h-2.5 w-2.5 ${connection === 'live' ? 'bg-ink' : 'border-2 border-ink bg-transparent'}`}
-      />
+    <span
+      className="flex items-center gap-2 text-sm font-medium text-ink-mute"
+      role="status"
+      aria-live="polite"
+    >
+      <span aria-hidden="true" className={`h-2 w-2 rounded-full ${dot}`} />
       {label}
     </span>
   );
@@ -75,13 +85,26 @@ function WmsOfflineBanner() {
   const wms = useWmsStatus();
   if (!wms.data || wms.data.online || wms.data.mode === 'none') return null;
   return (
-    <div role="status" className="flex items-stretch border-b-2 border-hazard bg-light">
-      <div className="hazard-tape w-3 shrink-0" aria-hidden="true" />
-      <p className="px-4 py-3 text-base">
-        <span className="heading mr-2 text-hazard-deep">WMS offline</span>
+    <div role="status" className="mb-6 flex items-start gap-3 rounded-xl bg-hazard-soft p-4">
+      <CloudOff size={22} aria-hidden="true" className="mt-0.5 shrink-0 text-hazard-deep" />
+      <p className="text-base">
+        <span className="heading mr-1.5 text-hazard-deep">WMS offline.</span>
         Work from the paper load sheet. Counts and sign-offs are saved here and sent when it is back.
       </p>
     </div>
+  );
+}
+
+function SignOut({ onLogout }: { onLogout: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onLogout}
+      aria-label="Sign out"
+      className="grid w-11 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-sunk hover:text-ink"
+    >
+      <LogOut size={19} aria-hidden="true" />
+    </button>
   );
 }
 
@@ -91,7 +114,7 @@ export function AppShell() {
 
   if (checking) {
     return (
-      <div className="grid min-h-dvh place-items-center">
+      <div className="grid min-h-dvh place-items-center" role="status">
         <p className="label">Signing in…</p>
       </div>
     );
@@ -131,69 +154,54 @@ function SignedInShell({
 
   return (
     <div className="shell-grid min-h-dvh">
-      {/* Rail — desktop */}
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r-2 border-ink bg-paper lg:flex">
-        <div className="border-b-2 border-ink px-5 py-5">
+      {/* Sidebar — desktop, as on iPad */}
+      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-hairline bg-paper lg:flex">
+        <div className="px-5 pt-6 pb-4">
           <Wordmark />
-          <p className="label mt-2">{zone ? `${ROLE_LABEL[role]} · ${zone}` : ROLE_LABEL[role]}</p>
+          <p className="label mt-3">{zone ? `${ROLE_LABEL[role]} · ${zone}` : ROLE_LABEL[role]}</p>
         </div>
-        <nav aria-label="Main" className="flex-1 overflow-y-auto py-2">
-          {items.map((item, index) => (
+        <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
+          {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-3 border-b border-hairline px-5 py-3 ${isActive ? 'bg-ink text-light' : 'hover:bg-paper-sunk'}`
+                `flex items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors ${isActive ? 'bg-accent text-white' : 'text-ink hover:bg-paper-sunk'}`
               }
             >
-              <span className="telemetry w-6 text-sm opacity-80">{String(index + 1).padStart(2, '0')}</span>
               <item.icon size={20} aria-hidden="true" />
-              <span className="heading text-lg">{item.label}</span>
+              {item.label}
             </NavLink>
           ))}
         </nav>
-        <div className="flex flex-col gap-3 border-t-2 border-ink px-5 py-4">
-          <LiveIndicator connection={connection} />
-          <SimulatedTag />
-          <div className="flex items-center gap-3">
-            <span className="telemetry grid h-11 w-11 place-items-center bg-ink text-light">
+        <div className="flex flex-col gap-3 px-5 pt-3 pb-5">
+          <div className="flex items-center justify-between gap-2">
+            <LiveIndicator connection={connection} />
+            <SimulatedTag />
+          </div>
+          <div className="flex items-center gap-3 rounded-lg bg-surface p-2.5 shadow-card">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-paper-deep text-sm font-semibold text-ink-soft">
               {initials(name)}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-bold">{name}</p>
+              <p className="truncate text-base font-semibold">{name}</p>
               <p className="telemetry text-sm text-ink-mute">{employeeId}</p>
             </div>
-            <button
-              type="button"
-              onClick={onLogout}
-              aria-label="Sign out"
-              className="w-11 border-2 border-ink"
-            >
-              <LogOut size={18} className="mx-auto" aria-hidden="true" />
-            </button>
+            <SignOut onLogout={onLogout} />
           </div>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        {/* Top bar — tablet and phone */}
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b-2 border-ink bg-paper px-4 py-2 lg:hidden">
+        {/* Navigation bar — tablet and phone: translucent, content scrolls under it */}
+        <header className="material sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-hairline px-4 py-1.5 lg:hidden">
           <Wordmark compact />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <LiveIndicator connection={connection} />
-            <button
-              type="button"
-              onClick={onLogout}
-              aria-label="Sign out"
-              className="w-11 border-2 border-ink"
-            >
-              <LogOut size={18} className="mx-auto" aria-hidden="true" />
-            </button>
+            <SignOut onLogout={onLogout} />
           </div>
         </header>
-
-        <WmsOfflineBanner />
 
         {shown && shown.id !== dismissedId && (
           <BroadcastBanner
@@ -203,19 +211,20 @@ function SignedInShell({
           />
         )}
 
-        <main className="flex-1 px-4 pb-32 pt-6 sm:px-6 lg:px-10 lg:pb-16 lg:pt-8">
+        <main className="flex-1 px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-10 lg:pb-16">
           <div className="mx-auto max-w-7xl">
+            <WmsOfflineBanner />
             <Outlet />
           </div>
-          <div className="mt-10 lg:hidden">
+          <div className="mt-10 flex justify-center lg:hidden">
             <SimulatedTag />
           </div>
         </main>
 
-        {/* Tab bar — tablet and phone */}
+        {/* Tab bar — tablet and phone: translucent, the selected tab in blue */}
         <nav
           aria-label="Main"
-          className="tabbar-safe fixed inset-x-0 bottom-0 z-20 grid border-t-2 border-ink bg-paper lg:hidden"
+          className="material tabbar-safe fixed inset-x-0 bottom-0 z-20 grid border-t border-hairline lg:hidden"
           style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
         >
           {items.map((item) => (
@@ -224,11 +233,11 @@ function SignedInShell({
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `flex min-h-16 flex-col items-center justify-center gap-1 px-1 ${isActive ? 'bg-ink text-light' : ''}`
+                `flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 transition-colors ${isActive ? 'text-accent-ink' : 'text-ink-mute'}`
               }
             >
-              <item.icon size={22} aria-hidden="true" />
-              <span className="text-sm font-bold leading-none">{item.short ?? item.label}</span>
+              <item.icon size={24} aria-hidden="true" />
+              <span className="text-xs font-medium leading-tight">{item.short ?? item.label}</span>
             </NavLink>
           ))}
         </nav>

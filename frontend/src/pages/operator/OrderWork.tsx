@@ -45,7 +45,7 @@ function Tabs({
     <div
       role="tablist"
       aria-label="Order steps"
-      className="grid grid-flow-col gap-0.5 overflow-x-auto border-2 border-ink bg-ink"
+      className="grid grid-flow-col gap-1 overflow-x-auto rounded-xl bg-paper-sunk p-1"
     >
       {tabs.map((tab, index) => (
         <button
@@ -54,10 +54,10 @@ function Tabs({
           type="button"
           aria-selected={active === tab.id}
           onClick={() => onChange(tab.id)}
-          className={`flex min-h-14 items-center justify-center gap-2 px-3 whitespace-nowrap ${active === tab.id ? 'bg-ink text-light' : 'bg-light'}`}
+          className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 whitespace-nowrap transition-colors ${active === tab.id ? 'bg-surface text-ink shadow-card' : 'text-ink-mute hover:text-ink'}`}
         >
-          <span className="telemetry text-sm">{String(index + 1).padStart(2, '0')}</span>
-          <span className="heading text-base">{tab.label}</span>
+          <span className="telemetry text-sm">{index + 1}</span>
+          <span className="text-base font-semibold">{tab.label}</span>
         </button>
       ))}
     </div>
@@ -76,13 +76,13 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
         <span className="telemetry text-lg">{value}%</span>
       </div>
       <div
-        className="mt-2 h-3 border-2 border-ink bg-light"
+        className="mt-2 h-3 card"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={value}
       >
-        <div className="h-full bg-ink" style={{ width: `${value}%` }} />
+        <div className="meter-fill" style={{ width: `${value}%` }} />
       </div>
     </div>
   );
@@ -97,7 +97,7 @@ function StockLocations({ sku }: { sku: string }) {
   if (stock.isError) {
     const offline = stock.error instanceof ApiError && stock.error.status === 503;
     return (
-      <p className="border-2 border-ink bg-paper-sunk p-3 text-base">
+      <p className="rounded-lg bg-paper-sunk p-3 text-base">
         {offline
           ? 'WMS offline. Pick from the paper pick list; your counts are kept and sent when it is back.'
           : 'Could not read locations from the WMS.'}
@@ -106,9 +106,12 @@ function StockLocations({ sku }: { sku: string }) {
   }
   if (stock.data.length === 0) return <p className="text-base">No stock on hand in the WMS.</p>;
   return (
-    <ul className="grid gap-0.5 border-2 border-ink bg-ink sm:grid-cols-2">
+    <ul className="grid gap-2 sm:grid-cols-2">
       {stock.data.map((pallet) => (
-        <li key={pallet.pallet_id} className="flex items-baseline justify-between gap-3 bg-light px-3 py-2">
+        <li
+          key={pallet.pallet_id}
+          className="flex items-baseline justify-between gap-3 rounded-md bg-paper px-3 py-2"
+        >
           <span className="telemetry text-lg">{pallet.location}</span>
           <span className="telemetry text-sm text-ink-mute">
             {pallet.cases} cs · {pallet.pallet_id.slice(-6)}
@@ -141,8 +144,8 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
   };
 
   return (
-    <li className="border-2 border-ink bg-light">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-ink p-4">
+    <li className="card">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline p-4">
         <div className="min-w-0">
           <p className="heading flex items-center gap-2 text-xl">
             {done && <Check size={22} aria-label="Complete" />}
@@ -176,12 +179,12 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
         </div>
       </div>
       {showStock && (
-        <div className="border-b-2 border-ink p-4">
+        <div className="border-b border-hairline p-4">
           <StockLocations sku={item.sku} />
         </div>
       )}
       {showCode && item.gtin && (
-        <div className="border-b-2 border-ink p-4">
+        <div className="border-b border-hairline p-4">
           <Barcode code={item.gtin} label={`Case barcode for ${item.product_name}`} />
         </div>
       )}
@@ -485,7 +488,7 @@ function SignOffTab({ order }: { order: OrderDetail }) {
     <Panel title="Sign-off">
       <table className="w-full text-left">
         <thead>
-          <tr className="border-b-2 border-ink">
+          <tr className="border-b border-hairline">
             <th className="label py-2">SKU</th>
             <th className="label py-2 text-right">Expected</th>
             <th className="label py-2 text-right">{outbound ? 'Loaded' : 'Received'}</th>

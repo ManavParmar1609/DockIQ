@@ -254,5 +254,7 @@ makes that promise easier to accidentally break.
 
 ## Cross-cutting: frontend redesign
 
-**Done in Phase 2** — "Freight Manifest": Archivo + Martian Mono on unbleached paper, carbon ink, one
-hazard red for severity and alerts. See [`docs/specs/ui-ux-spec.md`](specs/ui-ux-spec.md).
+**Done in Phase 2** as "Freight Manifest" (Archivo + Martian Mono, paper and ink). **Replaced on
+2026-09-25** by the Apple design language the product owner chose: system type (SF Pro / Geist),
+grouped surfaces, one blue for interaction, translucent chrome, dark mode. See
+[`docs/specs/ui-ux-spec.md`](specs/ui-ux-spec.md) §2.

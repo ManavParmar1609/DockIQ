@@ -29,7 +29,7 @@ export function QuickRequest() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="btn btn-primary fixed bottom-20 right-3 z-30 px-3 sm:bottom-24 sm:right-4 sm:px-5 lg:bottom-6 lg:right-6"
+        className="btn btn-primary fixed right-4 bottom-24 z-30 px-4 shadow-float sm:px-5 lg:right-6 lg:bottom-6"
         aria-haspopup="dialog"
         aria-label="Quick request"
       >
@@ -41,20 +41,27 @@ export function QuickRequest() {
         ref={dialog}
         onClose={close}
         aria-labelledby="quick-request-title"
-        className="m-auto w-full max-w-xl border-2 border-ink bg-paper p-0 text-ink"
+        className="sheet m-auto rounded-2xl bg-surface p-0 text-ink shadow-float"
       >
-        <div className="flex items-center justify-between border-b-2 border-ink px-5 py-3">
+        <div className="flex items-center justify-between px-5 pt-4">
           <h2 id="quick-request-title" className="heading text-xl">
             Quick request
           </h2>
-          <button type="button" onClick={close} aria-label="Close" className="w-11">
-            <X size={22} className="mx-auto" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Close"
+            className="grid h-11 w-11 place-items-center rounded-full bg-paper-sunk text-ink-mute"
+          >
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
         <div className="p-5">
           {request.isSuccess ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <Check size={40} aria-hidden="true" />
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
+                <Check size={34} strokeWidth={2.5} aria-hidden="true" />
+              </span>
               <p className="heading text-2xl">Request sent</p>
               <p className="text-ink-soft">{request.variables.request_type} — your supervisor has it.</p>
               <button type="button" className="btn btn-secondary mt-2" onClick={close}>

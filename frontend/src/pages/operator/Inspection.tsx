@@ -103,7 +103,7 @@ export default function Inspection() {
         <Panel title="Result">
           {result.overall_pass ? (
             <div className="flex items-center gap-4">
-              <span className="grid h-16 w-16 place-items-center bg-ink text-light">
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
                 <Check size={36} aria-hidden="true" />
               </span>
               <div>

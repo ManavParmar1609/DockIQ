@@ -52,15 +52,21 @@ const STEPS = ['Type', 'Details', 'Procedure', 'Done'];
 
 function StepBar({ step }: { step: number }) {
   return (
-    <ol className="grid grid-cols-4 gap-0.5 border-2 border-ink bg-ink" aria-label="Progress">
+    <ol className="grid grid-cols-4 gap-2" aria-label="Progress">
       {STEPS.map((label, index) => (
         <li
           key={label}
           aria-current={index === step ? 'step' : undefined}
-          className={`flex min-h-12 items-center gap-2 px-3 ${index <= step ? 'bg-ink text-light' : 'bg-light text-ink-mute'}`}
+          className={`flex flex-col gap-1.5 ${index <= step ? 'text-ink' : 'text-ink-mute'}`}
         >
-          <span className="telemetry text-sm">{String(index + 1).padStart(2, '0')}</span>
-          <span className="heading hidden text-base sm:inline">{label}</span>
+          <span
+            aria-hidden="true"
+            className={`h-1.5 rounded-full ${index <= step ? 'bg-accent' : 'bg-paper-deep'}`}
+          />
+          <span className="text-sm font-semibold">
+            <span className="telemetry">{index + 1}</span>
+            <span className="hidden sm:inline"> · {label}</span>
+          </span>
         </li>
       ))}
     </ol>
@@ -72,7 +78,7 @@ function TypeStep({ types, onPick }: { types: IssueTypeSpec[]; onPick: (type: Is
     <div className="flex flex-col gap-6">
       {GROUPS.map((group, groupIndex) => (
         <section key={group.id} className="reveal" style={{ '--i': groupIndex } as CSSProperties}>
-          <div className="mb-3 flex flex-wrap items-baseline gap-3 border-b-2 border-ink pb-2">
+          <div className="mb-3 flex flex-wrap items-baseline gap-3 border-b border-hairline pb-2">
             <h2 className="heading text-2xl">{group.title}</h2>
             <p className="text-ink-soft">{group.blurb}</p>
           </div>
@@ -426,7 +432,7 @@ function ResultStep({
               </button>
             ))}
           </div>
-          <div className="mt-5 border-t-2 border-ink pt-5">
+          <div className="mt-5 border-t border-hairline pt-5">
             <button
               type="button"
               className="btn btn-hazard w-full text-lg"
@@ -583,7 +589,7 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
       {step === 3 && created && (
         <Panel title="Logged">
           <div className="flex items-center gap-4">
-            <span className="grid h-16 w-16 place-items-center bg-ink text-light">
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
               <Check size={36} aria-hidden="true" />
             </span>
             <div>

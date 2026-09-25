@@ -1,9 +1,10 @@
 /**
- * The shared kit. Square corners, visible rules, mono telemetry. Every data view renders through
- * <QueryBoundary> so a failed request shows an error with a retry — never an endless spinner.
+ * The shared kit, in Apple's grouped style: large titles, white cards on the gray page, capsule tags,
+ * tabular numbers. Every data view renders through <QueryBoundary> so a failed request shows an
+ * error with a retry — never an endless spinner.
  */
 import type { UseQueryResult } from '@tanstack/react-query';
-import { AlertTriangle, RotateCw } from 'lucide-react';
+import { AlertTriangle, Check, RotateCw } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import { errorMessage } from '../api/client';
@@ -27,22 +28,22 @@ export function PageHeader({
   size?: 'lg' | 'md';
 }) {
   return (
-    <header className="border-b-2 border-ink pb-5">
-      {kicker && <p className="label mb-3">{kicker}</p>}
+    <header className="pt-2">
+      {kicker && <p className="label mb-1">{kicker}</p>}
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1
-          className={`display ${size === 'lg' ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-3xl sm:text-4xl'}`}
-        >
+        <h1 className={`display ${size === 'lg' ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
           {title}
         </h1>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
-      {meta && <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-base text-ink-soft">{meta}</div>}
+      {meta && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-base text-ink-mute">{meta}</div>
+      )}
     </header>
   );
 }
 
-/** A compartment with a hard title bar. `index` staggers the load reveal. */
+/** A grouped card with an optional title row. `index` staggers the load reveal. */
 export function Panel({
   title,
   aside,
@@ -59,22 +60,24 @@ export function Panel({
   flush?: boolean;
 }) {
   const style = index === undefined ? undefined : ({ '--i': index } as CSSProperties);
+  const body = flush ? (title ? 'pt-2' : '') : title ? 'px-5 pt-3 pb-5' : 'p-5';
   return (
     <section
-      className={`border-2 border-ink bg-light ${index === undefined ? '' : 'reveal'} ${className}`}
+      className={`card overflow-hidden ${index === undefined ? '' : 'reveal'} ${className}`}
       style={style}
     >
       {title && (
-        <div className="flex min-h-12 items-center justify-between gap-3 border-b-2 border-ink px-4 py-2">
+        <div className="flex min-h-12 items-center justify-between gap-3 px-5 pt-4">
           <h2 className="heading text-lg">{title}</h2>
           {aside}
         </div>
       )}
-      <div className={flush ? '' : 'p-4'}>{children}</div>
+      <div className={body}>{children}</div>
     </section>
   );
 }
 
+/** A metric tile, as in Health: small label, big rounded number. `alert` fills it red. */
 export function Stat({
   label,
   value,
@@ -89,21 +92,21 @@ export function Stat({
   index?: number;
 }) {
   const style = index === undefined ? undefined : ({ '--i': index } as CSSProperties);
+  const surface = alert ? 'rounded-xl bg-hazard text-white shadow-card' : 'card';
   return (
     <div
-      className={`flex flex-col justify-between gap-3 p-4 ${alert ? 'bg-hazard text-light' : 'bg-light'} ${index === undefined ? '' : 'reveal'}`}
+      className={`flex flex-col justify-between gap-2 p-4 ${surface} ${index === undefined ? '' : 'reveal'}`}
       style={style}
     >
-      <p className={`label ${alert ? 'text-light' : ''}`}>{label}</p>
-      <p className="telemetry text-4xl leading-none">{value}</p>
-      {sub && <p className={`text-sm ${alert ? 'text-light' : 'text-ink-soft'}`}>{sub}</p>}
+      <p className={`text-sm font-semibold ${alert ? 'text-white' : 'text-ink-mute'}`}>{label}</p>
+      <p className="num text-4xl leading-none">{value}</p>
+      {sub && <p className={`text-sm ${alert ? 'text-white' : 'text-ink-mute'}`}>{sub}</p>}
     </div>
   );
 }
 
-/** A row of stats on a 1px ink grid. */
 export function StatGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-0.5 border-2 border-ink bg-ink lg:grid-cols-4">{children}</div>;
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{children}</div>;
 }
 
 export function Definition({
@@ -116,7 +119,7 @@ export function Definition({
   mono?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-0.5">
       <dt className="label">{term}</dt>
       <dd className={`text-base ${mono ? 'telemetry' : 'font-semibold'}`}>{children}</dd>
     </div>
@@ -130,28 +133,36 @@ export function Tag({
   tone = 'plain',
 }: {
   children: ReactNode;
-  tone?: 'plain' | 'ink' | 'hazard';
+  tone?: 'plain' | 'ink' | 'hazard' | 'accent' | 'green';
 }) {
   const tones = {
-    plain: 'border-ink bg-transparent text-ink',
-    ink: 'border-ink bg-ink text-light',
-    hazard: 'border-hazard bg-hazard text-light',
+    plain: 'bg-paper-sunk text-ink-soft',
+    ink: 'bg-ink text-paper',
+    hazard: 'bg-hazard text-white',
+    accent: 'bg-accent-soft text-accent-ink',
+    green: 'bg-green-soft text-green',
   };
-  return (
-    <span className={`label inline-flex min-h-7 items-center border-2 px-2 ${tones[tone]}`}>{children}</span>
-  );
+  return <span className={`pill ${tones[tone]}`}>{children}</span>;
 }
 
 export function IssueStatusTag({ status }: { status: IssueStatus }) {
   const { label, open } = ISSUE_STATUS[status];
-  return <Tag tone={status === 'escalated' ? 'ink' : 'plain'}>{open ? label : `✓ ${label}`}</Tag>;
+  if (!open) {
+    return (
+      <Tag tone="green">
+        <Check size={14} strokeWidth={3} aria-hidden="true" />
+        {label}
+      </Tag>
+    );
+  }
+  return <Tag tone={status === 'escalated' ? 'ink' : 'plain'}>{label}</Tag>;
 }
 
 /** Rules §2.4.7 — simulated data stays visibly marked as simulated. `compact` marks one record. */
 export function SimulatedTag({ compact = false }: { compact?: boolean }) {
   return (
     <span
-      className="label inline-flex min-h-7 items-center gap-2 border-2 border-dashed border-ink-mute px-2"
+      className="pill border border-dashed border-ink-mute text-ink-mute"
       title={compact ? 'Created by the shift simulator' : undefined}
     >
       {compact ? 'Sim' : 'Simulated data'}
@@ -174,15 +185,15 @@ export function Notice({
 }) {
   if (tone === 'alert') {
     return (
-      <div role="alert" className="flex border-2 border-hazard bg-light">
-        <div className="hazard-tape w-3 shrink-0" aria-hidden="true" />
+      <div role="alert" className="flex overflow-hidden rounded-xl bg-hazard-soft">
+        <div className="hazard-tape w-1.5 shrink-0" aria-hidden="true" />
         <div className="flex flex-1 flex-wrap items-start justify-between gap-3 p-4">
-          <div>
-            <p className="heading flex items-center gap-2 text-lg text-hazard-deep">
-              <AlertTriangle size={20} aria-hidden="true" />
-              {title}
-            </p>
-            {children && <div className="mt-1.5 text-base text-ink">{children}</div>}
+          <div className="flex gap-3">
+            <AlertTriangle size={22} aria-hidden="true" className="mt-0.5 shrink-0 text-hazard-deep" />
+            <div>
+              <p className="heading text-base text-hazard-deep">{title}</p>
+              {children && <div className="mt-1 text-base text-ink">{children}</div>}
+            </div>
           </div>
           {action}
         </div>
@@ -190,10 +201,10 @@ export function Notice({
     );
   }
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 border-2 border-ink bg-paper-sunk p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl bg-paper-sunk p-4">
       <div>
-        <p className="heading text-lg">{title}</p>
-        {children && <div className="mt-1.5 text-base text-ink-soft">{children}</div>}
+        <p className="heading text-base">{title}</p>
+        {children && <div className="mt-1 text-base text-ink-soft">{children}</div>}
       </div>
       {action}
     </div>
@@ -210,21 +221,26 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 border-2 border-dashed border-hairline px-6 py-12 text-center">
-      {icon && <div className="text-ink-mute">{icon}</div>}
+    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+      {icon && (
+        <div className="grid h-14 w-14 place-items-center rounded-full bg-paper-sunk text-ink-mute">
+          {icon}
+        </div>
+      )}
       <p className="heading text-xl">{title}</p>
-      {children && <div className="max-w-md text-base text-ink-soft">{children}</div>}
+      {children && <div className="max-w-md text-base text-ink-mute">{children}</div>}
     </div>
   );
 }
 
+/** A skeleton in the shape of a card, labelled for screen readers and for a glance. */
 export function LoadingBlock({ label = 'Loading' }: { label?: string }) {
   return (
-    <div
-      className="flex min-h-40 items-center justify-center border-2 border-dashed border-hairline"
-      role="status"
-    >
+    <div className="card flex flex-col gap-3 p-5" role="status" aria-label={`${label}…`}>
       <p className="label">{label}…</p>
+      <span className="skeleton h-4 w-2/3" />
+      <span className="skeleton h-4 w-1/2" />
+      <span className="skeleton h-4 w-3/5" />
     </div>
   );
 }
@@ -268,8 +284,9 @@ export function MutationError({ error }: { error: Error | null }) {
   return (
     <p
       role="alert"
-      className="border-2 border-hazard bg-light px-3 py-2 text-base font-semibold text-hazard-deep"
+      className="flex items-center gap-2 rounded-md bg-hazard-soft px-3 py-2.5 text-base font-semibold text-hazard-deep"
     >
+      <AlertTriangle size={18} aria-hidden="true" className="shrink-0" />
       {errorMessage(error)}
     </p>
   );
@@ -288,7 +305,7 @@ export function FieldLabel({
 }) {
   return (
     <label htmlFor={htmlFor} className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-      <span className="heading text-base">{children}</span>
+      <span className="text-base font-semibold">{children}</span>
       {hint && <span className="text-sm text-ink-mute">{hint}</span>}
     </label>
   );
@@ -313,7 +330,7 @@ export function ChoiceGroup<T extends string>({
   ];
   return (
     <fieldset>
-      <legend className="heading mb-2 text-base">{label}</legend>
+      <legend className="mb-2 text-base font-semibold">{label}</legend>
       <div className={`grid gap-2 ${grid}`} role="radiogroup" aria-label={label}>
         {options.map((option) => (
           <button

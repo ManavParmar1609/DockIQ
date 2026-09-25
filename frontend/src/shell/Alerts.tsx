@@ -97,24 +97,25 @@ function AlertCard({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
   return (
     <div
       role={critical ? 'alert' : 'status'}
-      className={`flex border-2 bg-light ${critical ? 'border-hazard' : 'border-ink'}`}
+      // Critical banners are solid: no translucency on a critical alert (rules §2.3).
+      className={`flex overflow-hidden rounded-2xl shadow-float ${critical ? 'bg-surface ring-2 ring-hazard' : 'material-thick'}`}
     >
-      {critical && <div className="hazard-tape w-2.5 shrink-0" aria-hidden="true" />}
-      <Link to={alert.href} onClick={onDismiss} className="flex-1 p-3">
-        <p className="label mb-1.5">{alert.kicker}</p>
-        <div className="flex flex-wrap items-center gap-2">
+      {critical && <div className="hazard-tape w-1.5 shrink-0" aria-hidden="true" />}
+      <Link to={alert.href} onClick={onDismiss} className="flex-1 px-4 py-3">
+        <p className="text-sm font-semibold text-ink-mute">{alert.kicker}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           {alert.severity ? <SeverityBadge severity={alert.severity} size="sm" /> : alert.icon}
-          <span className="font-bold">{alert.title}</span>
+          <span className="text-base font-semibold">{alert.title}</span>
         </div>
-        <p className="telemetry mt-1 text-sm text-ink-soft">{alert.detail}</p>
+        <p className="telemetry mt-0.5 text-sm font-medium text-ink-mute">{alert.detail}</p>
       </Link>
       <button
         type="button"
         aria-label="Dismiss"
         onClick={onDismiss}
-        className="w-11 shrink-0 border-l-2 border-ink"
+        className="m-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-mute hover:bg-paper-sunk"
       >
-        <X size={18} className="mx-auto" aria-hidden="true" />
+        <X size={18} aria-hidden="true" />
       </button>
     </div>
   );
@@ -124,7 +125,7 @@ export function AlertStack({ alerts, dismiss }: { alerts: Alert[]; dismiss: (key
   if (alerts.length === 0) return null;
   return (
     <div
-      className="fixed left-4 right-4 top-4 z-50 flex flex-col gap-2 sm:left-auto sm:w-96"
+      className="fixed top-3 right-3 left-3 z-50 flex flex-col gap-2 sm:left-auto sm:w-96"
       aria-live="assertive"
     >
       {alerts.map((alert) => (
@@ -136,22 +137,22 @@ export function AlertStack({ alerts, dismiss }: { alerts: Alert[]; dismiss: (key
 
 export function BroadcastBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <div role="status" className="flex items-stretch border-b-2 border-ink bg-ink text-light">
-      <div className="flex flex-1 items-center gap-3 px-4 py-3">
+    <div role="status" className="px-4 pt-4 sm:px-6 lg:px-10">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-xl bg-accent py-2 pr-2 pl-4 text-white shadow-card">
         <Megaphone size={22} aria-hidden="true" className="shrink-0" />
-        <p className="text-lg font-semibold">
-          <span className="label mr-2 text-light">Supervisor</span>
+        <p className="flex-1 text-base font-semibold">
+          <span className="mr-2 font-normal opacity-90">Your supervisor:</span>
           {message}
         </p>
+        <button
+          type="button"
+          aria-label="Dismiss broadcast"
+          onClick={onDismiss}
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/15"
+        >
+          <X size={20} aria-hidden="true" />
+        </button>
       </div>
-      <button
-        type="button"
-        aria-label="Dismiss broadcast"
-        onClick={onDismiss}
-        className="w-14 border-l-2 border-light"
-      >
-        <X size={20} className="mx-auto" aria-hidden="true" />
-      </button>
     </div>
   );
 }

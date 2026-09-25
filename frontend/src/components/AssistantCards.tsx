@@ -26,12 +26,12 @@ function CardFrame({
   draft?: boolean;
 }) {
   return (
-    <section className={`border-2 bg-light ${draft ? 'border-dashed border-ink' : 'border-ink'}`}>
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-ink px-4 py-2">
-        <p className="label">{kicker}</p>
-        {title && <p className="telemetry text-base">{title}</p>}
+    <section className={`card overflow-hidden ${draft ? 'ring-2 ring-accent' : ''}`}>
+      <header className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
+        <p className={`text-sm font-semibold ${draft ? 'text-accent-ink' : 'text-ink-mute'}`}>{kicker}</p>
+        {title && <p className="telemetry text-base text-ink-mute">{title}</p>}
       </header>
-      <div className="p-4">{children}</div>
+      <div className="px-5 pt-2 pb-5">{children}</div>
     </section>
   );
 }
@@ -90,8 +90,8 @@ function OrderView({ card }: { card: Extract<AgentCard, { kind: 'order' }> }) {
                   {line.counted}/{line.expected}
                 </span>
               </div>
-              <div className="mt-1 h-2 border border-ink" aria-hidden="true">
-                <div className="h-full bg-ink" style={{ width: `${share}%` }} />
+              <div className="meter mt-1.5" aria-hidden="true">
+                <div className="meter-fill" style={{ width: `${share}%` }} />
               </div>
             </li>
           );
@@ -113,11 +113,11 @@ function StockView({ card }: { card: Extract<AgentCard, { kind: 'stock' }> }) {
       ) : card.pallets.length === 0 ? (
         <p className="text-base">No stock on hand.</p>
       ) : (
-        <ul className="grid gap-0.5 border-2 border-ink bg-ink sm:grid-cols-2">
+        <ul className="grid gap-2 sm:grid-cols-2">
           {card.pallets.map((pallet) => (
             <li
               key={pallet.pallet_id}
-              className="flex items-baseline justify-between gap-3 bg-light px-3 py-2"
+              className="flex items-baseline justify-between gap-3 rounded-md bg-paper px-3 py-2"
             >
               <span className="telemetry text-lg">{pallet.location}</span>
               <span className="telemetry text-sm text-ink-mute">{pallet.cases} cs</span>
@@ -141,7 +141,7 @@ function ProcedureView({ card }: { card: Extract<AgentCard, { kind: 'procedure' 
           </li>
         ))}
       </ol>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-ink pt-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-3">
         <span className="flex items-center gap-2 text-sm font-semibold">
           <BookOpen size={16} aria-hidden="true" />
           {card.source}
@@ -195,7 +195,9 @@ export function AgentCardView({ card }: { card: AgentCard }) {
 
 function Discarded({ what }: { what: string }) {
   return (
-    <p className="border-2 border-dashed border-hairline p-3 text-base text-ink-mute">{what} discarded.</p>
+    <p className="rounded-xl border border-dashed border-hairline p-3 text-base text-ink-mute">
+      {what} discarded.
+    </p>
   );
 }
 
@@ -232,7 +234,7 @@ function IssueDraftView({ draft }: { draft: IssueDraft }) {
         </ul>
       </details>
       {draft.steps.length > 0 && (
-        <div className="mt-3 border-t-2 border-ink pt-3">
+        <div className="mt-3 border-t border-hairline pt-3">
           <p className="label mb-1">First steps · {draft.source}</p>
           <ol className="list-inside list-decimal text-base">
             {draft.steps.slice(0, 3).map((step) => (

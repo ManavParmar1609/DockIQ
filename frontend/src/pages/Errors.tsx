@@ -3,7 +3,7 @@ import { isRouteErrorResponse, Link, useRouteError } from 'react-router';
 function Frame({ code, title, children }: { code: string; title: string; children: React.ReactNode }) {
   return (
     <div className="grid min-h-dvh place-items-center px-6">
-      <div className="w-full max-w-xl border-2 border-ink bg-light">
+      <div className="w-full max-w-xl card">
         <div className="hazard-tape h-3" aria-hidden="true" />
         <div className="p-6">
           <p className="label mb-2">{code}</p>

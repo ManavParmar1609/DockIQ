@@ -22,7 +22,15 @@ import { PageHeader, Panel, QueryBoundary, Stat, StatGrid } from '../../componen
 import { formatMoney, formatNumber } from '../../lib/format';
 import { SEVERITY_ORDER } from '../../lib/vocab';
 
-const AXIS = { fontFamily: 'var(--font-mono)', fontSize: 14, fill: 'var(--color-ink-mute)' };
+const AXIS = { fontFamily: 'var(--font-sans)', fontSize: 14, fill: 'var(--color-ink-mute)' };
+
+/** Severity bars carry the severity colour, and always sit beside its shape and label. */
+const SEVERITY_BAR: Record<Severity, string> = {
+  critical: 'bg-hazard-bright',
+  high: 'bg-orange-bright',
+  medium: 'bg-amber-bright',
+  low: 'bg-ink-mute',
+};
 
 function ChartTooltip({
   active,
@@ -40,7 +48,7 @@ function ChartTooltip({
   const value = payload?.[0]?.value;
   if (!active || value === undefined) return null;
   return (
-    <div className="border-2 border-ink bg-light px-3 py-2">
+    <div className="material-thick rounded-lg px-3 py-2 shadow-float">
       <p className="label">
         {prefix}
         {label}
@@ -74,8 +82,8 @@ function BarList({
               {row.hint && <span className="text-sm text-ink-mute"> · {row.hint}</span>}
             </span>
           </div>
-          <div className="mt-1 h-2.5 bg-paper-sunk">
-            <div className="h-full bg-ink" style={{ width: `${(row.value / top) * 100}%` }} />
+          <div className="meter mt-1.5">
+            <div className="meter-fill" style={{ width: `${(row.value / top) * 100}%` }} />
           </div>
         </li>
       ))}
@@ -92,13 +100,13 @@ function SeverityBars({ rows }: { rows: Summary['by_severity'] }) {
         const count = counts.get(level) ?? 0;
         return (
           <li key={level} className="bar-row items-center gap-3">
-            <span className="flex items-center gap-2 font-bold uppercase">
-              <SeverityMark severity={level} size={16} />
+            <span className="flex items-center gap-2 font-semibold">
+              <SeverityMark severity={level} size={16} tinted />
               {severityLabel(level)}
             </span>
-            <span className="h-6 bg-paper-sunk">
+            <span className="h-6 overflow-hidden rounded-md bg-paper-sunk">
               <span
-                className={`block h-full ${level === 'critical' ? 'bg-hazard' : 'bg-ink'}`}
+                className={`block h-full rounded-md ${SEVERITY_BAR[level]}`}
                 style={{ width: `${(count / top) * 100}%` }}
               />
             </span>
@@ -142,28 +150,39 @@ function Dashboard({ data }: { data: Summary }) {
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data.over_time} margin={{ top: 8, right: 24, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke="var(--color-hairline)" strokeDasharray="2 6" vertical={false} />
+              <defs>
+                <linearGradient id="issues-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickFormatter={(value: string) => value.slice(5)}
                 tick={AXIS}
-                axisLine={{ stroke: 'var(--color-ink)', strokeWidth: 2 }}
+                axisLine={{ stroke: 'var(--color-hairline)' }}
                 tickLine={false}
                 minTickGap={24}
               />
               <YAxis allowDecimals={false} tick={AXIS} axisLine={false} tickLine={false} />
               <Tooltip
                 content={<ChartTooltip unit="issues" />}
-                cursor={{ stroke: 'var(--color-ink)', strokeWidth: 1.5 }}
+                cursor={{ stroke: 'var(--color-ink-mute)', strokeWidth: 1 }}
               />
               <Area
-                type="linear"
+                type="monotone"
                 dataKey="count"
-                stroke="var(--color-ink)"
-                strokeWidth={2}
-                fill="var(--color-paper-deep)"
+                stroke="var(--color-accent)"
+                strokeWidth={2.5}
+                fill="url(#issues-fill)"
                 dot={false}
-                activeDot={{ r: 5, fill: 'var(--color-ink)', stroke: 'var(--color-light)', strokeWidth: 2 }}
+                activeDot={{
+                  r: 5,
+                  fill: 'var(--color-accent)',
+                  stroke: 'var(--color-surface)',
+                  strokeWidth: 2,
+                }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -196,13 +215,13 @@ function Dashboard({ data }: { data: Summary }) {
             <BarChart
               data={data.by_dock}
               margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
-              barCategoryGap={2}
+              barCategoryGap={6}
             >
-              <CartesianGrid stroke="var(--color-hairline)" strokeDasharray="2 6" vertical={false} />
+              <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
               <XAxis
                 dataKey="door_number"
                 tick={AXIS}
-                axisLine={{ stroke: 'var(--color-ink)', strokeWidth: 2 }}
+                axisLine={{ stroke: 'var(--color-hairline)' }}
                 tickLine={false}
               />
               <YAxis allowDecimals={false} tick={AXIS} axisLine={false} tickLine={false} />
@@ -210,7 +229,13 @@ function Dashboard({ data }: { data: Summary }) {
                 content={<ChartTooltip unit="issues" prefix="Dock " />}
                 cursor={{ fill: 'var(--color-paper-sunk)' }}
               />
-              <Bar dataKey="count" fill="var(--color-ink)" maxBarSize={48} isAnimationActive={false} />
+              <Bar
+                dataKey="count"
+                fill="var(--color-accent)"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={44}
+                isAnimationActive={false}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -18,8 +18,8 @@ const FILTERS = [
 function IssueCard({ issue }: { issue: Issue }) {
   return (
     <li>
-      <Link to={`/app/issues/${issue.id}`} className="block border-2 border-ink bg-light hover:bg-paper-sunk">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ink px-4 py-2">
+      <Link to={`/app/issues/${issue.id}`} className="block card hover:bg-paper-sunk">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline px-4 py-2">
           <SeverityBadge severity={issue.severity} size="sm" />
           <IssueStatusTag status={issue.status} />
         </div>
@@ -61,7 +61,7 @@ export default function MyIssues() {
       <div
         role="tablist"
         aria-label="Filter"
-        className="grid grid-cols-3 gap-0.5 border-2 border-ink bg-ink sm:max-w-md"
+        className="grid grid-cols-3 gap-1 rounded-lg bg-paper-sunk p-1 sm:max-w-md"
       >
         {FILTERS.map((option) => (
           <button
@@ -70,7 +70,7 @@ export default function MyIssues() {
             type="button"
             aria-selected={filter === option.id}
             onClick={() => setFilter(option.id)}
-            className={`heading min-h-12 text-base ${filter === option.id ? 'bg-ink text-light' : 'bg-light'}`}
+            className={`min-h-11 rounded-md text-base font-semibold transition-colors ${filter === option.id ? 'bg-surface text-ink shadow-card' : 'text-ink-mute'}`}
           >
             {option.label}
           </button>

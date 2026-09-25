@@ -71,6 +71,20 @@ export const keys = {
 
 // ── Reference ──
 
+/**
+ * Is the API up? A free-tier host sleeps when idle and takes about a minute to wake, so this keeps
+ * asking every 3 seconds for up to two minutes before giving up.
+ */
+export function useServerHealth() {
+  return useQuery({
+    queryKey: ['health'],
+    queryFn: () => unwrap(api.GET('/api/health')),
+    retry: 40,
+    retryDelay: 3_000,
+    staleTime: 60_000,
+  });
+}
+
 export function useTaxonomy() {
   return useQuery<Taxonomy>({
     queryKey: keys.taxonomy,

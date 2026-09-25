@@ -72,24 +72,24 @@ function CameraScanner({ onCode, onClose }: { onCode: (code: string) => void; on
   }, []);
 
   return (
-    <div className="border-2 border-ink bg-ink p-2">
-      <div className="mb-2 flex items-center justify-between text-light">
-        <p className="label text-light">Point the camera at the case barcode</p>
+    <div className="overflow-hidden rounded-xl bg-black p-2">
+      <div className="mb-2 flex items-center justify-between text-white">
+        <p className="label text-white">Point the camera at the case barcode</p>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close camera"
-          className="w-11 border-2 border-light"
+          className="grid w-11 place-items-center rounded-full bg-white/15 text-white"
         >
           <X size={20} className="mx-auto" aria-hidden="true" />
         </button>
       </div>
       {problem ? (
-        <p className="bg-light p-3 font-semibold">{problem}</p>
+        <p className="bg-surface p-3 font-semibold">{problem}</p>
       ) : (
         <video
           ref={video}
-          className="aspect-video w-full bg-ink"
+          className="aspect-video w-full rounded-lg bg-black"
           muted
           playsInline
           aria-label="Camera preview"

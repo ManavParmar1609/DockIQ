@@ -166,7 +166,7 @@ function Controls({ status }: { status: SimStatus }) {
           </div>
         </fieldset>
 
-        <form onSubmit={reset} className="flex flex-wrap items-end gap-2 border-t-2 border-ink pt-4">
+        <form onSubmit={reset} className="flex flex-wrap items-end gap-2 border-t border-hairline pt-4">
           <div className="flex-1">
             <label htmlFor="seed" className="heading mb-2 block text-base">
               Reset to 06:00
@@ -214,9 +214,7 @@ function Scenarios() {
         ))}
       </ul>
       <div className="mt-3" aria-live="polite">
-        {inject.isSuccess && (
-          <p className="border-2 border-ink bg-paper-sunk p-3 text-base">{inject.data.message}</p>
-        )}
+        {inject.isSuccess && <p className="rounded-lg bg-paper-sunk p-3 text-base">{inject.data.message}</p>}
         <MutationError error={inject.error} />
       </div>
     </Panel>
@@ -247,7 +245,7 @@ function YardBoard({ online }: { online: boolean }) {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-xl border-collapse text-left">
                   <thead>
-                    <tr className="border-b-2 border-ink">
+                    <tr className="border-b border-hairline">
                       {['Door', 'Trailer', 'Customer', 'Type', 'State'].map((heading) => (
                         <th key={heading} scope="col" className="label px-4 py-2 font-normal">
                           {heading}
@@ -332,7 +330,7 @@ export default function Simulator() {
           <div className="flex flex-col gap-6">
             <PageHeader
               kicker={`Simulated WMS · seed ${sim.seed}`}
-              title={<span className="telemetry">{time ?? sim.clock}</span>}
+              title={<span className="num">{time ?? sim.clock}</span>}
               meta={
                 <>
                   <span>{shiftLabel}</span>
@@ -348,14 +346,14 @@ export default function Simulator() {
             />
 
             <div
-              className="h-3 border-2 border-ink bg-light"
+              className="meter h-2.5"
               role="progressbar"
               aria-label="Shift progress"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={sim.shift_progress}
             >
-              <div className="h-full bg-ink" style={{ width: `${sim.shift_progress}%` }} />
+              <div className="meter-fill" style={{ width: `${sim.shift_progress}%` }} />
             </div>
 
             {!sim.running && sim.minute === 0 && (

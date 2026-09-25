@@ -2,8 +2,9 @@
  * A customer's trailer load plan, drawn from GET /api/orders/{id}/load-plan. The layout itself is
  * computed server-side (backend/app/domain/load_plan.py); this only draws it.
  *
- * Products are told apart by ink pattern, never colour — red is reserved for alerts. Load order is
- * readable three ways: step numbers on the plan, the step-through control, and the sequence list.
+ * Products are told apart by pattern *and* hue (Apple's accessible system colours, never the severity
+ * palette), so identity never rests on colour alone. Load order is readable three ways: step numbers
+ * on the plan, the step-through control, and the sequence list.
  */
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -24,6 +25,16 @@ const SEQUENCE_NAME: Record<string, string> = {
 };
 const FILLS = ['solid', 'hatch', 'cross', 'dots', 'rows', 'cols'] as const;
 type Fill = (typeof FILLS)[number];
+
+/** Each product's hue, in fill order. The pattern is the non-colour channel. */
+const HUE: Record<Fill, { ink: string; tint: string }> = {
+  solid: { ink: 'var(--color-accent)', tint: 'var(--color-accent-soft)' },
+  hatch: { ink: 'var(--color-teal)', tint: 'var(--color-teal-soft)' },
+  cross: { ink: 'var(--color-indigo)', tint: 'var(--color-indigo-soft)' },
+  dots: { ink: 'var(--color-mint)', tint: 'var(--color-mint-soft)' },
+  rows: { ink: 'var(--color-purple)', tint: 'var(--color-purple-soft)' },
+  cols: { ink: 'var(--color-brown)', tint: 'var(--color-brown-soft)' },
+};
 
 interface Stack {
   row: number;
@@ -49,9 +60,9 @@ function stacksOf(pallets: PlacedPallet[]): Stack[] {
   return [...map.values()];
 }
 
-/** SVG pattern defs: one per product, in ink on paper. */
+/** SVG pattern defs: one per product, drawn in the product's hue on its tint. */
 function Patterns({ prefix }: { prefix: string }) {
-  const ink = 'var(--color-ink)';
+  const { hatch, cross, dots, rows, cols } = HUE;
   return (
     <defs>
       <pattern
@@ -61,8 +72,8 @@ function Patterns({ prefix }: { prefix: string }) {
         patternUnits="userSpaceOnUse"
         patternTransform="rotate(45)"
       >
-        <rect width="10" height="10" fill="var(--color-light)" />
-        <line x1="0" y1="0" x2="0" y2="10" stroke={ink} strokeWidth="3.5" />
+        <rect width="10" height="10" fill={hatch.tint} />
+        <line x1="0" y1="0" x2="0" y2="10" stroke={hatch.ink} strokeWidth="2.5" />
       </pattern>
       <pattern
         id={`${prefix}-cross`}
@@ -71,34 +82,43 @@ function Patterns({ prefix }: { prefix: string }) {
         patternUnits="userSpaceOnUse"
         patternTransform="rotate(45)"
       >
-        <rect width="11" height="11" fill="var(--color-light)" />
-        <path d="M0 0V11M0 0H11" stroke={ink} strokeWidth="2.2" />
+        <rect width="11" height="11" fill={cross.tint} />
+        <path d="M0 0V11M0 0H11" stroke={cross.ink} strokeWidth="1.6" />
       </pattern>
       <pattern id={`${prefix}-dots`} width="9" height="9" patternUnits="userSpaceOnUse">
-        <rect width="9" height="9" fill="var(--color-light)" />
-        <circle cx="4.5" cy="4.5" r="2" fill={ink} />
+        <rect width="9" height="9" fill={dots.tint} />
+        <circle cx="4.5" cy="4.5" r="1.8" fill={dots.ink} />
       </pattern>
       <pattern id={`${prefix}-rows`} width="8" height="8" patternUnits="userSpaceOnUse">
-        <rect width="8" height="8" fill="var(--color-light)" />
-        <rect width="8" height="3" fill={ink} />
+        <rect width="8" height="8" fill={rows.tint} />
+        <rect width="8" height="2.5" fill={rows.ink} />
       </pattern>
       <pattern id={`${prefix}-cols`} width="8" height="8" patternUnits="userSpaceOnUse">
-        <rect width="8" height="8" fill="var(--color-light)" />
-        <rect width="3" height="8" fill={ink} />
+        <rect width="8" height="8" fill={cols.tint} />
+        <rect width="2.5" height="8" fill={cols.ink} />
       </pattern>
     </defs>
   );
 }
 
 function fillFor(prefix: string, fill: Fill): string {
-  return fill === 'solid' ? 'var(--color-ink-soft)' : `url(#${prefix}-${fill})`;
+  return fill === 'solid' ? HUE.solid.tint : `url(#${prefix}-${fill})`;
 }
 
 function Swatch({ fill, prefix }: { fill: Fill; prefix: string }) {
   return (
-    <svg width="28" height="20" aria-hidden="true" className="shrink-0 border-2 border-ink">
+    <svg width="32" height="24" aria-hidden="true" className="shrink-0">
       <Patterns prefix={`${prefix}-sw`} />
-      <rect width="28" height="20" fill={fillFor(`${prefix}-sw`, fill)} />
+      <rect
+        x="1"
+        y="1"
+        width="30"
+        height="22"
+        rx="6"
+        fill={fillFor(`${prefix}-sw`, fill)}
+        stroke={HUE[fill].ink}
+        strokeWidth="2"
+      />
     </svg>
   );
 }
@@ -138,27 +158,27 @@ function TopView({
     >
       <Patterns prefix={prefix} />
       {/* Reefer unit / nose */}
-      <rect x="0" y={PAD} width={NOSE - 8} height={LANE * 2} fill="var(--color-ink)" />
+      <rect x="0" y={PAD} width={NOSE - 10} height={LANE * 2} rx="14" fill="var(--color-paper-deep)" />
       <text
-        x={(NOSE - 8) / 2}
-        y={PAD + LANE - 8}
+        x={(NOSE - 10) / 2}
+        y={PAD + LANE - 6}
         textAnchor="middle"
-        fill="var(--color-light)"
-        fontSize="23"
-        fontWeight="800"
+        fill="var(--color-ink)"
+        fontSize="20"
+        fontWeight="600"
         fontFamily="var(--font-sans)"
       >
-        NOSE
+        Nose
       </text>
       <text
-        x={(NOSE - 8) / 2}
+        x={(NOSE - 10) / 2}
         y={PAD + LANE + 18}
         textAnchor="middle"
-        fill="var(--color-light)"
-        fontSize="19"
-        fontFamily="var(--font-mono)"
+        fill="var(--color-ink-mute)"
+        fontSize="17"
+        fontFamily="var(--font-sans)"
       >
-        REEFER
+        Reefer
       </text>
       {/* Trailer body */}
       <rect
@@ -166,49 +186,55 @@ function TopView({
         y={PAD}
         width={bodyWidth}
         height={LANE * 2}
+        rx="14"
         fill="var(--color-paper)"
-        stroke="var(--color-ink)"
-        strokeWidth="4"
-      />
-      <line
-        x1={NOSE}
-        y1={PAD + LANE}
-        x2={NOSE + bodyWidth}
-        y2={PAD + LANE}
         stroke="var(--color-hairline)"
         strokeWidth="2"
-        strokeDasharray="6 6"
+      />
+      <line
+        x1={NOSE + 10}
+        y1={PAD + LANE}
+        x2={NOSE + bodyWidth - 10}
+        y2={PAD + LANE}
+        stroke="var(--color-hairline)"
+        strokeWidth="1.5"
+        strokeDasharray="5 6"
       />
       {/* Doors */}
-      <path d={`M${NOSE + bodyWidth + 6} ${PAD} v${LANE * 2}`} stroke="var(--color-ink)" strokeWidth="6" />
+      <path
+        d={`M${NOSE + bodyWidth + 8} ${PAD + 6} v${LANE * 2 - 12}`}
+        stroke="var(--color-ink-mute)"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
       <text
         x={NOSE + bodyWidth + 38}
-        y={PAD + LANE + 7}
+        y={PAD + LANE + 6}
         textAnchor="middle"
-        fontSize="21"
-        fontWeight="800"
+        fontSize="18"
+        fontWeight="600"
         fontFamily="var(--font-sans)"
-        fill="var(--color-ink)"
+        fill="var(--color-ink-mute)"
         transform={`rotate(90 ${NOSE + bodyWidth + 38} ${PAD + LANE})`}
       >
-        DOORS
+        Doors
       </text>
       {/* Side labels, as seen from the doors looking at the nose */}
-      <text x={0} y={PAD - 10} fontSize="19" fontFamily="var(--font-mono)" fill="var(--color-ink-mute)">
-        RIGHT
+      <text x={0} y={PAD - 12} fontSize="17" fontFamily="var(--font-sans)" fill="var(--color-ink-mute)">
+        Right side
       </text>
-      <text x={0} y={height - 8} fontSize="19" fontFamily="var(--font-mono)" fill="var(--color-ink-mute)">
-        LEFT
+      <text x={0} y={height - 8} fontSize="17" fontFamily="var(--font-sans)" fill="var(--color-ink-mute)">
+        Left side
       </text>
       {/* Row numbers */}
       {Array.from({ length: plan.rows }, (_, row) => (
         <text
           key={row}
           x={NOSE + row * CELL + CELL / 2}
-          y={PAD - 10}
+          y={PAD - 12}
           textAnchor="middle"
-          fontSize="18"
-          fontFamily="var(--font-mono)"
+          fontSize="17"
+          fontFamily="var(--font-sans)"
           fill="var(--color-ink-mute)"
         >
           {row + 1}
@@ -224,14 +250,15 @@ function TopView({
             return (
               <rect
                 key={`${row}-${side}`}
-                x={x + 5}
-                y={y + 7}
-                width={CELL - 10}
-                height={LANE - 14}
+                x={x + 6}
+                y={y + 8}
+                width={CELL - 12}
+                height={LANE - 16}
+                rx="8"
                 fill="none"
                 stroke="var(--color-hairline)"
                 strokeWidth="1.5"
-                strokeDasharray="4 4"
+                strokeDasharray="4 5"
               />
             );
           }
@@ -262,9 +289,10 @@ function TopView({
                   y={py - 5}
                   width={along}
                   height={across}
+                  rx="8"
                   fill="var(--color-paper-deep)"
-                  stroke="var(--color-ink)"
-                  strokeWidth="2"
+                  stroke="var(--color-hairline)"
+                  strokeWidth="1.5"
                 />
               )}
               <rect
@@ -272,40 +300,40 @@ function TopView({
                 y={py}
                 width={along}
                 height={across}
+                rx="8"
                 fill={fillFor(prefix, fill)}
-                stroke="var(--color-ink)"
-                strokeWidth={active ? 6 : 2.5}
+                stroke={active ? 'var(--color-ink)' : HUE[fill].ink}
+                strokeWidth={active ? 5 : 2}
               />
               <rect
-                x={px + 3}
-                y={py + 3}
-                width="36"
+                x={px + 4}
+                y={py + 4}
+                width="34"
                 height="24"
-                fill={active ? 'var(--color-ink)' : 'var(--color-light)'}
-                stroke="var(--color-ink)"
-                strokeWidth="1.5"
+                rx="12"
+                fill={active ? 'var(--color-accent)' : 'var(--color-surface)'}
               />
               <text
                 x={px + 21}
-                y={py + 21}
+                y={py + 21.5}
                 textAnchor="middle"
-                fontSize="20"
+                fontSize="17"
                 fontWeight="700"
-                fontFamily="var(--font-mono)"
-                fill={active ? 'var(--color-light)' : 'var(--color-ink)'}
+                fontFamily="var(--font-sans)"
+                fill={active ? 'var(--color-white)' : 'var(--color-ink)'}
               >
-                {String(bottom.load_sequence).padStart(2, '0')}
+                {bottom.load_sequence}
               </text>
               {stack.pallets.length > 1 && (
                 <text
                   x={px + along - 4}
                   y={py + across - 6}
                   textAnchor="end"
-                  fontSize="19"
-                  fontWeight="800"
-                  fontFamily="var(--font-mono)"
+                  fontSize="17"
+                  fontWeight="700"
+                  fontFamily="var(--font-sans)"
                   fill="var(--color-ink)"
-                  stroke="var(--color-light)"
+                  stroke="var(--color-surface)"
                   strokeWidth="4"
                   paintOrder="stroke"
                 >
@@ -357,9 +385,17 @@ function Elevation({
       style={{ maxWidth: `${width * 1.15}px` }}
     >
       <Patterns prefix={prefix} />
-      <line x1="0" y1={floor} x2={width} y2={floor} stroke="var(--color-ink)" strokeWidth="4" />
-      <text x="4" y={height - 6} fontSize="18" fontFamily="var(--font-mono)" fill="var(--color-ink-mute)">
-        NOSE →→ DOORS · {side.toUpperCase()} SIDE
+      <line
+        x1="2"
+        y1={floor}
+        x2={width - 2}
+        y2={floor}
+        stroke="var(--color-ink-mute)"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <text x="4" y={height - 6} fontSize="17" fontFamily="var(--font-sans)" fill="var(--color-ink-mute)">
+        Nose → doors · {side} side
       </text>
       {Array.from({ length: shownRows }, (_, row) => {
         const stack = bySlot.get(row);
@@ -376,19 +412,20 @@ function Elevation({
                     y={y + 2}
                     width={COLUMN - 6}
                     height={LAYER - 4}
+                    rx="6"
                     fill={fillFor(prefix, fills.get(pallet.sku) ?? 'solid')}
-                    stroke="var(--color-ink)"
-                    strokeWidth={active ? 5 : 2}
+                    stroke={active ? 'var(--color-ink)' : HUE[fills.get(pallet.sku) ?? 'solid'].ink}
+                    strokeWidth={active ? 4 : 1.5}
                   />
                   <text
                     x={x + COLUMN / 2}
                     y={y + LAYER / 2 + 6}
                     textAnchor="middle"
-                    fontSize="18"
-                    fontWeight="700"
-                    fontFamily="var(--font-mono)"
+                    fontSize="17"
+                    fontWeight="600"
+                    fontFamily="var(--font-sans)"
                     fill="var(--color-ink)"
-                    stroke="var(--color-light)"
+                    stroke="var(--color-surface)"
                     strokeWidth="4"
                     paintOrder="stroke"
                   >
@@ -400,9 +437,9 @@ function Elevation({
                       y1={y + LAYER}
                       x2={x + COLUMN}
                       y2={y + LAYER}
-                      stroke="var(--color-ink)"
-                      strokeWidth="3"
-                      strokeDasharray="10 4"
+                      stroke="var(--color-ink-soft)"
+                      strokeWidth="2.5"
+                      strokeDasharray="8 5"
                     />
                   )}
                 </g>
@@ -414,9 +451,10 @@ function Elevation({
                 y={floor - LAYER + 2}
                 width={COLUMN - 6}
                 height={LAYER - 4}
+                rx="6"
                 fill="none"
                 stroke="var(--color-hairline)"
-                strokeDasharray="4 4"
+                strokeDasharray="4 5"
               />
             )}
           </g>
@@ -436,11 +474,11 @@ function Elevation({
         x={width - 6}
         y={floor - levels * LAYER - 6}
         textAnchor="end"
-        fontSize="18"
-        fontFamily="var(--font-mono)"
+        fontSize="17"
+        fontFamily="var(--font-sans)"
         fill="var(--color-ink-mute)"
       >
-        MAX {levels} HIGH
+        Max {levels} high
       </text>
     </svg>
   );
@@ -481,16 +519,16 @@ export function LoadPlanView({ plan }: { plan: LoadPlan }) {
   return (
     <div className="flex flex-col gap-4">
       {/* Header telemetry */}
-      <div className="grid grid-cols-2 gap-0.5 border-2 border-ink bg-ink sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
           ['Pattern', PATTERN_NAME[plan.floor_pattern] ?? plan.floor_pattern],
           ['Sequence', SEQUENCE_NAME[plan.sequence] ?? plan.sequence],
           ['Pallets', `${plan.total_pallets} in ${plan.stacks_used} of ${plan.floor_positions} spots`],
           ['Weight', formatWeight(plan.total_weight_lbs)],
         ].map(([label, value]) => (
-          <div key={label} className="bg-light p-3">
+          <div key={label} className="card p-4">
             <p className="label">{label}</p>
-            <p className="telemetry mt-1 text-lg">{value}</p>
+            <p className="mt-0.5 text-lg font-semibold">{value}</p>
           </div>
         ))}
       </div>
@@ -502,10 +540,10 @@ export function LoadPlanView({ plan }: { plan: LoadPlan }) {
       ))}
 
       {/* Step-through */}
-      <div className="flex flex-wrap items-center gap-3 border-2 border-ink bg-ink p-2 text-light">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-paper-sunk p-2">
         <button
           type="button"
-          className="btn border-light bg-transparent text-light"
+          className="btn btn-secondary bg-surface px-4"
           aria-label="Previous step"
           disabled={step <= 1}
           onClick={() => setStep((value) => Math.max(1, value - 1))}
@@ -513,8 +551,8 @@ export function LoadPlanView({ plan }: { plan: LoadPlan }) {
           <ChevronLeft size={22} aria-hidden="true" />
         </button>
         <div className="min-w-0 flex-1" aria-live="polite">
-          <p className="label text-light">
-            Load step <span className="telemetry">{String(step).padStart(2, '0')}</span> of {total}
+          <p className="label">
+            Load step <span className="telemetry">{step}</span> of {total}
           </p>
           {current && (
             <p className="mt-0.5 text-base font-semibold">
@@ -528,7 +566,7 @@ export function LoadPlanView({ plan }: { plan: LoadPlan }) {
         </div>
         <button
           type="button"
-          className="btn border-light bg-transparent text-light"
+          className="btn btn-secondary bg-surface px-4"
           aria-label="Next step"
           disabled={step >= total}
           onClick={() => setStep((value) => Math.min(total, value + 1))}
@@ -538,21 +576,25 @@ export function LoadPlanView({ plan }: { plan: LoadPlan }) {
       </div>
 
       {/* Top view */}
-      <figure className="border-2 border-ink bg-light">
-        <figcaption className="label border-b-2 border-ink px-4 py-2 text-ink">
-          Top view: tap a stack
+      <figure className="card overflow-hidden">
+        <figcaption className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
+          <span className="heading text-lg">Top view</span>
+          <span className="label">Tap a stack to jump to it</span>
         </figcaption>
-        <div className="overflow-x-auto p-3">
+        <div className="overflow-x-auto px-3 pt-2 pb-4">
           <TopView plan={plan} stacks={stacks} fills={fills} step={step} onPick={setStep} />
         </div>
       </figure>
 
       {/* Elevations */}
-      <figure className="border-2 border-ink bg-light">
-        <figcaption className="label border-b-2 border-ink px-4 py-2 text-ink">
-          Side elevation: weight per pallet (lb){plan.slip_sheets ? ' · dashed line = slip sheet' : ''}
+      <figure className="card overflow-hidden">
+        <figcaption className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
+          <span className="heading text-lg">Side view</span>
+          <span className="label">
+            Weight per pallet (lb){plan.slip_sheets ? ' · dashed line = slip sheet' : ''}
+          </span>
         </figcaption>
-        <div className="grid gap-4 overflow-x-auto p-3 xl:grid-cols-2">
+        <div className="grid gap-4 overflow-x-auto px-3 pt-2 pb-4 xl:grid-cols-2">
           <Elevation plan={plan} stacks={stacks} fills={fills} step={step} side="right" />
           <Elevation plan={plan} stacks={stacks} fills={fills} step={step} side="left" />
         </div>
@@ -560,13 +602,13 @@ export function LoadPlanView({ plan }: { plan: LoadPlan }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Legend */}
-        <div className="border-2 border-ink bg-light">
-          <p className="heading border-b-2 border-ink px-4 py-2 text-lg">Products</p>
+        <div className="card overflow-hidden pb-2">
+          <p className="heading px-5 pt-4 pb-1 text-lg">Products</p>
           <ul>
             {products.map((product) => (
               <li
                 key={product.sku}
-                className="flex items-center gap-3 border-b border-hairline px-4 py-2.5 last:border-b-0"
+                className="mx-5 flex items-center gap-3 border-b border-hairline py-3 last:border-b-0"
               >
                 <Swatch fill={product.fill} prefix={product.sku} />
                 <div className="min-w-0 flex-1">
@@ -582,18 +624,20 @@ export function LoadPlanView({ plan }: { plan: LoadPlan }) {
         </div>
 
         {/* Rules */}
-        <div className="border-2 border-ink bg-light">
-          <p className="heading border-b-2 border-ink px-4 py-2 text-lg">{plan.company_name} loading rules</p>
-          <ol className="divide-y divide-hairline">
+        <div className="card overflow-hidden pb-2">
+          <p className="heading px-5 pt-4 pb-1 text-lg">{plan.company_name} loading rules</p>
+          <ol className="mx-5 divide-y divide-hairline">
             {plan.checklist.map((rule, index) => (
-              <li key={rule} className="flex gap-3 px-4 py-2.5 text-base">
-                <span className="telemetry text-ink-mute">{String(index + 1).padStart(2, '0')}</span>
-                <span className="font-semibold">{rule}</span>
+              <li key={rule} className="flex gap-3 py-3 text-base">
+                <span className="telemetry grid h-6 w-6 shrink-0 place-items-center rounded-full bg-paper-sunk text-sm text-ink-soft">
+                  {index + 1}
+                </span>
+                <span className="font-medium">{rule}</span>
               </li>
             ))}
           </ol>
           {plan.special && (
-            <div className="border-t-2 border-ink bg-paper-sunk px-4 py-3">
+            <div className="m-3 mt-2 rounded-lg bg-paper-sunk px-4 py-3">
               <p className="label">Customer instruction</p>
               <p className="mt-1 text-base font-semibold">{plan.special}</p>
             </div>

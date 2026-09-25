@@ -92,7 +92,7 @@ export default function Handoff() {
                     to={`/app/issues/${issue.id}`}
                     className="flex items-center gap-3 border-b border-hairline py-2.5 hover:bg-paper-sunk"
                   >
-                    <SeverityMark severity={issue.severity} size={16} />
+                    <SeverityMark severity={issue.severity} size={16} tinted />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">
                         {issue.issue_subtype ?? issue.issue_type}
@@ -129,7 +129,7 @@ export default function Handoff() {
 
       <Panel title="Write the handoff" index={6}>
         {submit.isSuccess && (
-          <p className="mb-4 flex items-center gap-2 border-2 border-ink bg-paper-sunk p-3 font-semibold">
+          <p className="mb-4 flex items-center gap-2 rounded-lg bg-paper-sunk p-3 font-semibold">
             <Check size={20} aria-hidden="true" /> Handoff saved. Your zone&apos;s operators see it on their
             shift screen.
           </p>

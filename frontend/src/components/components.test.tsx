@@ -18,7 +18,7 @@ describe('SeverityBadge', () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
-  it('reserves the hazard fill for critical', () => {
+  it('reserves the red fill for critical', () => {
     const { rerender } = render(<SeverityBadge severity="critical" />);
     expect(screen.getByText('Critical').className).toContain('bg-hazard');
     rerender(<SeverityBadge severity="high" />);
@@ -39,10 +39,10 @@ describe('LoadPlanView', () => {
     render(<LoadPlanView plan={SAMPLE_PLAN} />);
     expect(screen.getByText('Crestline Markets loading rules')).toBeInTheDocument();
     expect(screen.getByText('Slip sheet between every layer')).toBeInTheDocument();
-    expect(screen.getByText(/Load step/)).toHaveTextContent(`01 of ${SAMPLE_PLAN.total_pallets}`);
+    expect(screen.getByText(/Load step/)).toHaveTextContent(`Load step 1 of ${SAMPLE_PLAN.total_pallets}`);
 
     await userEvent.click(screen.getByRole('button', { name: 'Next step' }));
-    expect(screen.getByText(/Load step/)).toHaveTextContent('02');
+    expect(screen.getByText(/Load step/)).toHaveTextContent('Load step 2 of');
     expect(screen.getByRole('button', { name: 'Previous step' })).toBeEnabled();
   });
 

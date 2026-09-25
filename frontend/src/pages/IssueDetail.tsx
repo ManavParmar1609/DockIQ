@@ -57,7 +57,7 @@ function OnMyWay({ issue }: { issue: Issue }) {
   const acknowledge = useAcknowledge();
   if (issue.acknowledged_at) {
     return (
-      <p className="mb-4 flex items-center gap-2 border-2 border-ink bg-paper-sunk p-3 text-base">
+      <p className="mb-4 flex items-center gap-2 rounded-lg bg-paper-sunk p-3 text-base">
         <Footprints size={20} aria-hidden="true" />
         {issue.supervisor_name ?? 'You'} took this at {formatDateTime(issue.acknowledged_at)}. The operator
         knows.
@@ -65,7 +65,7 @@ function OnMyWay({ issue }: { issue: Issue }) {
     );
   }
   return (
-    <div className="mb-4 flex flex-col gap-2 border-b-2 border-ink pb-4">
+    <div className="mb-4 flex flex-col gap-2 border-b border-hairline pb-4">
       <button
         type="button"
         className="btn btn-primary text-lg"
@@ -102,7 +102,7 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
   return (
     <Panel title="Your decision">
       <OnMyWay issue={issue} />
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Decision">
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Decision">
         {(taxonomy.data?.supervisor_decisions ?? []).map((option) => (
           <button
             key={option}
@@ -256,7 +256,7 @@ function Detail({ issue }: { issue: Issue }) {
               </Definition>
             </dl>
             {issue.description && (
-              <p className="mt-4 border-t-2 border-ink pt-4 text-lg">{issue.description}</p>
+              <p className="mt-4 border-t border-hairline pt-4 text-lg">{issue.description}</p>
             )}
             {issue.quick_tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">

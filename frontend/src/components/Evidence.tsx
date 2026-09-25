@@ -34,13 +34,13 @@ function Thumb({ blob, onRemove }: { blob: Blob; onRemove: () => void }) {
   const url = useMemo(() => URL.createObjectURL(blob), [blob]);
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
   return (
-    <div className="relative border-2 border-ink">
+    <div className="relative overflow-hidden rounded-lg">
       <img src={url} alt="Photo to attach" className="aspect-square w-full object-cover" />
       <button
         type="button"
         onClick={onRemove}
         aria-label="Remove photo"
-        className="absolute right-0 top-0 w-11 border-b-2 border-l-2 border-ink bg-light"
+        className="absolute right-0 top-0 w-11 border-b-2 border-l border-hairline bg-surface"
       >
         <Trash2 size={18} className="mx-auto" aria-hidden="true" />
       </button>
@@ -81,7 +81,7 @@ export function PhotoPicker({ photos, onChange }: { photos: Blob[]; onChange: (p
             type="button"
             onClick={() => input.current?.click()}
             disabled={busy}
-            className="flex aspect-square flex-col items-center justify-center gap-2 border-2 border-dashed border-ink bg-light"
+            className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-hairline bg-paper text-accent-ink"
           >
             <ImagePlus size={28} aria-hidden="true" />
             <span className="heading text-base">{busy ? 'Processing…' : 'Add photo'}</span>
@@ -117,7 +117,7 @@ function StoredPhoto({ id, createdAt }: { id: number; createdAt: string }) {
     [url],
   );
   return (
-    <figure className="border-2 border-ink bg-light">
+    <figure className="card">
       {url ? (
         <a href={url} target="_blank" rel="noreferrer">
           <img
@@ -131,7 +131,7 @@ function StoredPhoto({ id, createdAt }: { id: number; createdAt: string }) {
           {blob.isError ? 'Unavailable' : 'Loading…'}
         </div>
       )}
-      <figcaption className="telemetry border-t-2 border-ink px-2 py-1 text-sm">
+      <figcaption className="telemetry border-t border-hairline px-2 py-1 text-sm">
         {formatDateTime(createdAt)}
       </figcaption>
     </figure>

@@ -1,11 +1,18 @@
-import { ArrowRight, ClipboardCheck, MessageSquare, PackageCheck, TriangleAlert } from 'lucide-react';
+import {
+  ArrowRight,
+  ChevronRight,
+  ClipboardCheck,
+  MessageSquare,
+  PackageCheck,
+  TriangleAlert,
+} from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 
 import { useActiveOrder, useHandoffs, useIssues } from '../../api/hooks';
 import type { Issue } from '../../api/types';
 import { useUser } from '../../auth/AuthProvider';
-import { SeverityMark } from '../../components/Severity';
+import { SeverityMark, severityLabel } from '../../components/Severity';
 import {
   Definition,
   EmptyState,
@@ -36,15 +43,17 @@ function Action({
   return (
     <Link
       to={to}
-      className="reveal group flex items-center gap-4 border-2 border-ink bg-light p-4 hover:bg-ink hover:text-light"
+      className="reveal group card flex items-center gap-4 p-4 transition-transform active:scale-99"
       style={{ '--i': index } as CSSProperties}
     >
-      <Icon size={30} aria-hidden="true" className="shrink-0" />
-      <span className="flex-1">
-        <span className="heading block text-xl">{title}</span>
-        <span className="text-base text-ink-soft group-hover:text-light">{sub}</span>
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-accent-soft text-accent-ink">
+        <Icon size={26} aria-hidden="true" />
       </span>
-      <ArrowRight size={22} aria-hidden="true" />
+      <span className="flex-1">
+        <span className="heading block text-lg">{title}</span>
+        <span className="text-base text-ink-mute">{sub}</span>
+      </span>
+      <ArrowRight size={22} aria-hidden="true" className="text-ink-mute" />
     </Link>
   );
 }
@@ -54,9 +63,10 @@ function RecentIssue({ issue }: { issue: Issue }) {
     <li>
       <Link
         to={`/app/issues/${issue.id}`}
-        className="flex items-center gap-3 border-b border-hairline px-4 py-3 hover:bg-paper-sunk"
+        className="flex items-center gap-3 border-b border-hairline px-5 py-3 transition-colors hover:bg-paper"
       >
-        <SeverityMark severity={issue.severity} size={16} />
+        <SeverityMark severity={issue.severity} size={16} tinted />
+        <span className="sr-only">{severityLabel(issue.severity)} severity:</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{issue.issue_subtype ?? issue.issue_type}</span>
           <span className="telemetry text-sm text-ink-mute">
@@ -64,6 +74,7 @@ function RecentIssue({ issue }: { issue: Issue }) {
           </span>
         </span>
         <IssueStatusTag status={issue.status} />
+        <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-mute" />
       </Link>
     </li>
   );

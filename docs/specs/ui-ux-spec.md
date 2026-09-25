@@ -24,41 +24,56 @@ to a CRITICAL alert, a temperature, a count or a severity badge.
 
 ---
 
-## 2. The design system — "Freight Manifest"
+## 2. The design system — Apple design language *(since 2026-09-25)*
 
-Swiss Industrial Print, chosen for the dock floor (rules §2.2). Tokens live only in
-`frontend/src/styles/app.css`; Tailwind's default palette, radii and shadows are **removed**, so an
-off-system colour cannot be written.
+Chosen by the product owner to replace "Freight Manifest" (rules §2.2). Built from Apple's Human
+Interface Guidelines and the `apple-design` skill, held to the dock-floor rules in §1. Tokens live
+only in `frontend/src/styles/app.css`; Tailwind's default palette, radii and shadows are **removed**,
+so an off-system colour cannot be written.
 
-| Token | Value | Use |
-|---|---|---|
-| `paper` | `#EFECE4` | Substrate |
-| `paper-sunk` / `paper-deep` | `#E5E1D6` / `#D8D2C4` | Recessed fields, scale bars |
-| `ink` / `ink-soft` / `ink-mute` | `#111110` / `#3B3A35` / `#5C594F` | Text 17:1 / 11:1 / 5.9:1 on paper |
-| `light` | `#FBFAF6` | Panels; text on ink and hazard fills |
-| `hazard` | `#D4161A` | The **only** accent — severity and alerts. Light text on it is 5.1:1 |
-| `hazard-bright` | `#E61919` | Graphic marks only (hazard tape, chart bars) — never behind text |
-| `hazard-deep` | `#B0100D` | Alert text on paper, 6:1 |
-| `night*` | `#0E0E0D` … | **Landing page only** — the one dark surface |
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `paper` | `#F5F5F7` | `#000000` | The page |
+| `surface` | `#FFFFFF` | `#1C1C1E` | Cards, sheets, fields |
+| `paper-sunk` / `paper-deep` | `#EEEEF3` / `#E1E1E6` | `#2C2C2E` / `#3A3A3C` | Fills: gray buttons, segmented tracks, pressed |
+| `ink` / `ink-soft` / `ink-mute` | `#1D1D1F` / `#424245` / `#6E6E73` | `#F5F5F7` / `#D1D1D6` / `#98989D` | Text; `ink-mute` is 4.7:1 on the light page |
+| `hairline` | `#D2D2D7` | `#38383A` | Separators only |
+| `accent` / `accent-ink` / `accent-soft` | `#0071E3` / `#0066CC` / `#E8F1FD` | fill kept, `#2997FF`, `#0C2A4A` | **Interaction only**: buttons, links, selection, focus |
+| `hazard` / `hazard-deep` / `hazard-soft` | `#D70015` / `#B3000F` / `#FDECEE` | fill kept, `#FF6961`, `#3B1216` | Critical severity and destructive actions |
+| `orange` / `amber` (+ `-soft`) | `#C93400` / `#8A5A00` | `#FF9F0A` / `#FFD60A` | High / medium severity text on their tints |
+| `*-bright` | `#FF3B30`, `#FF9500`, `#FFCC00` | same | Graphic marks only (bars, dots, the critical edge) — never behind text |
+| `green` | `#1A7F37` | `#30D158` | Resolved, live |
+| `teal`, `indigo`, `mint`, `purple`, `brown` | Apple accessible hues | dark variants | Product identity in the load plan — never severity |
+| `night*` | `#000000` … | — | The landing page's black hero and close |
 
-- **Type:** Archivo (variable, width axis at 112–125% for uppercase display) + Martian Mono for every
-  ID, count, weight, temperature and time. Self-hosted via Fontsource — no third-party font request.
-- **Geometry:** square corners, 2px ink rules, compartments on a 0.5-unit ink grid.
-- **Motion:** one staggered rise as a screen loads (`.reveal`, 55ms steps). Never on an alert.
-  `prefers-reduced-motion`, `prefers-reduced-transparency`, `prefers-contrast: more` are honoured.
+- **Type:** the system stack — SF Pro on Apple devices, **Geist** elsewhere (self-hosted, Fontsource;
+  SF cannot be licensed for the web). SF Pro Rounded (`.num`) for headline numbers, tabular figures
+  (`.telemetry`) for every ID, count, weight, temperature and time. Size-specific tracking: large
+  titles −0.025em, body −0.011em. Scale: 14 floor · 15 · 17 body · 20 · 22 · 28 · 34 large title.
+- **Geometry:** continuous-feeling radii (8 · 12 · 16 · 20 · 28pt, capsules for buttons and tags),
+  white cards on the gray page with a soft shadow, hairline separators inset in grouped lists.
+- **Materials:** the navigation bar, tab bar, chat composer and alert banners are translucent
+  (`.material`, backdrop blur + saturate); content scrolls beneath. **Critical banners are solid.**
+- **Motion:** iOS easing `cubic-bezier(0.32, 0.72, 0, 1)`; press feedback `scale(0.97)` on
+  pointer-down; one staggered rise as a screen loads (`.reveal`, 45ms steps). Never on an alert.
+  `prefers-reduced-motion`, `prefers-reduced-transparency` (materials go solid) and
+  `prefers-contrast: more` are honoured. Dark mode follows the device.
+- **Components:** large-title page headers; grouped cards (`Panel`); Health-style metric tiles
+  (`Stat`); capsule tags; segmented controls for tabs and filters; inset grouped lists with chevrons;
+  iOS-style grouped form fields on sign-in; sheets for Quick request; iMessage-style chat bubbles.
 
 ### 2.1 The severity and confidence channels
 
-| Level | Shape | Fill |
+| Level | Shape | Badge |
 |---|---|---|
-| Critical | ▲ | Hazard red, light text, hazard-tape edge on alerts and queue rows |
-| High | ◆ | Solid ink |
-| Medium | ■ | Ink outline |
-| Low | ○ | Dashed hairline |
+| Critical | ▲ | Solid red capsule, white text; red-tinted rows and a red edge in queues |
+| High | ◆ | Orange tint, orange text |
+| Medium | ■ | Amber tint, amber text |
+| Low | ○ | Gray tint, gray text |
 
-**Match confidence** is a separate three-cell ink meter labelled `MATCH · HIGH|MEDIUM|LOW`. It never
-uses the severity palette — the old UI's red "LOW confidence" pill read as more alarming than an
-amber MEDIUM severity beside it.
+Standing alone in a list, the shape takes the severity hue (`tinted`) and carries a screen-reader
+label. **Match confidence** is a separate channel: three ink signal bars labelled `Match: high|medium|low`.
+It never uses the severity palette.
 
 ---
 

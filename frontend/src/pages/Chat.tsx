@@ -29,7 +29,7 @@ function RichText({ text }: { text: string }) {
 function Question({ text }: { text: string }) {
   return (
     <li className="flex justify-end">
-      <p className="max-w-2xl border-2 border-ink bg-ink px-4 py-3 text-lg text-light">{text}</p>
+      <p className="max-w-2xl rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-lg text-white">{text}</p>
     </li>
   );
 }
@@ -47,12 +47,12 @@ function Source({ source }: { source: string }) {
 function PastAnswer({ message }: { message: ChatMessage }) {
   return (
     <li className="flex justify-start">
-      <div className="max-w-2xl border-2 border-ink bg-light px-4 py-3">
+      <div className="max-w-2xl card px-4 py-3">
         <p className="whitespace-pre-wrap text-lg leading-relaxed">
           <RichText text={message.message} />
         </p>
         {message.source_reference && (
-          <div className="mt-3 border-t-2 border-ink pt-2">
+          <div className="mt-3 border-t border-hairline pt-2">
             <Source source={message.source_reference} />
           </div>
         )}
@@ -105,7 +105,7 @@ function Answer({ exchange }: { exchange: Exchange }) {
         <AgentActionView key={`${action.kind}-${String(index)}`} action={action} />
       ))}
       {exchange.error && (
-        <p role="alert" className="border-2 border-hazard p-3 text-base font-semibold text-hazard-deep">
+        <p role="alert" className="rounded-lg bg-hazard-soft p-3 text-base font-semibold text-hazard-deep">
           {exchange.error}
         </p>
       )}
@@ -191,7 +191,7 @@ export default function Chat() {
         {(messages) => {
           const earlier = messages.filter((message) => Date.parse(message.created_at) < openedAt).slice(-10);
           return earlier.length === 0 && exchanges.length === 0 ? (
-            <div className="border-2 border-dashed border-hairline p-6">
+            <div className="card p-6">
               <p className="heading text-xl">Ask the way you would ask a lead.</p>
               <p className="mt-2 max-w-2xl text-base text-ink-soft">
                 Type or dictate. It checks your live data first and shows what it checked. Anything it
@@ -219,13 +219,13 @@ export default function Chat() {
       </QueryBoundary>
       <div ref={bottom} />
 
-      <div className="sticky bottom-20 z-10 flex flex-col gap-2 border-2 border-ink bg-paper p-2 lg:bottom-4">
+      <div className="material-thick sticky bottom-20 z-10 flex flex-col gap-2 rounded-2xl p-2 shadow-float lg:bottom-4">
         <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Suggestions">
           {chips.map((chip) => (
             <button
               key={chip}
               type="button"
-              className="shrink-0 border-2 border-ink bg-light px-3 text-base font-semibold hover:bg-paper-sunk disabled:opacity-60"
+              className="shrink-0 card px-3 text-base font-semibold hover:bg-paper-sunk disabled:opacity-60"
               disabled={busy}
               onClick={() => send(chip)}
             >

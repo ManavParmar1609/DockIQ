@@ -1,15 +1,50 @@
-import { ArrowRight } from 'lucide-react';
-import { useState, type SyntheticEvent } from 'react';
+import { AlertTriangle, ArrowLeft, ChevronRight, LoaderCircle, Warehouse } from 'lucide-react';
+import { useEffect, useState, type SyntheticEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 
 import { errorMessage } from '../api/client';
-import { useDemoAccounts } from '../api/hooks';
+import { useDemoAccounts, useServerHealth } from '../api/hooks';
 import type { DemoAccount, Role } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
-import { FieldLabel, SimulatedTag } from '../components/ui';
+import { SimulatedTag } from '../components/ui';
 import { ROLE_LABEL } from '../shell/nav';
 
 const ROLE_ORDER: Role[] = ['operator', 'supervisor', 'quality'];
+const WAKE_NOTICE_AFTER_MS = 1500;
+
+/** On a free-tier host the API sleeps when idle; say so instead of looking broken. */
+function ServerStatus() {
+  const health = useServerHealth();
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), WAKE_NOTICE_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (health.isError) {
+    return (
+      <p
+        role="alert"
+        className="flex items-start gap-2 rounded-lg bg-hazard-soft p-3 text-base text-hazard-deep"
+      >
+        <AlertTriangle size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+        The server did not answer. Check your connection and reload the page.
+      </p>
+    );
+  }
+  if (health.isPending && slow) {
+    return (
+      <p
+        role="status"
+        className="flex items-start gap-2 rounded-lg bg-paper-sunk p-3 text-base text-ink-soft"
+      >
+        <LoaderCircle size={18} aria-hidden="true" className="mt-0.5 shrink-0 motion-safe:animate-spin" />
+        Waking the demo server. The free tier sleeps when idle, so this can take up to a minute.
+      </p>
+    );
+  }
+  return null;
+}
 
 function DemoAccounts({ onPick }: { onPick: (employeeId: string) => void }) {
   const accounts = useDemoAccounts();
@@ -19,12 +54,12 @@ function DemoAccounts({ onPick }: { onPick: (employeeId: string) => void }) {
     people: accounts.data.filter((account: DemoAccount) => account.role === role),
   }));
   return (
-    <section aria-labelledby="demo-heading" className="mt-10 border-t-2 border-ink pt-6">
+    <section aria-labelledby="demo-heading" className="mt-12">
       <h2 id="demo-heading" className="heading text-xl">
         Demo accounts
       </h2>
-      <p className="mt-1 text-ink-soft">
-        Fictional people. Tap one to fill the employee ID.
+      <p className="mt-1 text-base text-ink-mute">
+        Fictional people. Tap one to fill in the employee ID.
         {import.meta.env.DEV && (
           <>
             {' '}
@@ -32,26 +67,27 @@ function DemoAccounts({ onPick }: { onPick: (employeeId: string) => void }) {
           </>
         )}
       </p>
-      <div className="mt-4 flex flex-col gap-5">
+      <div className="mt-5 flex flex-col gap-6">
         {byRole.map(({ role, people }) => (
           <div key={role}>
-            <p className="label mb-2">{ROLE_LABEL[role]}</p>
-            <ul className="grid gap-0.5 border-2 border-ink bg-ink sm:grid-cols-2">
+            <p className="mb-2 px-4 text-sm font-semibold text-ink-mute">{ROLE_LABEL[role]}</p>
+            <ul className="card overflow-hidden">
               {people.map((person) => (
-                <li key={person.employee_id}>
+                <li key={person.employee_id} className="border-b border-hairline last:border-b-0">
                   <button
                     type="button"
                     onClick={() => onPick(person.employee_id)}
-                    className="flex h-full w-full items-center justify-between gap-3 bg-light px-3 py-2 text-left hover:bg-paper-sunk"
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-paper active:bg-paper-sunk"
                   >
-                    <span className="min-w-0">
-                      <span className="block font-semibold">{person.name}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-semibold">{person.name}</span>
                       <span className="block text-sm text-ink-mute">
                         {person.zone ??
                           (person.supervisor_name ? `Team ${person.supervisor_name}` : 'Facility-wide')}
                       </span>
                     </span>
-                    <span className="telemetry shrink-0 text-sm">{person.employee_id}</span>
+                    <span className="telemetry shrink-0 text-sm text-ink-mute">{person.employee_id}</span>
+                    <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-mute" />
                   </button>
                 </li>
               ))}
@@ -90,72 +126,88 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-2">
-      <div className="flex flex-col justify-between border-b-2 border-ink bg-ink p-6 text-light lg:border-b-0 lg:border-r-2 lg:p-12">
-        <Link to="/" className="label self-start text-light">
-          ← DockIQ
-        </Link>
-        <div className="my-10 lg:my-0">
-          <p className="label text-light">Dock-door operations</p>
-          <h1 className="display mt-3 text-5xl sm:text-6xl">Sign in to the floor.</h1>
-          <p className="mt-6 max-w-md text-lg">
-            Operators report and resolve issues at the dock. Supervisors see their team&apos;s queue. Quality
-            sees every temperature and product-integrity issue as it happens.
-          </p>
-        </div>
-        <p className="label text-light">Every company, product and person in this demo is fictional.</p>
-      </div>
+    <div className="min-h-dvh px-4 pt-6 pb-16 sm:px-6">
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1 rounded-full px-2 text-base font-medium text-accent-ink hover:bg-paper-sunk"
+      >
+        <ArrowLeft size={18} aria-hidden="true" /> About DockIQ
+      </Link>
 
-      <div className="p-6 lg:p-12">
-        <form onSubmit={(event) => void submit(event)} className="max-w-md" noValidate>
-          <h2 className="display text-4xl">Sign in</h2>
-          <div className="mt-8">
-            <FieldLabel htmlFor="employee-id">Employee ID</FieldLabel>
-            <input
-              id="employee-id"
-              className="field telemetry text-lg uppercase"
-              value={employeeId}
-              onChange={(event) => setEmployeeId(event.target.value)}
-              placeholder="OP-001"
-              autoComplete="username"
-              autoCapitalize="characters"
-              required
-            />
+      <main className="mx-auto mt-6 max-w-md sm:mt-12">
+        <div className="reveal flex flex-col items-center text-center">
+          <span
+            className="grid h-20 w-20 place-items-center rounded-2xl bg-accent text-white shadow-float"
+            aria-hidden="true"
+          >
+            <Warehouse size={42} strokeWidth={2} />
+          </span>
+          <h1 className="display mt-6 text-3xl">Sign in to DockIQ</h1>
+          <p className="mt-2 text-base text-ink-mute">Dock-door operations for cold storage.</p>
+        </div>
+
+        <form onSubmit={(event) => void submit(event)} className="mt-8" noValidate>
+          {/* Grouped fields, as in iOS Settings: one card, a hairline between rows. */}
+          <div className="card overflow-hidden">
+            <label className="flex items-center gap-3 border-b border-hairline px-4">
+              <span className="w-28 shrink-0 text-base font-medium">Employee ID</span>
+              <input
+                id="employee-id"
+                className="telemetry min-h-13 w-full bg-transparent text-base uppercase outline-none placeholder:text-ink-mute placeholder:normal-case"
+                value={employeeId}
+                onChange={(event) => setEmployeeId(event.target.value)}
+                placeholder="OP-001"
+                autoComplete="username"
+                autoCapitalize="characters"
+                aria-label="Employee ID"
+                required
+              />
+            </label>
+            <label className="flex items-center gap-3 px-4">
+              <span className="w-28 shrink-0 text-base font-medium">Password</span>
+              <input
+                id="password"
+                type="password"
+                className="min-h-13 w-full bg-transparent text-base outline-none placeholder:text-ink-mute"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Required"
+                autoComplete="current-password"
+                aria-label="Password"
+                required
+              />
+            </label>
           </div>
-          <div className="mt-5">
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <input
-              id="password"
-              type="password"
-              className="field text-lg"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
+
           {problem && (
             <p
               role="alert"
-              className="mt-4 border-2 border-hazard bg-light px-3 py-2 font-semibold text-hazard-deep"
+              className="mt-4 flex items-center gap-2 rounded-lg bg-hazard-soft px-3 py-2.5 font-semibold text-hazard-deep"
             >
+              <AlertTriangle size={18} aria-hidden="true" className="shrink-0" />
               {problem}
             </p>
           )}
+
           <button
             type="submit"
-            className="btn btn-primary mt-6 w-full text-lg"
+            className="btn btn-primary mt-5 w-full"
             disabled={busy || !employeeId || !password}
           >
             {busy ? 'Signing in…' : 'Sign in'}
-            <ArrowRight size={20} aria-hidden="true" />
           </button>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <ServerStatus />
             <SimulatedTag />
           </div>
         </form>
+
         <DemoAccounts onPick={setEmployeeId} />
-      </div>
+
+        <p className="mt-10 text-center text-sm text-ink-mute">
+          Every company, product and person in this demo is fictional.
+        </p>
+      </main>
     </div>
   );
 }

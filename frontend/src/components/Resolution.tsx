@@ -41,7 +41,7 @@ export function SeverityDerivation({
         )}
       </div>
       {factors.length > 0 && (
-        <ol className="mt-4 divide-y divide-hairline border-t-2 border-ink">
+        <ol className="mt-4 divide-y divide-hairline border-t border-hairline">
           {factors.map((factor, i) => (
             <li key={factor} className="flex gap-3 py-2 text-base">
               <span className="telemetry text-ink-mute">{String(i + 1).padStart(2, '0')}</span>
@@ -64,7 +64,7 @@ export function RecurringPatterns({
 }) {
   if (patterns.length === 0) return null;
   return (
-    <div className="border-2 border-ink bg-paper-sunk p-4">
+    <div className="rounded-lg bg-paper-sunk p-4">
       <p className="heading flex items-center gap-2 text-lg">
         <Repeat2 size={20} aria-hidden="true" /> Recurring pattern
       </p>
@@ -100,7 +100,7 @@ export function ProcedureCard({
       <ol className="flex flex-col gap-2">
         {resolution.steps.map((step, i) => (
           <li key={step} className="flex gap-3 text-lg">
-            <span className="telemetry grid h-8 w-8 shrink-0 place-items-center bg-ink text-base text-light">
+            <span className="telemetry grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-base text-white">
               {i + 1}
             </span>
             <span className="pt-0.5">{step}</span>
@@ -108,7 +108,7 @@ export function ProcedureCard({
         ))}
       </ol>
       {resolution.source && (
-        <p className="mt-4 flex items-center gap-2 border-t-2 border-ink pt-3 text-base">
+        <p className="mt-4 flex items-center gap-2 border-t border-hairline pt-3 text-base">
           <BookOpen size={18} aria-hidden="true" />
           <span className="label">Source</span>
           <span className="font-semibold">{resolution.source}</span>
