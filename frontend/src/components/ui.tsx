@@ -7,8 +7,8 @@ import { AlertTriangle, RotateCw } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import { errorMessage } from '../api/client';
-import type { Dock, IssueStatus } from '../api/types';
-import { DOCK_STATUS, ISSUE_STATUS } from '../lib/vocab';
+import type { IssueStatus } from '../api/types';
+import { ISSUE_STATUS } from '../lib/vocab';
 
 // ── Layout ──
 
@@ -145,11 +145,6 @@ export function Tag({
 export function IssueStatusTag({ status }: { status: IssueStatus }) {
   const { label, open } = ISSUE_STATUS[status];
   return <Tag tone={status === 'escalated' ? 'ink' : 'plain'}>{open ? label : `✓ ${label}`}</Tag>;
-}
-
-export function DockStatusTag({ status }: { status: Dock['status'] }) {
-  const tone = status === 'critical' ? 'hazard' : status === 'issue' ? 'ink' : 'plain';
-  return <Tag tone={tone}>{DOCK_STATUS[status]}</Tag>;
 }
 
 /** Rules §2.4.7 — simulated data stays visibly marked as simulated. `compact` marks one record. */

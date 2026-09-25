@@ -5,8 +5,6 @@ issues (see `domain.taxonomy.is_quality_relevant`). A record outside your scope 
 403, so its existence is not disclosed.
 """
 
-from collections.abc import Iterable
-
 from fastapi import HTTPException
 from fastapi import status as http
 from sqlalchemy import ColumnElement, Select, false, or_, select, true
@@ -95,7 +93,3 @@ async def team_audience(session: AsyncSession, supervisor_id: int) -> set[int | 
 def ensure(condition: bool, detail: str = "Your role cannot do this") -> None:
     if not condition:
         raise HTTPException(http.HTTP_403_FORBIDDEN, detail)
-
-
-def ids(users: Iterable[User]) -> set[int]:
-    return {user.id for user in users}

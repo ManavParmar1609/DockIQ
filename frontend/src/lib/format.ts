@@ -27,10 +27,6 @@ export function duration(totalMinutes: number): string {
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
 }
 
-export function minutesSince(iso: string, now: number = Date.now()): number {
-  return Math.max(0, Math.floor((now - new Date(iso).getTime()) / MINUTE));
-}
-
 const money = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
@@ -77,9 +73,4 @@ export function initials(name: string): string {
 export function percent(done: number, total: number): number {
   if (total <= 0) return 0;
   return Math.min(100, Math.round((done / total) * 100));
-}
-
-export function sentenceCase(value: string): string {
-  const spaced = value.replace(/_/g, ' ');
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

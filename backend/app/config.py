@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     # Reasoning mode (slower, sometimes better tool choices). The reasoning itself is never shown.
     nvidia_thinking: bool = False
 
+    @field_validator("nvidia_api_key", "demo_password", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, value: object) -> object:
+        """`NVIDIA_API_KEY=` with nothing after it means "no key", not an empty key."""
+        return None if isinstance(value, str) and not value.strip() else value
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

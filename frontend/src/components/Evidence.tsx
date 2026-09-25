@@ -9,11 +9,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePhotoBlob, usePhotos } from '../api/hooks';
 import { formatDateTime } from '../lib/format';
 
-export const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 4;
 const MAX_EDGE = 1280;
 const QUALITY = 0.72;
 
-export async function downscale(file: File): Promise<Blob> {
+async function downscale(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');

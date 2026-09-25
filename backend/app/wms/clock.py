@@ -10,7 +10,6 @@ from datetime import datetime
 
 SHIFT_MINUTES = 8 * 60
 SHIFT_START_HOUR = 6  # the simulated shift runs 06:00–14:00
-SPEEDS: tuple[float, ...] = (1.0, 5.0, 15.0, 60.0)
 
 
 @dataclass(frozen=True, slots=True)

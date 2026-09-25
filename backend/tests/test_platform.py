@@ -66,3 +66,10 @@ def test_migrations_downgrade_and_reapply(empty_db: Settings) -> None:
 
     tables = asyncio.run(cycle())
     assert set(Base.metadata.tables) <= tables
+
+
+def test_a_blank_key_line_means_no_key() -> None:
+    from app.config import Settings
+
+    settings = Settings(_env_file=None, nvidia_api_key="  ", demo_password="")  # type: ignore[call-arg]
+    assert (settings.nvidia_api_key, settings.demo_password) == (None, None)

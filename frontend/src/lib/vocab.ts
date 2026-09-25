@@ -6,7 +6,7 @@ import type { Dock, IssueStatus, Severity } from '../api/types';
 
 export const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low'];
 
-export const SEVERITY_RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+const SEVERITY_RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 export const ISSUE_STATUS: Record<IssueStatus, { label: string; open: boolean }> = {
   resolution_in_progress: { label: 'In progress', open: true },

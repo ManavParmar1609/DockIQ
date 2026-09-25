@@ -100,7 +100,7 @@ nothing — per Receiving SOP 5.6, overages are less critical than shortages.
 
 ### 1.6 Worked example
 
-From `screenshots/issue_step3.png`, a real output of the running system:
+A real output of the running system (captured before the Phase 2 redesign):
 
 > `Score: 7.5 → MEDIUM. Factors: Issue type 'Temperature Deviation' (weight: 5); Customer Tier 1 (×1.5)`
 

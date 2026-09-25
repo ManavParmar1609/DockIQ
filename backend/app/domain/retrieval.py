@@ -84,10 +84,3 @@ def find_resolution(
         "source": best.source_reference,
         "issue_type": best.issue_type,
     }
-
-
-def rank_for_chat(entries: Sequence[KbEntry], message: str, limit: int = 3) -> list[KbEntry]:
-    scored = [(keyword_hits(entry.keywords, message), entry) for entry in entries]
-    matched = [pair for pair in scored if pair[0] >= 1]
-    matched.sort(key=lambda pair: pair[0], reverse=True)
-    return [entry for _, entry in matched[:limit]]

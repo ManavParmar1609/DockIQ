@@ -37,10 +37,6 @@ class ConnectionManager:
             if not sockets:
                 del self._sockets[user_id]
 
-    @property
-    def connection_count(self) -> int:
-        return sum(len(sockets) for sockets in self._sockets.values())
-
     async def send_all(self, event: dict[str, Any]) -> None:
         await self.send(list(self._sockets), event)
 

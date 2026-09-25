@@ -94,10 +94,6 @@ export function useDocks() {
 
 // ── Orders ──
 
-export function useOrders() {
-  return useQuery<Order[]>({ queryKey: keys.orders, queryFn: () => unwrap(api.GET('/api/orders')) });
-}
-
 /** An operator's current assignment: their order still in progress, if any. */
 export function useActiveOrder() {
   const orders = useQuery<Order[]>({

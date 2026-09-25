@@ -18,10 +18,6 @@ _hasher = PasswordHash.recommended()
 _DUMMY_HASH = _hasher.hash("not-a-real-password")
 
 
-def hash_password(password: str) -> str:
-    return _hasher.hash(password)
-
-
 @lru_cache(maxsize=4)
 def demo_password_hash(password: str) -> str:
     """Seeding hashes the shared demo password once per process, not once per account."""
