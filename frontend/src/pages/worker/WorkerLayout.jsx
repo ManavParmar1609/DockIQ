@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useState, useEffect } from 'react';
-import { api } from '../../api';
+import { api, wsUrl } from '../../api';
 import { BrandMark } from '../../components/Shared';
 import { LayoutDashboard, PackageOpen, PackageCheck, MessageSquare, AlertTriangle, LogOut, ClipboardList, Megaphone, Wrench, X, Battery, ScanLine, Package, CheckCircle2 } from 'lucide-react';
 
@@ -32,9 +32,7 @@ export default function WorkerLayout({ children }) {
       }
     });
     // WebSocket for real-time
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}/ws`;
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl());
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'broadcast') {

@@ -8,22 +8,23 @@ later. Until then these are conventions to follow by hand.
 
 ## Python (`backend/`)
 
-- 4-space indent, `snake_case`, double quotes (the existing files use them).
-- **Type hints on every new function signature.** The existing code has none; do not add to that.
-- **`logging`, never `print`.** Module-level `logger = logging.getLogger(__name__)`. The one
-  existing violation is `ai_engine.py:308`, a `print()` inside a bare `except Exception` in the LLM
-  failure path — fix it when you touch that function.
-- **`try/finally` around every `get_db()`** until the data layer is replaced. Today every handler
-  leaks its connection on any exception.
-- **`is None`, never truthiness, for numeric fields.** `ai_engine.py:93` reads
-  `if count_expected and count_actual:` — so `count_actual = 0`, a total non-delivery, skips the
-  shortage modifier entirely. Same class of bug in `if company_id:` filters treating 0 as absent.
-- **No hardcoded absolute paths.** `reset_db.py` hardcodes `e:\Downloads\DockIQ\backend\dockiq.db`
-  while `database.py` derives the path from `__file__`. Use the latter pattern.
-- **All SQL stays parameterized.** It is today; keep it that way. Never f-string user input into a
-  query.
-- Pydantic models for request bodies (existing pattern). Response models are absent — adding them
-  is welcome but is a deliberate change, not a drive-by.
+Enforced by **ruff** (lint + format, config in `backend/pyproject.toml`); the PostToolUse hook runs
+it on every edit. `uv run ruff check . && uv run ruff format --check .` must be clean.
+
+- 4-space indent, `snake_case`, double quotes, 110-column lines.
+- **Type hints on every function signature**, including tests. Modern syntax: `X | None`,
+  `list[str]`, PEP 695 generics (`def f[T: Base](...)`).
+- **`logging`, never `print`.** Module-level `logger = logging.getLogger(__name__)`. Never log a
+  request body or chat text.
+- **`is None`, never truthiness, for numeric fields and ids.** `if count_actual:` treats a total
+  non-delivery (0) as "not given" — that exact bug is the pinned `KNOWN DEFECT` in `severity.py`.
+- **Timestamps are aware UTC**: `app.db.utcnow()`, columns typed `UTCDateTime`. `datetime.now()`
+  without a timezone is a lint error (`DTZ`).
+- **Enums, not magic strings**, for closed vocabularies — `app/domain/enums.py` (`StrEnum`).
+- **SQLAlchemy 2.0 style only**: `select()`, `session.scalars()`, `Mapped[...]`. No raw SQL strings
+  except the dialect-compiled helpers in `queries.py`. Never interpolate user input into SQL.
+- **No hardcoded absolute paths.** Derive from `app.config.BACKEND_DIR`.
+- Request and response bodies are Pydantic models in `app/schemas.py`.
 
 ## JavaScript / React (`frontend/src/`)
 

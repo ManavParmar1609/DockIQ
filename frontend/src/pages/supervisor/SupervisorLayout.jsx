@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { wsUrl } from '../../api';
 import { useState, useEffect } from 'react';
 import { BrandMark } from '../../components/Shared';
 import { LayoutDashboard, FileText, BarChart3, ArrowLeftRight, LogOut, MessageSquare } from 'lucide-react';
@@ -10,9 +11,7 @@ export default function SupervisorLayout({ children }) {
   const [alerts, setAlerts] = useState(0);
 
   useEffect(() => {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}/ws`;
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl());
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'issue_escalated' || msg.type === 'new_issue') {

@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Mike Johnson",
+    "role": "operator",
+    "employee_id": "OP-001",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "senior"
+  },
+  {
+    "name": "Lisa Chen",
+    "role": "operator",
+    "employee_id": "OP-002",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "experienced"
+  },
+  {
+    "name": "Carlos Rivera",
+    "role": "operator",
+    "employee_id": "OP-003",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "new"
+  },
+  {
+    "name": "Jay Patel",
+    "role": "operator",
+    "employee_id": "OP-004",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "experienced"
+  },
+  {
+    "name": "Tanya Brooks",
+    "role": "operator",
+    "employee_id": "OP-005",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "senior"
+  },
+  {
+    "name": "Derek Williams",
+    "role": "operator",
+    "employee_id": "OP-006",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "experienced"
+  },
+  {
+    "name": "Maria Santos",
+    "role": "operator",
+    "employee_id": "OP-007",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "new"
+  },
+  {
+    "name": "Ryan O'Brien",
+    "role": "operator",
+    "employee_id": "OP-008",
+    "shift": "day",
+    "zone": null,
+    "experience_level": "experienced"
+  },
+  {
+    "name": "Sarah Mitchell",
+    "role": "supervisor",
+    "employee_id": "SUP-001",
+    "shift": "day",
+    "zone": "Zone A",
+    "experience_level": null
+  },
+  {
+    "name": "Tom Bradley",
+    "role": "supervisor",
+    "employee_id": "SUP-002",
+    "shift": "day",
+    "zone": "Zone B",
+    "experience_level": null
+  },
+  {
+    "name": "Angela Foster",
+    "role": "supervisor",
+    "employee_id": "SUP-003",
+    "shift": "day",
+    "zone": "Zone C",
+    "experience_level": null
+  }
+]

@@ -8,7 +8,7 @@ migration happens before feature work so features land once, on the final stack.
 | Phase | Goal | Status |
 |---|---|---|
 | **0** | Harness + documentation | **Done** — `CLAUDE.md`, rules, hooks, settings, docs, three bug fixes |
-| **1** | Migrate to the free-deployment stack | Decided: keep Python, fix data layer + hosting |
+| **1** | Migrate to the free-deployment stack | **Done** — async SQLAlchemy + Alembic, Neon/Koyeb/Vercel, 84 tests, CI |
 | **2** | Feature gap + real auth and supervisor→worker teams | Analysed; partly blocked (§0) |
 | **3** | Live simulated Warehouse Management Service | Designed |
 
@@ -32,6 +32,24 @@ byte-identical duplicates.)*
 ---
 
 ## Phase 1 — Stack migration *(runs before feature work)*
+
+> **Delivered 2026-09-25.** Decisions: **Neon** (Postgres) + **Koyeb** free (API) + **Vercel** —
+> everything on free tiers, see [deployment.md](deployment.md).
+>
+> - Backend restructured into `app/{api,domain,services,seed}` — domain rules are now pure functions.
+> - SQLAlchemy 2 async sessions: one transaction per request, no leaked connections, no blocking
+>   I/O on the event loop (the LLM call uses `AsyncOpenAI`).
+> - Alembic migration `0001`: every FK, every index, CHECK-constrained enums, JSON columns,
+>   timezone-aware UTC timestamps. Verified on SQLite **and** Postgres.
+> - Explicit response models for every endpoint; `404` instead of `500` for unknown references.
+> - `pydantic-settings` config; explicit CORS origins; `/api/health`.
+> - Seed moved to reviewable JSON with **fictional** companies, brands, SKUs and carriers (the
+>   prototype used real retailer names). Historical issues are now scored by the real formula.
+> - 84 tests (pinned rules, API, WebSocket, migrations), ruff, GitHub Actions CI, Dockerfile.
+> - Frontend: API/WS origin from one `VITE_API_URL`; production builds fail loudly without it.
+>
+> Behaviour is otherwise **unchanged** — the known rule defects in 2C are preserved and pinned by
+> strict-xfail tests, to be fixed deliberately in Phase 2.
 
 ### Why the current production path is broken
 
@@ -68,7 +86,7 @@ stay in Python where they are correct and testable.
 - Add the **foreign keys** the `issues` table lacks entirely (7 relational columns, zero constraints,
   despite `PRAGMA foreign_keys=ON`).
 
-**Open:** Fly.io vs Koyeb; Neon vs Supabase Postgres.
+~~**Open:** Fly.io vs Koyeb; Neon vs Supabase Postgres.~~ Decided: Koyeb + Neon (Fly.io has no free tier since Oct 2024; Supabase free projects pause after 7 idle days).
 
 *Alternatives considered and set aside:* Next.js + Supabase (attractive because Supabase Auth would
 supply Phase 2's auth for free) and Cloudflare Workers + D1 + Durable Objects. Both require porting
@@ -99,7 +117,7 @@ in the supervisor UI.
 ### 2B. Issue coverage gap
 
 The system implements **10 issue types**, consistently across `IssueResolution.jsx:8`,
-`ai_engine.py:ISSUE_TYPE_WEIGHTS` and the 27 knowledge-base entries. The problem is coverage of the
+`app/domain/severity.py:ISSUE_TYPE_WEIGHTS` and the 27 knowledge-base entries. The problem is coverage of the
 **8 issue categories (~56 scenarios)** and **8 discrepancy categories (~55 scenarios)** in the source
 DOCX.
 
@@ -137,10 +155,10 @@ DOCX.
 
 | Defect | Location |
 |---|---|
-| `count_actual = 0` skips the shortage modifier — total non-delivery scores *lower* than a 6% short | `ai_engine.py:93` truthiness test |
-| `trailer_dwell_minutes` modifier can never fire — no caller passes it | `ai_engine.py:61` |
-| `company_name` never passed to `find_resolution`, so the +1 company bonus never applies | `main.py` `create_issue` |
-| Inspection temperature gate is a fixed 45°F regardless of product category — a frozen load at 40°F passes | `main.py:599-606` |
+| `count_actual = 0` skips the shortage modifier — total non-delivery scores *lower* than a 6% short | `app/domain/severity.py:95` truthiness test |
+| `trailer_dwell_minutes` modifier can never fire — no caller passes it | `app/domain/severity.py:60` |
+| `company_name` never passed to `find_resolution`, so the +1 company bonus never applies | `app/api/issues.py` `create_issue` |
+| Inspection temperature gate is a fixed 45°F regardless of product category — a frozen load at 40°F passes | `app/domain/inspection.py` |
 | `timeAgo` never rolls up past minutes — renders "27914m ago" | both dashboards |
 | `NaN%` progress on an order with no items | `Loading.jsx:98` |
 | Side effects inside `setState` updaters — double-fire under StrictMode, failures swallowed | `Loading.jsx:31-53`, `Unloading.jsx:55-64` |
@@ -152,7 +170,7 @@ DOCX.
 
 ## Phase 3 — Live simulated Warehouse Management Service
 
-Today the backend is static: `database.py` seeds a fixed set of orders and nothing moves unless a
+Today the backend is static: `app/seed` loads a fixed set of orders and nothing moves unless a
 human clicks. The goal is a warehouse that runs.
 
 ### Build it as an adapter, not as more seed data

@@ -18,7 +18,7 @@ does not yet do something the source material promises, that is recorded, not om
 ## The four documents that carry the most weight
 
 - **business-rules.md** — every domain rule currently living as a literal in code. If a number in
-  here and a number in `ai_engine.py` disagree, that is a bug in one of them; find out which.
+  here and a number in `backend/app/domain/` disagree, that is a bug in one of them; find out which.
 - **functional-specs.md §6** — the honest gap list between what the source documents promise and
   what the code does.
 - **ui-ux-spec.md §1** — the environment constraints. Gloves, cold, glare, food safety. These

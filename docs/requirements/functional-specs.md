@@ -1,7 +1,8 @@
 # DockIQ.AI — Functional Specification
 
-**Status:** Describes the system **as built**, verified against `backend/main.py` and
-`frontend/src/api.js` on 2026-09-25.
+**Status:** Describes the system **as built**, verified against `backend/app/` (FastAPI routers in
+`app/api/`) and `frontend/src/api.js` on 2026-09-25. The OpenAPI schema at `/docs` is generated from
+explicit response models and is authoritative for field names and types.
 
 This is the contract surface. Where the system does *not* yet do something the source documents
 promise, it is recorded in §6 rather than omitted — that gap list is the input to
@@ -30,6 +31,21 @@ any third role silently lands in the supervisor UI.
 
 All routes are namespaced under `/api`. `frontend/src/api.js` is the single client-side gateway and
 mirrors this list 1:1; no `fetch` call exists elsewhere in the frontend.
+
+**Conventions (all routes):**
+
+- Every response is an explicit Pydantic model — a column rename cannot leak a new field.
+- Timestamps are ISO-8601 **UTC with an offset** (`2026-09-25T14:03:11.52+00:00`).
+- A referenced id that does not exist (dock, operator, product, order, issue …) returns **404**, not
+  a 500. Invalid enum values in query strings return **422**.
+- Each request runs in one database transaction, committed once. WebSocket events are emitted only
+  after the commit succeeds.
+
+### 2.0 Meta
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/health` | Liveness + database round-trip. Used as the Koyeb health check |
 
 ### 2.1 Reference data
 
@@ -69,10 +85,11 @@ mirrors this list 1:1; no `fetch` call exists elsewhere in the frontend.
 | PUT | `/api/issues/{id}/escalate` | Hand to a supervisor. **Takes no body** | `issues.status='escalated'`, `escalated_at`; dock → `critical` if severity is critical; emits `issue_escalated` |
 | PUT | `/api/issues/{id}/supervisor-resolve` | Supervisor closes it | `issues.status='supervisor_resolved'`, `resolved_at`, notes; emits `issue_resolved` |
 
-**`POST /api/issues`** (`main.py:426-517`) is the richest handler. In one inline sequence it:
+**`POST /api/issues`** (`app/api/issues.py` → `create_issue`) is the richest handler. In one inline sequence it:
 looks up product and company context → calls `classify_severity()` → runs `find_resolution()` KB
-retrieval → calls `estimate_cost_impact()` → calls `check_recurring_issues()` → inserts the issue →
-flips the dock to `status='issue'` → broadcasts `new_issue` over the WebSocket.
+retrieval → calls `estimate_cost_impact()` → counts recent issues for the dock and carrier
+(`count_recent_issues()`, decided by `dock_pattern()`/`carrier_pattern()`) → inserts the issue →
+flips the dock to `status='issue'` → commits → broadcasts `new_issue` over the WebSocket.
 
 ⚠️ The recurrence result is returned to the caller and **never persisted or displayed**.
 
@@ -83,7 +100,7 @@ flips the dock to `status='issue'` → broadcasts `new_issue` over the WebSocket
 | POST | `/api/inspections` | Trailer pre-check. Sets `dock_doors.lifecycle_phase='inspection'` |
 
 Pass requires **all** of: seal `intact`, cleanliness `clean`, damage `none`, and — if a temperature
-was entered — **≤ 45°F** (`main.py:599-606`). See
+was entered — **≤ 45°F** (`app/domain/inspection.py`). See
 [business-rules.md §4.6](../architecture/business-rules.md) for why that fixed threshold is a defect.
 
 ### 2.6 Chat
@@ -117,8 +134,9 @@ a stated product guarantee, not an accident.
 Returns: totals, self-resolution rate, cost impact, average resolution minutes, and breakdowns by
 type, severity, dock, operator, company and carrier, plus a 30-day time series.
 
-⚠️ There are **no indexes anywhere in the schema** — not on `issues.created_at`, `status`,
-`issue_type`, or any foreign-key column.
+Every foreign-key column is indexed, as are `issues.created_at`, `status`, `severity` and
+`issue_type`. The elapsed-minutes average compiles to portable SQL for both SQLite and Postgres
+(`app/queries.py` → `minutes_between`).
 
 ---
 
@@ -136,7 +154,8 @@ receives every event.
 | `new_request` | `POST /api/requests` |
 | `broadcast` | `POST /api/broadcasts` |
 
-**Adding an event means changing both ends.** The client is *not* in `api.js` — it is constructed
+**Adding an event means changing both ends.** The server-side vocabulary is the set of constructor
+functions in `backend/app/realtime.py`. The client is *not* in `api.js` — it is constructed
 inline and duplicated verbatim in `WorkerLayout.jsx:35-37` and `SupervisorLayout.jsx:13-15`, with no
 reconnect, no `onerror`/`onclose` handling, and an unguarded `JSON.parse` that will throw on a
 malformed frame and kill the handler.
@@ -160,10 +179,19 @@ Timestamps: `created_at` → `escalated_at` → `acknowledged_at` → `resolved_
 idle ──▶ inspection ──▶ loading | unloading ──▶ complete
 ```
 
-⚠️ Tracked in **two independently-mutated columns** — `lifecycle_phase` above, and `status`
-(`idle`/`active`/`issue`/`critical`) alongside it — written by five handlers with no state machine.
-Both resolve handlers set the dock to `active` unconditionally, even if it was idle or another issue
-remains open on it.
+Tracked in two columns — `lifecycle_phase` above, and `status` (`idle`/`active`/`issue`/`critical`)
+alongside it. Every change to either goes through one function, `app/domain/dock.py` → `transition()`:
+
+| Event | `status` | `lifecycle_phase` |
+|---|---|---|
+| issue reported | `issue` | unchanged |
+| issue escalated | `critical` if severity is critical, else `issue` | unchanged |
+| issue resolved (either path) | `active` | unchanged |
+| inspection submitted | unchanged | `inspection` |
+| order completed | `idle` | `complete` |
+
+⚠️ Resolution sets the dock to `active` unconditionally, even if another issue remains open on it.
+That is preserved behaviour, now visible in one table instead of five handlers.
 
 ---
 
@@ -177,9 +205,9 @@ oversight:
   `AuthContext` stores that object in `sessionStorage` under `dockiq_user`.
 - Role gating is **client-side only**, in `App.jsx`.
 - Actor identity — `operator_id`, `supervisor_id`, `user_id` — is a **client-supplied integer in the
-  request body that nothing validates**. Nothing checks the ID exists, that the caller is that
-  person, or that it holds the claimed role.
-- CORS is `allow_origins=["*"]`, `allow_methods=["*"]`, `allow_headers=["*"]`.
+  request body**. The server checks the id exists (404 otherwise) but nothing checks that the caller
+  is that person or holds the claimed role.
+- CORS is an explicit origin list from `CORS_ORIGINS` (default: the local Vite dev server).
 - `api.js` sends **no `Authorization` header** and has no 401 handling.
 
 The standing consequence: **this build must never be exposed publicly with real data.** See

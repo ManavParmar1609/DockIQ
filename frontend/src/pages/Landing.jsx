@@ -192,7 +192,7 @@ export default function Landing() {
                 <p className="text-white/40 mb-2">// severity_engine.score()</p>
                 <p><span className="text-blue-400">issue_type</span> = "Temperature Deviation" <span className="text-white/30">→ ×5</span></p>
                 <p><span className="text-emerald-400">product</span> = "Frozen Salmon" <span className="text-white/30">→ ×3.0</span></p>
-                <p><span className="text-amber-400">customer</span> = "Costco (Tier 1)" <span className="text-white/30">→ ×1.5</span></p>
+                <p><span className="text-amber-400">customer</span> = "Bulkhaven Club (Tier 1)" <span className="text-white/30">→ ×1.5</span></p>
                 <p><span className="text-red-400">temp_delta</span> = 28°F above threshold <span className="text-white/30">→ +5</span></p>
                 <p className="mt-3 text-white border-t border-white/10 pt-3">
                   score = <span className="text-red-400 font-bold text-lg">27.5</span> → <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-xs">CRITICAL</span>

@@ -6,18 +6,27 @@ How DockIQ is put together, what must stay true, and what is known to be wrong.
 
 ## 1. Layer map
 
-### Backend — `backend/`, four flat files, no packages
+### Backend — `backend/`, a `uv` project (Python 3.12, FastAPI, SQLAlchemy 2 async, Alembic)
 
-| File | Lines | Owns |
-|---|---|---|
-| `main.py` | 873 | All 30 routes, all Pydantic request models, the WebSocket manager, CORS |
-| `database.py` | 1040 | Connection factory, the entire DDL as one `executescript`, and ~800 lines of seed data |
-| `ai_engine.py` | 430 | Severity scoring, KB retrieval, LLM chat, cost estimation, recurrence detection |
-| `reset_db.py` | 10 | Demo reset |
+```
+app/main.py        create_app(): lifespan (Database, ConnectionManager, Assistant), CORS, /api/health, /ws
+app/config.py      Settings (pydantic-settings) — DATABASE_URL, CORS_ORIGINS, NVIDIA_API_KEY …
+app/db.py          engine + async session per request, UTCDateTime, enum_column, naming convention
+app/models.py      ORM models (the schema itself is owned by migrations/)
+app/schemas.py     every request AND response model
+app/queries.py     shared read selects (flat rows shaped like their schema), portable SQL helpers
+app/realtime.py    ConnectionManager + the complete /ws event vocabulary
+app/api/           routers: reference, orders, issues, floor, chat, analytics — orchestration only
+app/domain/        PURE business rules: severity, cost, retrieval, recurrence, inspection, dock, enums
+app/services/      assistant.py — the only LLM call
+app/seed/          demo data (data/*.json, natural keys) + `python -m app.seed [--reset]`
+app/migrate.py     programmatic Alembic (seed CLI, tests)
+migrations/        Alembic; hand-reviewed, portable across SQLite and Postgres
+tests/             pytest; every test gets a freshly migrated + seeded database
+```
 
-There is no `routes/`, `models/`, `services/`, or `repositories/`. Raw SQL lives directly in route
-handlers. `get_db()` returns a `sqlite3.Connection` with `row_factory = sqlite3.Row`,
-`journal_mode=WAL` and `foreign_keys=ON`, opened and closed inline in every endpoint.
+Local development uses SQLite (`backend/dev.db`); production uses Neon Postgres. The same migrations
+and the same test suite run on both (`TEST_DATABASE_URL` switches the suite to Postgres).
 
 ### Frontend — `frontend/src/`
 
@@ -38,15 +47,23 @@ first genuine second use appears, not before.
 2. **`frontend/src/api.js` is the only client-side gateway.** No `fetch` anywhere else in `src/`.
    If you need a new endpoint, add a method there.
 3. **`/ws` carries exactly six event types** — `new_issue`, `issue_escalated`, `issue_resolved`,
-   `order_complete`, `new_request`, `broadcast`. Adding one means changing the backend emitter *and*
-   both layout handlers.
-4. **Domain logic lives in `ai_engine.py` only.** Severity, cost, retrieval and recurrence are
-   computed there. Route handlers orchestrate; they do not compute domain values.
+   `order_complete`, `new_request`, `broadcast` — each built by a constructor in `app/realtime.py`.
+   Adding one means a new constructor *and* both layout handlers *and* the functional spec.
+4. **Domain logic lives in `app/domain/` only, and it is pure.** No database session, no I/O, no
+   framework imports. Routers fetch, call the domain, persist. `queries.py` may *count*; the domain
+   *decides* (see `recurrence.py`).
 5. **Severity is deterministic.** It is a weighted formula, not an LLM call. The LLM is used only
-   for the chat assistant. Do not introduce model output into a severity, cost or acceptance
+   in `app/services/assistant.py`. Do not introduce model output into a severity, cost or acceptance
    decision — the auditability of that formula is a product guarantee, not an implementation detail.
-6. **Thresholds and weights are documented.** Changing a number in `ai_engine.py` or the seeded
-   knowledge base means updating `docs/architecture/business-rules.md` in the same commit.
+6. **Thresholds and weights are documented and pinned.** Changing a number in `app/domain/` or the
+   seeded knowledge base means updating `docs/architecture/business-rules.md` in the same commit —
+   the pinning tests fail otherwise.
+7. **Schema changes are migrations.** Never `create_all`. A model change without a migration fails
+   `test_migrations_match_the_models`.
+8. **One transaction per request.** Handlers commit once; the session rolls back on any exception.
+   WebSocket events are sent after the commit, never before.
+9. **Every response has an explicit schema** in `app/schemas.py`.
+10. **Dock `status`/`lifecycle_phase` change only through `app/domain/dock.py:transition()`.**
 
 ---
 
@@ -85,24 +102,20 @@ The simulator is a **deterministic virtual clock**: state is a function of
 
 ## 5. Known structural debt
 
-Listed so it is visible rather than rediscovered. None of this is a surprise; do not "fix" it
-incidentally in unrelated work.
+Listed so it is visible rather than rediscovered. Do not "fix" it incidentally in unrelated work.
 
 ### Backend
 
-| Issue | Detail |
+| Issue | Status |
 |---|---|
-| **No auth layer** | No login, no sessions, no `current_user`. Actor identity is a client-supplied integer. See `security.md` |
-| **Leaking connections** | Every handler does `get_db()` … `db.close()` with no `try/finally`. Any exception mid-handler leaks the connection |
-| **Blocking I/O in `async def`** | `sqlite3` calls and the NVIDIA network call run on the event loop thread. `POST /api/chat` is sync (so threadpooled); `POST /api/issues` is `async def` and does blocking DB work |
-| **No transaction boundaries** | `create_issue` does multiple writes and commits once at the end; nothing rolls back on partial failure |
-| **No response models** | Every endpoint returns bare dicts. No OpenAPI response schema, no field filtering — DB column renames leak straight to the client |
-| **No migrations** | `CREATE TABLE IF NOT EXISTS` plus a `COUNT(*) > 0` seed guard means schema and seed changes silently do not apply to an existing DB |
-| **No indexes** | None anywhere, despite a 12-query analytics endpoint |
-| **No FKs on `issues`** | Seven relational columns, zero `FOREIGN KEY` clauses, despite `PRAGMA foreign_keys=ON`. Same for `trailer_inspections`, `quick_requests`, `broadcasts`, `shift_handoffs`, `chat_messages` |
-| **JSON-in-TEXT columns** | `companies.load_pattern`/`sop_rules`, `issues.quick_tags`/`ai_resolution`, several `knowledge_base` columns. Manual `json.loads` at every read site — some wrapped in try/except, some not |
-| **Dual dock state** | `status` and `lifecycle_phase` mutated independently by five handlers with no state machine |
-| **No logging** | `print()` in the LLM failure path (`ai_engine.py:308`) under a bare `except Exception` |
+| **No auth layer** — actor identity is a client-supplied integer | Open → Phase 2A. See `security.md` |
+| Leaking connections, no transactions, blocking I/O in `async def` | ✅ Fixed in Phase 1 (async session per request, AsyncOpenAI) |
+| No response models | ✅ Fixed in Phase 1 |
+| No migrations, no indexes, no FKs, JSON in TEXT | ✅ Fixed in Phase 1 |
+| Dual dock state mutated by five handlers | ✅ Centralised in `domain/dock.py` (the two columns remain) |
+| `print()` logging | ✅ Fixed in Phase 1 |
+| Resolution sets the dock `active` even when another issue is still open on it | Open — preserved behaviour, see functional-specs §4 |
+| Known rule defects (zero-count shortage, unreachable dwell modifier, missing company bonus, fixed 45°F gate) | Open → Phase 2C; marked `KNOWN DEFECT` in code |
 
 ### Frontend
 
@@ -122,9 +135,11 @@ incidentally in unrelated work.
 
 ## 6. When you add something
 
-- **A new endpoint** → add it to `api.js`, and to `docs/requirements/functional-specs.md`.
-- **A new domain rule, threshold or weight** → it goes in `ai_engine.py` or the seeded knowledge
-  base, **and** in `docs/architecture/business-rules.md`. Both, same commit.
-- **A new WebSocket event** → backend emitter plus both layout handlers plus the functional spec.
+- **A new endpoint** → router in `app/api/`, request + response schema in `app/schemas.py`, a test,
+  a method in `api.js`, and a row in `docs/requirements/functional-specs.md`.
+- **A new table or column** → model in `app/models.py` **and** a migration in `migrations/versions/`.
+- **A new domain rule, threshold or weight** → `app/domain/` or the seeded knowledge base, a pinning
+  test, **and** `docs/architecture/business-rules.md`. Same commit.
+- **A new WebSocket event** → constructor in `app/realtime.py`, both layout handlers, the spec.
 - **A second use of a helper** → that is when it moves to `src/utils/`, not the first.
 - **Anything touching the WMS** → it goes through `WmsClient`, never around it.

@@ -40,7 +40,7 @@ minutes — a cold-chain risk.
 
 **With DockIQ:** he taps *Report Issue* on a pre-filled screen (dock, trailer, customer, product),
 picks type and severity, and submits. The supervisor gets an instant notification with full context.
-While waiting, he asks the assistant what to do and gets the Kroger receiving procedure with its
+While waiting, he asks the assistant what to do and gets the Marlow Grocers receiving procedure with its
 source citation, and starts separating cases.
 
 > **20 minutes → 5 minutes.** Knowledge captured: a searchable digital record instead of a paper
@@ -64,7 +64,7 @@ carrier-trend detection is computed but never surfaced.
 
 ### Scenario 3 — "The Wrong Product"
 
-Two near-identical milk SKUs. **Without:** 200 cases of the wrong product ship, and Walmart files a
+Two near-identical milk SKUs. **Without:** 200 cases of the wrong product ship, and Crestline Markets files a
 **$4,200 chargeback** two days later — the warehouse learns about it from the complaint.
 
 **With:** the operator scans a case barcode, the system flags `SKU MISMATCH — DO NOT LOAD`, and the

@@ -13,12 +13,19 @@
       "Bash(npm run *)",
       "PowerShell(npm run *)",
       "Bash(python -m pytest*)",
-      "PowerShell(python -m pytest*)"
+      "PowerShell(python -m pytest*)",
+      "Bash(uv run pytest*)",
+      "PowerShell(uv run pytest*)",
+      "Bash(uv run ruff*)",
+      "PowerShell(uv run ruff*)",
+      "Bash(uv run alembic check*)",
+      "Bash(uv run alembic history*)",
+      "Bash(uv run alembic current*)"
     ],
     "deny": [
       "Read(./**/.env)",
       "Read(./**/.env.local)",
-      "Edit(./backend/dockiq.db)",
+      "Edit(./backend/*.db)",
       "Edit(./claude-skills/**)",
       "Bash(rm -rf *)"
     ]

@@ -1,6 +1,6 @@
 # PostToolUse hook (Edit|Write) — formats the touched file and reports lint findings.
 # Advisory only: never blocks, always exits 0, silently skips when a tool is not installed.
-#   .py            -> ruff format + ruff check   (venv first, then PATH)
+#   .py            -> ruff format + ruff check   (backend venv first, then PATH; config in backend/pyproject.toml)
 #   .js .jsx .css  -> prettier --write           (frontend/node_modules only; never npx-downloads)
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -20,7 +20,7 @@ $ext = [IO.Path]::GetExtension($f).ToLower()
 $notes = @()
 
 if ($ext -eq '.py') {
-  $ruff = Join-Path $root '.venv\Scripts\ruff.exe'
+  $ruff = Join-Path $root 'backend\.venv\Scripts\ruff.exe'
   if (-not (Test-Path $ruff)) { $ruff = (Get-Command ruff -ErrorAction SilentlyContinue).Source }
   if ($ruff) {
     & $ruff format $f 2>$null | Out-Null

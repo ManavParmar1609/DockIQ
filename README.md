@@ -1,83 +1,56 @@
 # DockIQ.AI
 
-DockIQ.AI is a dock-door intelligence platform that helps supervisors and workers track trailer inspections, unloading, issue resolution, and shift handoffs, with an AI engine (NVIDIA LLM API) for severity classification and chat assistance.
+Dock-door intelligence for cold-storage warehouses. Operators report loading and unloading issues from
+a tablet; a **deterministic, explainable** engine scores severity, estimates the cost, and suggests a
+resolution with its SOP source; supervisors triage an escalation queue in real time. An optional LLM
+answers free-form questions in the chat assistant — and nowhere else.
 
-## Project Structure
+> **Prototype on fictional data.** Every company, carrier, product and person in the seed is
+> invented. There is no authentication yet (Phase 2A), so never deploy it with real data.
 
-- `backend/` – FastAPI backend (SQLite database, AI engine, REST API)
-- `frontend/` – React + Vite frontend (Tailwind CSS)
+## Stack
 
-## Prerequisites
+| | |
+|---|---|
+| API | Python 3.12 · FastAPI · SQLAlchemy 2 (async) · Alembic · Pydantic v2 · `uv` |
+| Database | SQLite locally · Neon Postgres in production |
+| Frontend | React 18 · Vite · Tailwind |
+| Quality | pytest (SQLite + Postgres in CI) · ruff · GitHub Actions |
+| Hosting | Koyeb (API) · Vercel (frontend) · Neon (DB) — all free tiers, see [docs/deployment.md](docs/deployment.md) |
 
-- Python 3.10+
-- Node.js 18+ and npm
-- An NVIDIA API key (get one at https://build.nvidia.com/) for the AI engine
+## Run it locally
 
-## Setup & Run
-
-### 1. Clone the repository
-
-```powershell
-git clone <your-repo-url>
-cd DockIQ
-```
-
-### 2. Backend setup
+Prerequisites: [uv](https://docs.astral.sh/uv/) and Node.js 20+. No accounts or keys needed.
 
 ```powershell
+# API — http://127.0.0.1:8000  (interactive docs at /docs)
 cd backend
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
+uv sync
+uv run python -m app.seed          # create backend/dev.db: migrate + load demo data
+uv run uvicorn app.main:app --reload
 
-Set your NVIDIA API key as an environment variable (required for the AI engine):
-
-```powershell
-$env:NVIDIA_API_KEY = "your_nvidia_api_key_here"
-```
-
-Run the backend server:
-
-```powershell
-python -m uvicorn main:app --app-dir . --host 127.0.0.1 --port 8000
-```
-
-The API will be available at `http://127.0.0.1:8000`.
-
-### 3. Frontend setup
-
-In a separate terminal:
-
-```powershell
+# Frontend — http://127.0.0.1:5173  (in a second terminal; proxies /api and /ws to :8000)
 cd frontend
 npm install
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev
 ```
 
-The app will be available at `http://127.0.0.1:5173`.
+Reset the demo data at any time with `uv run python -m app.seed --reset`.
 
-### 4. Reset the database (optional)
+Optional: put `NVIDIA_API_KEY=…` in `backend/.env` (see [backend/.env.example](backend/.env.example))
+to have chat answered by the LLM. Without it, chat answers from the knowledge base.
 
-To reset/reseed the SQLite database:
+## Test
 
 ```powershell
 cd backend
-python reset_db.py
+uv run pytest                      # every test gets a fresh migrated + seeded database
+uv run ruff check . ; uv run ruff format --check .
 ```
 
-## Running Tests
+Set `TEST_DATABASE_URL` to a Postgres URL to run the same suite against Postgres (CI does).
 
-```powershell
-cd backend
-pytest
-```
+## Documentation
 
-## Environment Variables
-
-See [backend/.env.example](backend/.env.example) for the required environment variables:
-
-| Variable | Description |
-|---|---|
-| `NVIDIA_API_KEY` | API key used for the NVIDIA LLM chat client |
-| `NVIDIA_EMBED_API_KEY` | (Optional) API key used for the NVIDIA embedding client; falls back to `NVIDIA_API_KEY` if not set |
+Start at [docs/README.md](docs/README.md). The plan is [docs/roadmap.md](docs/roadmap.md); every
+scoring rule and threshold is in [docs/architecture/business-rules.md](docs/architecture/business-rules.md).

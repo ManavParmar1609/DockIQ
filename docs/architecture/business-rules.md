@@ -3,8 +3,8 @@
 **Status:** Authoritative record of domain logic currently implemented in code.
 **Last verified against source:** 2026-09-25
 
-Every rule below exists today as a literal in `backend/ai_engine.py` or in the seed data of
-`backend/database.py`. This document is the reviewable copy. **When a threshold, weight or
+Every rule below exists as a literal in `backend/app/domain/` or in the seed data in
+`backend/app/seed/data/`. This document is the reviewable copy. **When a threshold, weight or
 multiplier changes in code, change it here in the same commit** — an unreviewable number that drives
 a food-safety decision is the single most dangerous thing in this codebase.
 
@@ -15,7 +15,7 @@ documentation errors; they are real defects worth knowing about.
 
 ## 1. Severity classification
 
-**Source:** `backend/ai_engine.py` → `classify_severity()` (lines 58–122)
+**Source:** `backend/app/domain/severity.py` → `classify_severity()` (lines 60–114)
 
 This is a **deterministic weighted formula, not an LLM call.** The LLM is used only for the chat
 assistant. Severity is reproducible and auditable, which is the point — a food-safety decision
@@ -28,7 +28,7 @@ score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
 
 ### 1.1 Issue type weights
 
-`ai_engine.py:31-42`. Unknown issue type defaults to **2**.
+`severity.py:11-23`. Unknown issue type defaults to **2**.
 
 | Issue type | Weight |
 |---|---|
@@ -45,7 +45,7 @@ score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
 
 ### 1.2 Product risk multiplier
 
-`ai_engine.py:44-49`. Unknown or absent category → **1.0**.
+`severity.py:25-30`. Unknown or absent category → **1.0**.
 
 | Product category | Multiplier |
 |---|---|
@@ -56,7 +56,7 @@ score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
 
 ### 1.3 Customer tier multiplier
 
-`ai_engine.py:51-55`. Unknown or absent tier → **1.0**.
+`severity.py:32-36`. Unknown or absent tier → **1.0**.
 
 | Customer tier | Multiplier |
 |---|---|
@@ -66,7 +66,7 @@ score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
 
 ### 1.4 Additive modifiers
 
-Applied after the multiplication, `ai_engine.py:80-108`.
+Applied after the multiplication, `severity.py:82-110`.
 
 | Condition | Adjustment |
 |---|---|
@@ -79,12 +79,12 @@ Applied after the multiplication, `ai_engine.py:80-108`.
 | Trailer dwell time > 30 minutes | +2 ⚠️ |
 
 ⚠️ **`trailer_dwell_minutes` is never passed by any caller.** The parameter defaults to `0` and
-`create_issue` in `main.py` does not supply it, so this modifier can never fire. The dock table does
+`create_issue` in `app/api/issues.py` does not supply it, so this modifier can never fire. The dock table does
 record `trailer_arrived_at`, so the data needed to compute it exists.
 
 ### 1.5 Severity bands
 
-`ai_engine.py:110-118`.
+`severity.py:39-57` (`SEVERITY_BANDS`, `band_for`).
 
 | Score | Severity |
 |---|---|
@@ -106,7 +106,7 @@ that creates an issue without it materially under-reports severity.
 
 ### 1.7 Known defect ⚠️
 
-`ai_engine.py:93` reads:
+`severity.py:95` reads:
 
 ```python
 if count_expected and count_actual:
@@ -120,7 +120,7 @@ currently scores lower than a 6% shortage.
 
 ## 2. Cost impact model
 
-**Source:** `backend/ai_engine.py` → `estimate_cost_impact()` (lines 364–389)
+**Source:** `backend/app/domain/cost.py` → `estimate_cost_impact()` (lines 3–23)
 
 ```
 cost = product.case_value × quantity_affected × issue_multiplier
@@ -145,7 +145,7 @@ Unknown issue type → **0.2**. A product that cannot be found returns `0.0`.
 
 ## 3. Knowledge-base retrieval and confidence
 
-**Source:** `backend/ai_engine.py` → `find_resolution()` (lines 127–195)
+**Source:** `backend/app/domain/retrieval.py` → `find_resolution()` (lines 11–86)
 
 **This is keyword substring matching, not embeddings.** `get_embed_client()` exists at lines 19–26
 but is never called anywhere — it is dead code. Do not describe this system as doing semantic search.
@@ -165,7 +165,7 @@ Algorithm:
 | 2 – 3 | medium |
 | < 2 | low |
 
-⚠️ `create_issue` in `main.py` **does not pass `company_name`**, so the +1 company bonus can never
+⚠️ `create_issue` in `app/api/issues.py` **does not pass `company_name`**, so the +1 company bonus can never
 fire in the issue-creation path. This depresses confidence and is visible in the UI — see
 `screenshots/issue_step3.png`, where a well-matched temperature procedure is labelled
 "LOW confidence".
@@ -174,7 +174,7 @@ fire in the issue-creation path. This depresses confidence and is visible in the
 
 ## 4. Operational thresholds
 
-Encoded across the 27 seeded `knowledge_base` entries in `backend/database.py` (lines ~602–915).
+Encoded across the 27 seeded entries in `backend/app/seed/data/knowledge_base.json`.
 These are the substantive food-safety and acceptance rules.
 
 ### 4.1 Damage
@@ -220,7 +220,7 @@ These are the substantive food-safety and acceptance rules.
 
 ### 4.6 Trailer inspection pass criteria
 
-**Source:** `backend/main.py:599-606`. An inspection passes only if **all** hold:
+**Source:** `backend/app/domain/inspection.py`. An inspection passes only if **all** hold:
 
 - Seal condition = `intact`
 - Interior cleanliness = `clean`
@@ -240,12 +240,12 @@ differ by customer, and they are the reason a generic procedure is not sufficien
 
 | Customer | Variance from the default |
 |---|---|
-| Whole Foods | Frozen must be **≤ -5°F** — stricter than the 0°F default |
-| Costco | **Zero tolerance** on Kirkland-branded product |
-| Albertsons | Maximum **22 pallets** per 53-ft trailer |
-| US Foods | Multi-stop loads must be loaded in **reverse delivery order** |
-| Food Lion | May reject a delivery arriving outside its booked window |
-| Sysco | Rejects any receipt lacking **HACCP** documentation |
+| Fernbrook Provisions | Frozen must be **≤ -5°F** — stricter than the 0°F default |
+| Bulkhaven Club | **Zero tolerance** on Bulkhaven-branded product |
+| Ridgeview Grocery | Maximum **22 pallets** per 53-ft trailer |
+| Tablecraft Distribution | Multi-stop loads must be loaded in **reverse delivery order** |
+| Piedmont Foods | May reject a delivery arriving outside its booked window |
+| Forkline Foodservice | Rejects any receipt lacking **HACCP** documentation |
 
 Company records also carry `tier` (1–3, feeding §1.3), `count_tolerance` (a fraction, e.g. `0.01` =
 1%), and a `load_pattern` JSON blob with `max_height`, `weight_placement`, `slip_sheets`,
@@ -255,7 +255,7 @@ Company records also carry `tier` (1–3, feeding §1.3), `count_tolerance` (a f
 
 ## 6. Recurring-issue detection
 
-**Source:** `backend/ai_engine.py` → `check_recurring_issues()` (lines 394–430). Window: **7 days**.
+**Source:** `backend/app/domain/recurrence.py` (thresholds) and `app/queries.py` → `count_recent_issues()` (the count). Window: **7 days**.
 
 | Pattern | Trigger | Conclusion offered |
 |---|---|---|

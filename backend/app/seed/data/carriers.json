@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Tallgrass Transport",
+    "code": "TGR"
+  },
+  {
+    "name": "Meridian Linehaul",
+    "code": "MLH"
+  },
+  {
+    "name": "FrostLine Carriers",
+    "code": "FLC"
+  },
+  {
+    "name": "Ironbridge Freight",
+    "code": "IBF"
+  },
+  {
+    "name": "Express Cold Chain",
+    "code": "ECC"
+  }
+]

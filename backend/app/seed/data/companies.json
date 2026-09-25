@@ -1,0 +1,362 @@
+[
+  {
+    "name": "Crestline Markets",
+    "tier": 1,
+    "count_tolerance": 0.01,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Double-wrap all pallets. No product overhang beyond pallet edge."
+    },
+    "sop_rules": {
+      "receiving": "Verify all lot numbers. Reject if temp >5°F above threshold.",
+      "shipping": "All pallets must be stretch-wrapped minimum 3 revolutions.",
+      "rejection_criteria": "Any punctured packaging on food items = full pallet reject.",
+      "temp_check": "Probe minimum 3 cases per pallet for frozen/refrigerated."
+    }
+  },
+  {
+    "name": "Bulkhaven Club",
+    "tier": 1,
+    "count_tolerance": 0.02,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Club-pack orientation: barcode facing scanner side. Tier sheets between layers."
+    },
+    "sop_rules": {
+      "receiving": "Count every case. No tolerance on Bulkhaven brand items.",
+      "shipping": "Pallets must not exceed 60 inches height including pallet.",
+      "rejection_criteria": "Reject entire lot if any case shows temperature abuse signs.",
+      "temp_check": "Digital probe required. Handwritten readings not accepted."
+    }
+  },
+  {
+    "name": "Marlow Grocers",
+    "tier": 1,
+    "count_tolerance": 0.02,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "facing_out",
+      "special": "Stack by department: dairy together, frozen together. No mixing categories on same pallet."
+    },
+    "sop_rules": {
+      "receiving": "Verify expiry dates are minimum 14 days out.",
+      "shipping": "Segregate organic from conventional on separate pallets.",
+      "rejection_criteria": "Reject if >5% of cases damaged. Partial accept if ≤5%.",
+      "temp_check": "Probe center cases, not edge cases."
+    }
+  },
+  {
+    "name": "Beacon Goods",
+    "tier": 1,
+    "count_tolerance": 0.02,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "All pallets must have Beacon Goods pallet tags. No handwritten labels."
+    },
+    "sop_rules": {
+      "receiving": "Scan every case barcode. Manual entry not permitted.",
+      "shipping": "GTIN verification required on every SKU before loading.",
+      "rejection_criteria": "Reject if product not in Beacon Goods' approved vendor list.",
+      "temp_check": "Infrared and probe readings both required for frozen."
+    }
+  },
+  {
+    "name": "Keystone Club",
+    "tier": 1,
+    "count_tolerance": 0.02,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Display-ready pallets must not be re-stacked. Ship as received from vendor."
+    },
+    "sop_rules": {
+      "receiving": "Match ASN (Advance Ship Notice) to physical count.",
+      "shipping": "Pallet weight must not exceed 2,500 lbs.",
+      "rejection_criteria": "Reject if pallet is not display-ready when required.",
+      "temp_check": "Same as Crestline Markets standards."
+    }
+  },
+  {
+    "name": "Lone Mesa Foods",
+    "tier": 2,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Use LMF-specific slip sheets (brown kraft). No substitutes."
+    },
+    "sop_rules": {
+      "receiving": "Verify all lot numbers match purchase order.",
+      "shipping": "Products must be sorted by aisle planogram order.",
+      "rejection_criteria": "Reject if lot number does not match PO.",
+      "temp_check": "Reefer unit must show continuous temp log for transit."
+    }
+  },
+  {
+    "name": "Palmetto Fresh",
+    "tier": 2,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "facing_out",
+      "special": "Canned goods: labels facing same direction for shelf-ready display."
+    },
+    "sop_rules": {
+      "receiving": "Inspect for pest evidence on all produce pallets.",
+      "shipping": "Allergen products must be on separate pallets from non-allergen.",
+      "rejection_criteria": "Reject produce with any visible mold or pest damage.",
+      "temp_check": "Produce: pulp temperature required, not air temperature."
+    }
+  },
+  {
+    "name": "Fernbrook Provisions",
+    "tier": 2,
+    "count_tolerance": 0.02,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Organic certification docs must accompany every organic pallet."
+    },
+    "sop_rules": {
+      "receiving": "Verify organic certification on all organic products.",
+      "shipping": "Non-GMO and organic must be segregated from conventional.",
+      "rejection_criteria": "Reject if organic certification is missing or expired.",
+      "temp_check": "Stricter thresholds: frozen must be ≤-5°F (not 0°F)."
+    }
+  },
+  {
+    "name": "Harborway Markets",
+    "tier": 2,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "facing_out",
+      "special": "Use Harborway Markets-branded pallet tags for all outbound shipments."
+    },
+    "sop_rules": {
+      "receiving": "Check for recalled product against active recall list.",
+      "shipping": "Load nose-to-tail: heaviest pallets at nose of trailer.",
+      "rejection_criteria": "Reject any product on active recall list immediately.",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Ridgeview Grocery",
+    "tier": 2,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Pallets must be GMA standard (48x40). No oversized pallets."
+    },
+    "sop_rules": {
+      "receiving": "Verify vendor code matches approved vendor list.",
+      "shipping": "Maximum 22 pallets per 53-foot trailer.",
+      "rejection_criteria": "Reject non-GMA pallets. Request re-palletization.",
+      "temp_check": "Ridgeview Grocery follows Harborway Markets standards."
+    }
+  },
+  {
+    "name": "Thriftcart",
+    "tier": 3,
+    "count_tolerance": 0.05,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "any",
+      "special": "Display-ready packaging preferred. Minimize waste packaging."
+    },
+    "sop_rules": {
+      "receiving": "Standard receiving procedures apply.",
+      "shipping": "Cost-efficient loading: maximize cube utilization.",
+      "rejection_criteria": "Standard rejection criteria apply.",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Captain's Pantry",
+    "tier": 3,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Private label products must be handled separately from vendor brands."
+    },
+    "sop_rules": {
+      "receiving": "Verify all items are Captain's Pantry private label.",
+      "shipping": "Artwork/packaging must be undamaged for shelf display.",
+      "rejection_criteria": "Reject if packaging artwork is damaged (brand image).",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Lakeshore Supercenter",
+    "tier": 3,
+    "count_tolerance": 0.04,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "facing_out",
+      "special": "Standard Midwest distribution palletization rules."
+    },
+    "sop_rules": {
+      "receiving": "Standard receiving procedures.",
+      "shipping": "Weather protection required for paper goods in winter.",
+      "rejection_criteria": "Standard criteria apply.",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Valufresh",
+    "tier": 3,
+    "count_tolerance": 0.05,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "any",
+      "special": "Bulk items can be floor-stacked if pallet is unavailable."
+    },
+    "sop_rules": {
+      "receiving": "Standard procedures. Valufresh accepts minor cosmetic damage.",
+      "shipping": "Maximize pallet count per trailer.",
+      "rejection_criteria": "Only reject for safety/quality issues, not cosmetic.",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Piedmont Foods",
+    "tier": 3,
+    "count_tolerance": 0.04,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "facing_out",
+      "special": "Use Piedmont Foods delivery window scheduling. No early arrivals."
+    },
+    "sop_rules": {
+      "receiving": "Must arrive within scheduled delivery window.",
+      "shipping": "Delivery appointment required. No unscheduled deliveries.",
+      "rejection_criteria": "May reject if outside delivery window.",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Hollis & Grant",
+    "tier": 3,
+    "count_tolerance": 0.02,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Premium presentation required. No damaged outer packaging."
+    },
+    "sop_rules": {
+      "receiving": "Higher quality standards than typical Tier 3.",
+      "shipping": "All cases must have clean, undamaged outer packaging.",
+      "rejection_criteria": "Reject if outer packaging is torn, stained, or crushed.",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Northgate Wholesale",
+    "tier": 3,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 2,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": true,
+      "label_direction": "facing_out",
+      "special": "Club-size packaging. Verify multi-pack counts."
+    },
+    "sop_rules": {
+      "receiving": "Verify inner pack count on multi-packs.",
+      "shipping": "Similar to Bulkhaven Club/Keystone Club palletization standards.",
+      "rejection_criteria": "Reject if multi-pack is opened or count is wrong.",
+      "temp_check": "Standard thresholds apply."
+    }
+  },
+  {
+    "name": "Forkline Foodservice",
+    "tier": 3,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "facing_out",
+      "special": "Foodservice packaging. Cases must withstand restaurant handling."
+    },
+    "sop_rules": {
+      "receiving": "Verify HACCP documentation accompanies all shipments.",
+      "shipping": "Segregate by temperature zone within trailer if mixed load.",
+      "rejection_criteria": "Reject without HACCP documentation.",
+      "temp_check": "Strict HACCP temperature requirements apply."
+    }
+  },
+  {
+    "name": "Tablecraft Distribution",
+    "tier": 3,
+    "count_tolerance": 0.03,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "facing_out",
+      "special": "Route-optimized loading: first stop loaded last (nose of trailer)."
+    },
+    "sop_rules": {
+      "receiving": "Standard foodservice receiving procedures.",
+      "shipping": "Load in reverse delivery order for multi-stop routes.",
+      "rejection_criteria": "Standard criteria. Strict on allergen segregation.",
+      "temp_check": "HACCP standards apply."
+    }
+  },
+  {
+    "name": "Corner Route Supply",
+    "tier": 3,
+    "count_tolerance": 0.04,
+    "load_pattern": {
+      "max_height": 3,
+      "weight_placement": "heavy_bottom",
+      "slip_sheets": false,
+      "label_direction": "any",
+      "special": "Convenience store distribution. Mixed category pallets OK."
+    },
+    "sop_rules": {
+      "receiving": "Standard procedures. High volume, fast turnaround expected.",
+      "shipping": "Mixed category pallets acceptable for convenience store orders.",
+      "rejection_criteria": "Standard criteria apply.",
+      "temp_check": "Standard thresholds apply."
+    }
+  }
+]

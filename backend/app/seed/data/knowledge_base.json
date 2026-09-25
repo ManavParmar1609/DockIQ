@@ -1,0 +1,833 @@
+[
+  {
+    "issue_type": "Damaged Pallet",
+    "scenario": "Less than 5% of cases damaged",
+    "keywords": [
+      "damaged",
+      "crushed",
+      "broken",
+      "bent",
+      "dented",
+      "minor"
+    ],
+    "resolution_steps": [
+      "Separate damaged cases from intact ones on the pallet",
+      "Count the number of damaged vs intact cases",
+      "If damaged cases are ≤5% of total: partial accept the pallet",
+      "Set aside damaged cases in the designated damage area",
+      "Continue unloading remaining intact product",
+      "A discrepancy report will be auto-generated for the damaged cases"
+    ],
+    "confidence": "high",
+    "source_reference": "Company SOP 4.1 — Damaged Product Receiving",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Damaged Pallet",
+    "scenario": "More than 5% of cases damaged",
+    "keywords": [
+      "damaged",
+      "crushed",
+      "destroyed",
+      "heavy damage",
+      "major",
+      "many"
+    ],
+    "resolution_steps": [
+      "STOP — Do not unload any more product from this pallet",
+      "Leave the damaged pallet on the trailer if possible",
+      "This exceeds the acceptable damage threshold (>5%)",
+      "Mark the pallet with a REJECT tag from your station",
+      "This issue should be escalated to your supervisor for carrier claim",
+      "Document the damage in the discrepancy report"
+    ],
+    "confidence": "high",
+    "source_reference": "Company SOP 4.2 — Major Damage Rejection",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Damaged Pallet",
+    "scenario": "Packaging is punctured on food items",
+    "keywords": [
+      "punctured",
+      "torn",
+      "open",
+      "exposed",
+      "hole",
+      "ripped"
+    ],
+    "resolution_steps": [
+      "STOP IMMEDIATELY — This is a food safety concern",
+      "Do NOT move the product to the warehouse floor",
+      "Punctured food packaging = potential contamination risk",
+      "Segregate all affected cases in the quarantine area",
+      "This requires supervisor authorization for full rejection",
+      "Do not attempt to re-package or tape closed"
+    ],
+    "confidence": "high",
+    "source_reference": "FDA Food Safety Guidelines / Company SOP 4.3",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Temperature Deviation",
+    "scenario": "Temperature within 5°F of threshold (marginal)",
+    "keywords": [
+      "warm",
+      "marginal",
+      "borderline",
+      "close",
+      "almost"
+    ],
+    "resolution_steps": [
+      "Product temperature is near the threshold — not yet critical",
+      "Close the trailer doors to prevent further warming",
+      "Re-check temperature in 10 minutes with a probe thermometer",
+      "Probe the CENTER of a case, not the edge (edge cases warm faster)",
+      "If temp improves or holds: proceed with unloading",
+      "If temp continues to rise: escalate to supervisor for rejection decision",
+      "Log the initial and re-check readings in the system"
+    ],
+    "confidence": "high",
+    "source_reference": "Cold Chain SOP 2.1 — Marginal Temperature Protocol",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Temperature Deviation",
+    "scenario": "Temperature more than 5°F above threshold",
+    "keywords": [
+      "hot",
+      "too warm",
+      "way above",
+      "critical temp",
+      "exceeds",
+      "out of range"
+    ],
+    "resolution_steps": [
+      "CRITICAL — DO NOT UNLOAD any product",
+      "Close the trailer doors IMMEDIATELY",
+      "Do NOT sign the Bill of Lading (BOL)",
+      "This product has exceeded safe temperature thresholds",
+      "For frozen product: this may indicate a broken cold chain",
+      "For refrigerated: potential bacterial growth risk",
+      "Supervisor and Quality Manager are being notified automatically",
+      "Wait for supervisor before taking any further action"
+    ],
+    "confidence": "high",
+    "source_reference": "Cold Chain SOP 2.3 — Critical Temperature Rejection",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Temperature Deviation",
+    "scenario": "Reefer unit not running on trailer",
+    "keywords": [
+      "reefer",
+      "not running",
+      "off",
+      "stopped",
+      "unit down",
+      "no cooling"
+    ],
+    "resolution_steps": [
+      "Check the reefer unit fuel gauge — it may be out of diesel",
+      "Check if the reefer unit power switch is in the ON position",
+      "Look for error codes on the reefer unit display panel",
+      "If fuel is available: try restarting the unit (power cycle)",
+      "Wait 15 minutes after restart, then re-check interior temperature",
+      "If unit won't restart: do NOT unload — escalate to supervisor",
+      "The carrier is responsible for functioning reefer equipment"
+    ],
+    "confidence": "medium",
+    "source_reference": "Equipment SOP 7.2 — Reefer Troubleshooting",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "SKU Mismatch",
+    "scenario": "Scanned product doesn't match order",
+    "keywords": [
+      "wrong product",
+      "different sku",
+      "mismatch",
+      "not matching",
+      "wrong item"
+    ],
+    "resolution_steps": [
+      "STOP loading/unloading this product",
+      "Verify the SKU on the physical case label against the order",
+      "Check if the product was mis-picked from the warehouse",
+      "Do NOT load the wrong product onto the trailer",
+      "Notify the pick team to retrieve the correct SKU",
+      "If this is an inbound shipment: hold and verify against BOL",
+      "Log the mismatch — it will be tracked for pattern analysis"
+    ],
+    "confidence": "high",
+    "source_reference": "Loading SOP 3.1 — SKU Verification",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "SKU Mismatch",
+    "scenario": "BOL doesn't match physical product",
+    "keywords": [
+      "bol",
+      "bill of lading",
+      "paperwork",
+      "documentation",
+      "paper"
+    ],
+    "resolution_steps": [
+      "Do NOT proceed with unloading until verified",
+      "Cross-reference the BOL line items with actual pallet labels",
+      "Check if this is a multi-stop trailer (product may be for a different stop)",
+      "Contact the customer service team to verify the correct order",
+      "If the carrier made an error: document and hold for carrier resolution",
+      "Take note of all SKUs on the trailer for the discrepancy report"
+    ],
+    "confidence": "medium",
+    "source_reference": "Receiving SOP 5.2 — BOL Discrepancy",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Barcode Issue",
+    "scenario": "Barcode won't scan — label damaged",
+    "keywords": [
+      "barcode",
+      "scan",
+      "won't scan",
+      "can't scan",
+      "damaged label",
+      "smudged",
+      "torn label"
+    ],
+    "resolution_steps": [
+      "Try scanning from a different angle (tilt 15-30 degrees)",
+      "If still failing: clean the label surface with a dry cloth",
+      "If label is too damaged to scan: manually enter the SKU",
+      "The SKU number is printed below the barcode on the case label",
+      "Enter the full SKU including dashes (e.g., CRM-FZ-1001)",
+      "If the label is completely unreadable: check the BOL for the SKU",
+      "This is a standard procedure — no supervisor needed for manual entry"
+    ],
+    "confidence": "high",
+    "source_reference": "Scan SOP 6.1 — Barcode Troubleshooting",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Barcode Issue",
+    "scenario": "No label found on case",
+    "keywords": [
+      "no label",
+      "missing label",
+      "unlabeled",
+      "no barcode",
+      "blank"
+    ],
+    "resolution_steps": [
+      "Check all four sides and top of the case for a label",
+      "Some products have labels on the bottom — check there too",
+      "If truly no label: check the BOL for expected SKU at this position",
+      "Cross-reference product description on BOL with the actual product",
+      "If you can identify the product: manually enter the SKU from the BOL",
+      "If product cannot be identified: set aside and escalate to supervisor",
+      "Do not guess — misidentified product is worse than delayed product"
+    ],
+    "confidence": "medium",
+    "source_reference": "Scan SOP 6.2 — Missing Label Protocol",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Count Shortage",
+    "scenario": "Count is within customer tolerance",
+    "keywords": [
+      "short",
+      "missing",
+      "fewer",
+      "less than expected",
+      "under count"
+    ],
+    "resolution_steps": [
+      "Verify your count is accurate — recount if unsure",
+      "The system will check this against the customer's tolerance",
+      "If within tolerance: accept the shipment and note the shortage",
+      "Sign the BOL with the actual count received (not the expected count)",
+      "The shortage will be auto-logged for carrier tracking",
+      "No supervisor needed for within-tolerance shortages"
+    ],
+    "confidence": "high",
+    "source_reference": "Receiving SOP 5.4 — Minor Count Discrepancy",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Count Shortage",
+    "scenario": "Count exceeds customer tolerance",
+    "keywords": [
+      "major shortage",
+      "way under",
+      "significantly less",
+      "big gap",
+      "many missing"
+    ],
+    "resolution_steps": [
+      "Verify your count carefully — recount to confirm",
+      "This shortage exceeds the customer's acceptable tolerance",
+      "Do NOT sign the BOL until this is resolved",
+      "Hold the shipment at the dock — do not put away",
+      "This needs to be escalated to supervisor for carrier contact",
+      "The carrier/shipper will need to account for the missing product",
+      "Document the exact counts: expected vs. actual per SKU"
+    ],
+    "confidence": "high",
+    "source_reference": "Receiving SOP 5.5 — Major Count Discrepancy",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Seal/Trailer Condition",
+    "scenario": "Trailer seal is broken or missing",
+    "keywords": [
+      "seal",
+      "broken seal",
+      "missing seal",
+      "tampered",
+      "no seal",
+      "cut"
+    ],
+    "resolution_steps": [
+      "STOP — Do NOT open the trailer doors further",
+      "A broken or missing seal is a potential security/tampering issue",
+      "Compare the seal number (if present) to the BOL seal number",
+      "If seals don't match or seal is missing: do NOT unload",
+      "Photograph the seal area if possible",
+      "Escalate to supervisor IMMEDIATELY — this is a security concern",
+      "Supervisor will need to contact the carrier and determine next steps"
+    ],
+    "confidence": "high",
+    "source_reference": "Security SOP 8.1 — Seal Verification",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Seal/Trailer Condition",
+    "scenario": "Trailer interior is dirty or has odor",
+    "keywords": [
+      "dirty",
+      "odor",
+      "smell",
+      "debris",
+      "unclean",
+      "contaminated",
+      "wet floor"
+    ],
+    "resolution_steps": [
+      "Do NOT unload food products into a contaminated trailer",
+      "Note the type of contamination: debris, liquid, odor, or stains",
+      "If loading outbound: request a different trailer from dispatch",
+      "If receiving inbound: check if product packaging is contaminated",
+      "Sealed cases may be acceptable if outer packaging is clean",
+      "Loose or open product must be rejected if trailer is contaminated",
+      "Log the trailer condition for carrier quality tracking"
+    ],
+    "confidence": "medium",
+    "source_reference": "Receiving SOP 1.3 — Trailer Condition Assessment",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Equipment Failure",
+    "scenario": "Scanner is not working",
+    "keywords": [
+      "scanner",
+      "not working",
+      "dead",
+      "broken scanner",
+      "won't turn on",
+      "frozen"
+    ],
+    "resolution_steps": [
+      "Try a soft reset: hold the power button for 10 seconds",
+      "Check if the scanner battery is charged (indicator light)",
+      "If battery is dead: swap for a charged scanner from the charging station",
+      "Charging station is located at Bay 2, near the supervisor office",
+      "Backup scanners are on the top shelf of the charging station",
+      "If no backup available: you can manually enter SKUs using the tablet",
+      "Log an equipment request for a replacement scanner"
+    ],
+    "confidence": "high",
+    "source_reference": "Equipment SOP 7.1 — Scanner Troubleshooting",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Equipment Failure",
+    "scenario": "Forklift issue or battery low",
+    "keywords": [
+      "forklift",
+      "battery",
+      "low battery",
+      "won't start",
+      "dead",
+      "malfunction"
+    ],
+    "resolution_steps": [
+      "If battery indicator shows <20%: swap the battery now",
+      "Battery swap station is in Dock Area C, Aisle 20",
+      "Park the forklift in a safe location before leaving it",
+      "Set the parking brake and lower forks to the ground",
+      "If forklift has a mechanical issue: do NOT attempt to fix it yourself",
+      "Tag the forklift with an OUT OF SERVICE tag",
+      "Report via Quick Request for maintenance team dispatch"
+    ],
+    "confidence": "high",
+    "source_reference": "Equipment SOP 7.3 — Forklift Battery & Maintenance",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Paperwork Mismatch",
+    "scenario": "BOL information doesn't match order",
+    "keywords": [
+      "bol",
+      "paperwork",
+      "documentation",
+      "order number",
+      "wrong order"
+    ],
+    "resolution_steps": [
+      "Compare the BOL order number to the system's order number",
+      "Check if this is the right trailer for your dock assignment",
+      "Verify trailer number on the BOL matches the physical trailer",
+      "If it's the wrong trailer: it may have been backed into the wrong dock",
+      "Contact dispatch to verify the dock assignment",
+      "Do NOT start loading/unloading until paperwork matches",
+      "Hold the trailer and notify your supervisor if unresolved"
+    ],
+    "confidence": "medium",
+    "source_reference": "Receiving SOP 5.1 — Paperwork Verification",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Product Quality Concern",
+    "scenario": "Product shows signs of thaw/refreeze",
+    "keywords": [
+      "thawed",
+      "refrozen",
+      "ice crystals",
+      "mushy",
+      "soft",
+      "frost",
+      "freezer burn"
+    ],
+    "resolution_steps": [
+      "Evidence of thaw/refreeze is a food safety red flag",
+      "Check for: ice crystals on packaging, soft/mushy product, discoloration",
+      "If multiple cases show signs: this may be a cold chain failure",
+      "Segregate affected cases — do NOT mix with good product",
+      "Check the trailer temperature log for evidence of temp excursions",
+      "This needs supervisor and Quality team review before acceptance",
+      "Document which cases/pallets are affected"
+    ],
+    "confidence": "high",
+    "source_reference": "Quality SOP 9.3 — Thaw/Refreeze Assessment",
+    "applicable_categories": [
+      "Frozen"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Product Quality Concern",
+    "scenario": "Produce shows mold, bruising, or pest damage",
+    "keywords": [
+      "mold",
+      "moldy",
+      "bruised",
+      "bruising",
+      "pest",
+      "insects",
+      "bugs",
+      "rot",
+      "rotten"
+    ],
+    "resolution_steps": [
+      "Inspect the full pallet — not just the visible outer cases",
+      "If mold/pest is on <10% of product: separate affected cases",
+      "If mold/pest is widespread: reject the entire pallet",
+      "For pest evidence (insects, droppings): reject immediately",
+      "Do NOT move pest-affected product into the warehouse",
+      "Notify supervisor and Quality team — pest issues require documentation",
+      "Check adjacent pallets for cross-contamination"
+    ],
+    "confidence": "high",
+    "source_reference": "Quality SOP 9.4 — Produce Quality Inspection",
+    "applicable_categories": [
+      "Produce"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Lot/Expiry Issue",
+    "scenario": "Product expiry date has already passed",
+    "keywords": [
+      "expired",
+      "past date",
+      "out of date",
+      "old",
+      "expiry passed"
+    ],
+    "resolution_steps": [
+      "REJECT — Expired product must NOT be accepted into inventory",
+      "Check the expiry date format: MM/DD/YYYY or YYYY-MM-DD",
+      "If ANY cases are expired: segregate and reject those cases",
+      "Do NOT mix expired cases with valid-date product",
+      "This is an automatic rejection — no supervisor override allowed",
+      "Document the lot numbers and expiry dates in the discrepancy report",
+      "The carrier/vendor will be charged back for expired product"
+    ],
+    "confidence": "high",
+    "source_reference": "Quality SOP 9.1 — Expired Product Rejection",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Lot/Expiry Issue",
+    "scenario": "Product expires within 48 hours",
+    "keywords": [
+      "expiring soon",
+      "short dated",
+      "almost expired",
+      "close to expiry",
+      "48 hours"
+    ],
+    "resolution_steps": [
+      "This product is short-dated but NOT yet expired",
+      "Check the customer's short-date acceptance policy:",
+      "— Some customers accept short-dated product (check SOP)",
+      "— Some customers require minimum 7-14 days remaining shelf life",
+      "If customer accepts: proceed but log the short dates",
+      "If customer does NOT accept short-dated: hold and escalate",
+      "Supervisor will contact the customer for acceptance decision"
+    ],
+    "confidence": "medium",
+    "source_reference": "Quality SOP 9.2 — Short-Dated Product",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Lot/Expiry Issue",
+    "scenario": "Lot number doesn't match purchase order",
+    "keywords": [
+      "lot",
+      "lot number",
+      "wrong lot",
+      "lot mismatch",
+      "different lot"
+    ],
+    "resolution_steps": [
+      "Verify the lot number on the physical case vs. the PO/BOL",
+      "Some vendors ship substitute lots — this may be acceptable",
+      "Check if the customer requires exact lot matching",
+      "If lot tracking is required (see product details): this needs resolution",
+      "Contact the vendor/shipper to verify the lot substitution",
+      "If acceptable: update the receiving record with the actual lot number",
+      "If not acceptable: hold product and escalate for vendor contact"
+    ],
+    "confidence": "medium",
+    "source_reference": "Quality SOP 9.5 — Lot Number Verification",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Barcode Issue",
+    "scenario": "Scanner reads wrong SKU",
+    "keywords": [
+      "wrong sku",
+      "reads different",
+      "incorrect scan",
+      "scanner error"
+    ],
+    "resolution_steps": [
+      "The scanner may be reading an inner-pack barcode instead of the case barcode",
+      "Look for the ITF-14 barcode (the case-level barcode) — it's usually the largest one",
+      "Do NOT scan the UPC (consumer unit barcode) — scan the outer case barcode",
+      "If the case has multiple barcodes: try each one until the correct SKU appears",
+      "Verify against the printed SKU text on the label",
+      "If still misreading: manually enter the printed SKU number"
+    ],
+    "confidence": "medium",
+    "source_reference": "Scan SOP 6.3 — Barcode Selection",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Count Shortage",
+    "scenario": "Overage — received more than expected",
+    "keywords": [
+      "extra",
+      "overage",
+      "more than expected",
+      "too many",
+      "over count"
+    ],
+    "resolution_steps": [
+      "Verify your count — recount to confirm the overage",
+      "Check if extra product belongs to a different order on the same trailer",
+      "If it's a multi-stop trailer: the extra may be for another customer",
+      "If confirmed overage: accept and note the actual count on the BOL",
+      "Log the overage in the system — it will be tracked for billing",
+      "Do NOT refuse extra product unless instructed by supervisor",
+      "Overages are less critical than shortages but still need documentation"
+    ],
+    "confidence": "medium",
+    "source_reference": "Receiving SOP 5.6 — Overage Handling",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Equipment Failure",
+    "scenario": "Dock plate/leveler not working",
+    "keywords": [
+      "dock plate",
+      "leveler",
+      "dock leveler",
+      "ramp",
+      "bridge plate"
+    ],
+    "resolution_steps": [
+      "Do NOT attempt to drive a forklift across a malfunctioning dock plate",
+      "Check if the dock plate hydraulic control is in the correct position",
+      "Try the manual release lever (located on the side of the dock plate)",
+      "If the plate is stuck in the up position: do NOT force it down",
+      "Submit a Quick Request for maintenance team to inspect",
+      "Ask supervisor for temporary reassignment to another dock door",
+      "Do NOT use makeshift ramps or bridges — safety hazard"
+    ],
+    "confidence": "high",
+    "source_reference": "Equipment SOP 7.4 — Dock Equipment Safety",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Damaged Pallet",
+    "scenario": "Pallet wood is broken but product is fine",
+    "keywords": [
+      "broken pallet",
+      "wood broken",
+      "pallet damage",
+      "structural"
+    ],
+    "resolution_steps": [
+      "If the product cases are undamaged, the product can still be accepted",
+      "Transfer cases from the broken pallet to a good pallet",
+      "Good pallets are staged at the pallet stack area (end of each dock row)",
+      "Re-stack cases following the customer's load pattern specifications",
+      "Note in the discrepancy report: pallet damage only, product intact",
+      "This does NOT count toward the damage % threshold",
+      "Continue with normal receiving/loading process"
+    ],
+    "confidence": "high",
+    "source_reference": "Company SOP 4.4 — Pallet-Only Damage",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Temperature Deviation",
+    "scenario": "Produce temperature outside optimal range",
+    "keywords": [
+      "produce temp",
+      "warm produce",
+      "cold produce",
+      "chill injury"
+    ],
+    "resolution_steps": [
+      "Produce has different temp requirements than frozen/refrigerated",
+      "Check the specific product's temperature range in the system",
+      "Some produce is damaged by cold (chill injury): bananas, tomatoes, avocados",
+      "Some produce needs to be cold: lettuce, berries, broccoli",
+      "If temp is within 5°F of the acceptable range: accept with documentation",
+      "If temp is clearly outside range: hold and check quality visually",
+      "Wilting, discoloration, or mushiness indicates temperature abuse"
+    ],
+    "confidence": "medium",
+    "source_reference": "Cold Chain SOP 2.5 — Produce Temperature Standards",
+    "applicable_categories": [
+      "Produce"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  }
+]

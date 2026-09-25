@@ -11,7 +11,8 @@
 - Actor identity — `operator_id`, `supervisor_id`, `user_id` — is a **client-supplied integer in
   the request body that nothing validates**. Nothing checks the ID exists, that the caller is that
   person, or that it holds the claimed role. `PUT /api/issues/{id}/escalate` takes no body at all.
-- CORS is `allow_origins=["*"]`, `allow_methods=["*"]`, `allow_headers=["*"]` (`main.py:46`).
+- CORS is an explicit origin list from `CORS_ORIGINS` (`app/config.py`) — but with no auth, CORS is
+  not a security boundary; anything that can reach the API can call it.
 - `WS /ws` is unauthenticated, has no rooms or topics, and **fans every issue payload to every
   connected socket**.
 - `api.js` sends no `Authorization` header and has no 401 handling.
@@ -28,17 +29,19 @@ and in API payloads. Seeded names, companies and SKUs are fictional and stay tha
 
 ## 3. Secrets
 
-- `NVIDIA_API_KEY` and `NVIDIA_EMBED_API_KEY` come from the **environment only**.
-- **There is no `python-dotenv`.** A `.env` file is not loaded by anything. The variable must be
-  exported in the shell (`$env:NVIDIA_API_KEY = "..."` in PowerShell). The README's `.env.example`
-  is documentation, not a loader. This changes in Phase 1 with `pydantic-settings`.
+- Configuration is read by `pydantic-settings` (`app/config.py`) from the environment and, in
+  development only, from `backend/.env`. In production (Koyeb) every secret is a service secret —
+  there is no `.env` file in the image (`.dockerignore` excludes it).
+- `NVIDIA_API_KEY` is a `SecretStr`: it never appears in `repr()`, logs or error pages.
+- `DATABASE_URL` for Neon contains a password. It lives only in the Koyeb secret store and a
+  developer's own `backend/.env`.
 - `.env` and `.env.*` are gitignored; `.env.example` is committed with placeholder values. Keep it
   that way.
 - **Never commit a key, and never paste one into a file, a commit message, or a chat.** The
   `check-secrets` hook warns on key-shaped strings (`nvapi-`, `sk-`, `AKIA`, long base64) in any
   write — treat a warning as a stop.
-- `render.yaml` declares no `envVars`; the key must be set in the host dashboard. Document that
-  wherever the deploy is described.
+- Deploy secrets (`DATABASE_URL`, `NVIDIA_API_KEY`) are set in the Koyeb dashboard, never in a
+  committed file. `docs/deployment.md` lists them.
 
 ## 4. Input handling
 
@@ -56,18 +59,18 @@ and in API payloads. Seeded names, companies and SKUs are fictional and stay tha
 A checklist, not a mandate for any current task. It doubles as the acceptance criteria for
 Phase 2A (auth + teams):
 
-- [ ] Real identity: hashed credentials (`passlib[bcrypt]`) or SSO. No plaintext, no shared logins.
+- [ ] Real identity: hashed credentials (`pwdlib` Argon2 — `passlib` is unmaintained) or SSO. No plaintext, no shared logins.
 - [ ] A server-side `get_current_user` dependency. **Every client-supplied actor ID is replaced
       by `current_user.id`.**
 - [ ] `require_role(...)` on every supervisor-only route (`supervisor-resolve`, `broadcasts`,
       `shift-handoffs`, `requests/{id}/fulfill`, `analytics`).
-- [ ] Explicit CORS origin list.
+- [x] Explicit CORS origin list. *(Phase 1)*
 - [ ] Authenticated WebSocket handshake and per-team scoping — a supervisor receives their team's
       events, not the whole facility's.
 - [ ] Rate limiting on `POST /api/chat`.
 - [ ] Audit-trail integrity on issue resolution — who resolved, when, and that it cannot be edited
       after the fact.
-- [ ] Response models, so a DB column rename cannot leak a new field to the client.
+- [x] Response models, so a DB column rename cannot leak a new field to the client. *(Phase 1)*
 - [ ] `frontend/vercel.json` and the API base URL configured so a missing `VITE_API_URL` **fails
       loudly** instead of returning the HTML shell with a 200.
 

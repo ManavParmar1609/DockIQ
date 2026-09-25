@@ -1,4 +1,12 @@
-const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+const ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const BASE = `${ORIGIN}/api`;
+
+// The WebSocket lives on the API host: https://api.example -> wss://api.example/ws.
+// With no VITE_API_URL (dev), it is same-origin and the Vite proxy forwards it.
+export function wsUrl() {
+  const origin = ORIGIN || window.location.origin;
+  return `${origin.replace(/^http/, 'ws')}/ws`;
+}
 
 async function request(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
