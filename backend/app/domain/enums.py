@@ -6,6 +6,7 @@ from enum import StrEnum
 class Role(StrEnum):
     OPERATOR = "operator"
     SUPERVISOR = "supervisor"
+    QUALITY = "quality"
 
 
 class ProductCategory(StrEnum):
@@ -69,3 +70,9 @@ class RequestStatus(StrEnum):
 class ChatRole(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"
+
+
+class ScanResult(StrEnum):
+    MATCH = "match"
+    MISMATCH = "mismatch"
+    UNKNOWN = "unknown"

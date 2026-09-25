@@ -28,24 +28,26 @@ score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
 
 ### 1.1 Issue type weights
 
-`severity.py:11-23`. Unknown issue type defaults to **2**.
+`severity.py` → `ISSUE_TYPE_WEIGHTS`. Unknown issue type defaults to **2**.
 
 | Issue type | Weight |
 |---|---|
 | Temperature Deviation | 5 |
+| Safety Incident *(Phase 2 — see §1.7, §1.8)* | 5 |
 | Product Quality Concern | 4 |
 | Damaged Pallet | 4 |
 | Seal/Trailer Condition | 4 |
 | SKU Mismatch | 3 |
 | Lot/Expiry Issue | 3 |
-| Count Shortage | 2 |
+| WMS/System Issue *(Phase 2)* | 3 |
+| Count Discrepancy *(was Count Shortage)* | 2 |
 | Paperwork Mismatch | 2 |
 | Equipment Failure | 2 |
 | Barcode Issue | 1 |
 
 ### 1.2 Product risk multiplier
 
-`severity.py:25-30`. Unknown or absent category → **1.0**.
+`severity.py` → `PRODUCT_RISK`. Unknown or absent category → **1.0**.
 
 | Product category | Multiplier |
 |---|---|
@@ -56,7 +58,7 @@ score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
 
 ### 1.3 Customer tier multiplier
 
-`severity.py:32-36`. Unknown or absent tier → **1.0**.
+`severity.py` → `CUSTOMER_TIER_MULTIPLIER`. Unknown or absent tier → **1.0**.
 
 | Customer tier | Multiplier |
 |---|---|
@@ -66,7 +68,7 @@ score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
 
 ### 1.4 Additive modifiers
 
-Applied after the multiplication, `severity.py:82-110`.
+Applied after the multiplication, in `classify_severity()`.
 
 | Condition | Adjustment |
 |---|---|
@@ -76,15 +78,18 @@ Applied after the multiplication, `severity.py:82-110`.
 | Count shortage > 5% | +3 |
 | Count shortage 2–5% | +1 |
 | Allergen-sensitive product | +2 |
-| Trailer dwell time > 30 minutes | +2 ⚠️ |
+| Trailer dwell time > 30 minutes | +2 |
 
-⚠️ **`trailer_dwell_minutes` is never passed by any caller.** The parameter defaults to `0` and
-`create_issue` in `app/api/issues.py` does not supply it, so this modifier can never fire. The dock table does
-record `trailer_arrived_at`, so the data needed to compute it exists.
+**Dwell** is the minutes since the dock's `trailer_arrived_at`, computed when the issue is reported.
+A dock with no trailer contributes nothing. *(Phase 2: previously never passed, so it never fired.)*
+
+**Count shortage** applies only when both counts are given and `expected > 0`. **A count of 0 is a
+total non-delivery and scores the full +3.** An **overage** (actual > expected) is recorded but adds
+nothing — per Receiving SOP 5.6, overages are less critical than shortages.
 
 ### 1.5 Severity bands
 
-`severity.py:39-57` (`SEVERITY_BANDS`, `band_for`).
+`severity.py` → `SEVERITY_BANDS`, `band_for()`.
 
 | Score | Severity |
 |---|---|
@@ -104,23 +109,36 @@ customer lands only at *medium* when the product category is unknown. With `Froz
 would be `5 × 3.0 × 1.5 = 22.5` → **critical**. **Product category is decisive**, so any code path
 that creates an issue without it materially under-reports severity.
 
-### 1.7 Known defect ⚠️
+### 1.7 People risk *(Phase 2)*
 
-`severity.py:95` reads:
+For **Safety Incident** the product-risk and customer-tier multipliers are **not applied**: the risk is
+to a person, and a frozen tier-1 load does not make a slip hazard more dangerous. The reason text
+says so explicitly.
 
-```python
-if count_expected and count_actual:
-```
+### 1.8 Severity floors *(Phase 2)*
 
-This is a truthiness test, so **`count_actual = 0` — nothing received at all, the worst possible
-case — skips the shortage modifier entirely.** It must be `is not None`. A total non-delivery
-currently scores lower than a 6% shortage.
+Some situations are serious regardless of score. After banding, the severity is raised to the floor
+if it is below it — never lowered. `taxonomy.py` → `SEVERITY_FLOORS`.
+
+| Type | Subtype | Never below |
+|---|---|---|
+| Safety Incident | Employee injury | **critical** |
+| Safety Incident | Near miss · Pedestrian in loading area · Unsafe trailer condition | **high** |
+| Safety Incident | any other | **medium** |
+
+The reason text records it: `Floor: 'Employee injury' is never below CRITICAL`.
+
+### 1.9 Change history
+
+The Phase 1 code carried a truthiness test (`if count_expected and count_actual:`) that made a
+**total non-delivery score lower than a 6% shortage**. Fixed in Phase 2; pinned by
+`test_total_non_delivery_scores_shortage_modifier`.
 
 ---
 
 ## 2. Cost impact model
 
-**Source:** `backend/app/domain/cost.py` → `estimate_cost_impact()` (lines 3–23)
+**Source:** `backend/app/domain/cost.py` → `estimate_cost_impact()`
 
 ```
 cost = product.case_value × quantity_affected × issue_multiplier
@@ -131,7 +149,7 @@ Unknown issue type → **0.2**. A product that cannot be found returns `0.0`.
 | Issue type | Multiplier | Rationale (from code comments) |
 |---|---|---|
 | Temperature Deviation | 1.0 | Full loss likely |
-| Count Shortage | 1.0 | Direct loss |
+| Count Discrepancy | 1.0 | Direct loss — except the **Overage** and **Extra pallet not on load** subtypes, which are 0.0 |
 | Lot/Expiry Issue | 1.0 | Full rejection |
 | Product Quality Concern | 0.8 | Most product lost |
 | Seal/Trailer Condition | 0.5 | Potential full rejection |
@@ -140,15 +158,17 @@ Unknown issue type → **0.2**. A product that cannot be found returns `0.0`.
 | Barcode Issue | 0.0 | No product loss |
 | Equipment Failure | 0.0 | No product loss |
 | Paperwork Mismatch | 0.0 | No product loss |
+| Safety Incident | 0.0 | The cost is human; not modelled in dollars |
+| WMS/System Issue | 0.0 | No product loss |
 
 ---
 
 ## 3. Knowledge-base retrieval and confidence
 
-**Source:** `backend/app/domain/retrieval.py` → `find_resolution()` (lines 11–86)
+**Source:** `backend/app/domain/retrieval.py` → `find_resolution()`
 
-**This is keyword substring matching, not embeddings.** `get_embed_client()` exists at lines 19–26
-but is never called anywhere — it is dead code. Do not describe this system as doing semantic search.
+**This is keyword substring matching, not embeddings.** Do not describe this system as doing
+semantic search. The text searched is the chosen **subtype plus the description**.
 
 Algorithm:
 1. Select all `knowledge_base` rows with an exact `issue_type` match. If none, return the **General
@@ -165,16 +185,16 @@ Algorithm:
 | 2 – 3 | medium |
 | < 2 | low |
 
-⚠️ `create_issue` in `app/api/issues.py` **does not pass `company_name`**, so the +1 company bonus can never
-fire in the issue-creation path. This depresses confidence and is visible in the UI — see
-`screenshots/issue_step3.png`, where a well-matched temperature procedure is labelled
-"LOW confidence".
+The company bonus now fires in the issue-creation path *(Phase 2 — previously `company_name` was
+never passed, which depressed confidence on well-matched procedures)*.
 
 ---
 
 ## 4. Operational thresholds
 
-Encoded across the 27 seeded entries in `backend/app/seed/data/knowledge_base.json`.
+Encoded across the 41 seeded entries in `backend/app/seed/data/knowledge_base.json` (27 original,
+14 added in Phase 2 for Safety, WMS, count and trailer-restraint scenarios). The knowledge base is
+reference data: every boot replaces it with the repository's copy.
 These are the substantive food-safety and acceptance rules.
 
 ### 4.1 Damage
@@ -225,11 +245,13 @@ These are the substantive food-safety and acceptance rules.
 - Seal condition = `intact`
 - Interior cleanliness = `clean`
 - Visible damage = `none`
-- If an interior temperature was entered: **≤ 45°F**
+- If an interior temperature was entered: **≤ the strictest `temp_max` of any product on the load**
 
-⚠️ The 45°F gate is a single fixed value applied regardless of product category. A frozen load at
-40°F would pass the inspection gate while being catastrophically out of spec for the product. The
-per-product thresholds in `products.temp_min` / `temp_max` are not consulted here.
+The limit comes from the order being loaded (or the dock's current order): a load with a Frozen line
+must be at or below that line's maximum (0°F, or −5°F for Fernbrook's frozen range). **45°F applies
+only when the load has no temperature-controlled product, or there is no order.** The response names
+the limit used and each failed check. *(Phase 2 — previously a fixed 45°F let a frozen load at 40°F
+pass.)*
 
 ---
 
@@ -249,7 +271,8 @@ differ by customer, and they are the reason a generic procedure is not sufficien
 
 Company records also carry `tier` (1–3, feeding §1.3), `count_tolerance` (a fraction, e.g. `0.01` =
 1%), and a `load_pattern` JSON blob with `max_height`, `weight_placement`, `slip_sheets`,
-`label_direction` and `special`.
+`label_direction`, `special`, and — since Phase 2 — `floor_pattern`, `sequence`,
+`segregate_categories` and `max_pallets`, which drive the load plan in §10.
 
 ---
 
@@ -259,12 +282,13 @@ Company records also carry `tier` (1–3, feeding §1.3), `count_tolerance` (a f
 
 | Pattern | Trigger | Conclusion offered |
 |---|---|---|
-| Dock | Same `issue_type` **≥ 3 times** at the same dock | Possible environmental root cause — lighting, equipment, dock condition |
-| Carrier | Same `issue_type` **≥ 3 times** from the same carrier | Recommend carrier quality review |
+| Dock | Same `issue_type` **≥ 3 times** at the same dock, counting the report being filed | Possible environmental root cause — lighting, equipment, dock condition |
+| Carrier | Same `issue_type` **≥ 3 times** from the same carrier, counting the report being filed | Recommend carrier quality review |
 
-⚠️ **The result is returned to the API caller and then discarded.** Nothing persists it, and no
-screen displays it. This is the mechanism behind the executive scenario line *"System notes: 3rd
-temp issue from this carrier this month"* — the logic exists, the surfacing does not.
+The patterns are **stored on the issue** (`issues.recurring_patterns`) and shown on the report
+confirmation, the supervisor queue and the issue detail — the *"3rd temp issue from this carrier"*
+line from Scenario 2. *(Phase 2 — previously computed and discarded, and the count excluded the
+report being filed, so the message read "the 3th" on what was really the 4th.)*
 
 ---
 
@@ -274,8 +298,13 @@ temp issue from this carrier this month"* — the logic exists, the surfacing do
 
 ```
 resolution_in_progress ──┬──▶ self_resolved
-                         └──▶ escalated ──▶ supervisor_resolved
+                         ├──▶ escalated ──▶ supervisor_resolved
+                         └──▶ supervisor_resolved   (a supervisor may close it directly)
 ```
+
+Resolved states are terminal. Any other move is refused with **409 Conflict**
+(`domain/lifecycle.py`). Only the reporting operator may self-resolve; only **that operator's
+supervisor** may supervisor-resolve.
 
 **Timestamp trail:** `created_at` → `escalated_at` → `acknowledged_at` → `resolved_at`.
 
@@ -285,10 +314,8 @@ resolution_in_progress ──┬──▶ self_resolved
 idle ──▶ inspection ──▶ loading | unloading ──▶ complete
 ```
 
-⚠️ Dock state is split across **two independently mutated columns** — `status`
-(`idle`/`active`/`issue`/`critical`) and `lifecycle_phase` — written by five different handlers with
-no state machine. `self_resolve_issue` and `supervisor_resolve_issue` both set the dock back to
-`status='active'` unconditionally, even if the dock was idle or another issue is still open on it.
+Dock `status` and `lifecycle_phase` change only through `domain/dock.py` → `transition()`.
+⚠️ Resolving an issue still sets the dock back to `active` even if another issue is open on it.
 
 ---
 
@@ -296,25 +323,26 @@ no state machine. `self_resolve_issue` and `supervisor_resolve_issue` both set t
 
 **Source:** `DocumentsforProj/list of issues operators faces.docx`
 
-This is the authoritative list of situations where an operator cannot proceed alone. The system
-currently implements **10 issue types**; the mapping below shows what that does and does not cover.
-See `docs/roadmap.md` for the plan to close these gaps.
+This is the authoritative list of situations where an operator cannot proceed alone. Since Phase 2
+it is implemented in full as **12 issue types with 87 subtypes** (`domain/taxonomy.py`, served by
+`GET /api/taxonomy`). The ~111 scenarios in the document overlap between its "issues" and
+"discrepancies" halves; merged, they are 87.
 
-| Category (count) | Currently reportable as | Coverage |
+| Category | Reported as | Subtypes |
 |---|---|---|
-| Loading & Pallet Issues (8) | `Damaged Pallet` | Partial — damage only |
-| Barcode & Label Issues (7) | `Barcode Issue` | Partial — no sub-reason |
-| Scanner & Handheld Issues (6) | `Equipment Failure` | Partial — conflated with forklift |
-| Forklift Equipment Issues (7) | `Equipment Failure` | Partial — same bucket |
-| Trailer & Dock Issues (7) | `Seal/Trailer Condition` | Partial — no leveler/restraint/plate |
-| Documentation & Shipping (6) | `Paperwork Mismatch` | Partial |
-| **WMS Issues (7)** | — | **None** |
-| **Safety Issues (8)** | — | **None** |
+| Loading & Pallet | Damaged Pallet | 8 |
+| Barcode & Label | Barcode Issue | 7 |
+| Scanner & Handheld · Forklift · Dock equipment | Equipment Failure | 14 |
+| Trailer & Dock | Seal/Trailer Condition | 8 |
+| Documentation & Shipping | Paperwork Mismatch | 6 |
+| **WMS / System** | **WMS/System Issue** *(new)* | 9 |
+| **Safety** | **Safety Incident** *(new)* | 11 |
+| Quantity | Count Discrepancy *(was Count Shortage)* — shortage, overage, partial, missing, extra, mixed-SKU | 7 |
+| Product | Product Quality Concern · SKU Mismatch · Lot/Expiry Issue | 5 · 3 · 3 |
+| Temperature | Temperature Deviation | 6 |
 
-Discrepancy categories from the same document — Inventory & Barcode, Quantity, Product, Temperature,
-Trailer & Dock, Documentation, WMS/System, Safety — are covered only insofar as the ten types above
-reach them. Notably `Count Shortage` models **shortages only**: there is no overage, no
-mixed-SKU-on-one-pallet, and no missing-pallet-from-staging.
+The **Quality** team is notified (and can see) every Temperature Deviation, Product Quality Concern
+and Lot/Expiry Issue, plus any issue that scores critical.
 
 ### Discrepancies that require supervisor approval
 
@@ -325,8 +353,44 @@ scanner issues; and unsafe loading conditions or trailer defects.
 
 ---
 
-## Change log
+## 9. Photo evidence
+
+`domain/evidence.py`. Photos are stored in the database (the free tiers have no object storage):
+
+| Rule | Value |
+|---|---|
+| Maximum size | **600 kB** per photo — the client downscales to a ~1280 px JPEG first |
+| Maximum count | **4** per issue |
+| Accepted | JPEG, PNG, WebP — identified from the file's **bytes**; the declared type is ignored |
+| Who may add | the reporting operator or their supervisor |
+
+---
+
+## 10. Trailer load plan
+
+`domain/load_plan.py`, served by `GET /api/orders/{id}/load-plan`. A 53-ft trailer holds two
+48×40 pallets across; the customer's `load_pattern` decides the rest.
+
+| Floor pattern | Rows × 2 | Floor positions |
+|---|---|---|
+| straight — 48" side along the trailer | 13 | 26 |
+| pinwheel — alternating, interlocked | 14 | 28 |
+| turned — 40" side along the trailer | 15 | 30 |
+
+1. **Pallets** = expected cases ÷ cases per pallet, the last one partial. Weight = cases × case weight
+   + **50 lb** pallet tare.
+2. **Sequence** (what goes in first, at the nose by the reefer unit):
+   `heaviest_to_nose` · `by_category` (Frozen → Refrigerated → Produce → Dry) · `reverse_stop_order`
+   (last delivery loaded first).
+3. **Stacks** hold at most `max_height` pallets. With `heavy_bottom`, the heaviest pallets form the
+   **floor layer across every stack** — not one heavy stack at the nose.
+4. With `segregate_categories`, no stack mixes categories.
+5. Exceeding the trailer's floor positions or the customer's `max_pallets` produces a **warning** on
+   the plan; it is never silently truncated.
+
+---
 
 | Date | Change |
 |---|---|
 | 2026-09-25 | Initial extraction from code and source documents. |
+| 2026-09-25 | Phase 2: Safety and WMS types, 87 subtypes, severity floors and people risk, zero-count and dwell fixes, company bonus reaches retrieval, load-aware inspection gate, persisted recurrence, lifecycle guard, photo evidence, load plans. |

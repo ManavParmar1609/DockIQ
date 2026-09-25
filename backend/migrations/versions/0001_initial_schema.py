@@ -25,9 +25,7 @@ def pk(table: str) -> sa.PrimaryKeyConstraint:
 
 
 def fk(table: str, column: str, target: str, **kwargs: str) -> sa.ForeignKeyConstraint:
-    return sa.ForeignKeyConstraint(
-        [column], [f"{target}.id"], name=f"fk_{table}_{column}_{target}", **kwargs
-    )
+    return sa.ForeignKeyConstraint([column], [f"{target}.id"], name=f"fk_{table}_{column}_{target}", **kwargs)
 
 
 def one_of(table: str, column: str, *values: str) -> sa.CheckConstraint:
@@ -169,7 +167,11 @@ def upgrade() -> None:
 
     with op.batch_alter_table("dock_doors") as batch:
         batch.create_foreign_key(
-            "fk_dock_doors_current_order_id_orders", "orders", ["current_order_id"], ["id"], ondelete="SET NULL"
+            "fk_dock_doors_current_order_id_orders",
+            "orders",
+            ["current_order_id"],
+            ["id"],
+            ondelete="SET NULL",
         )
 
     op.create_table(
@@ -184,7 +186,9 @@ def upgrade() -> None:
         fk("order_items", "order_id", "orders", ondelete="CASCADE"),
         fk("order_items", "product_id", "products"),
         sa.UniqueConstraint("order_id", "product_id", name="uq_order_items_order_id"),
-        sa.CheckConstraint("expected_quantity >= 0 AND actual_quantity >= 0", name="ck_order_items_quantities"),
+        sa.CheckConstraint(
+            "expected_quantity >= 0 AND actual_quantity >= 0", name="ck_order_items_quantities"
+        ),
     )
     indexes("order_items", "order_id", "product_id")
 
@@ -224,7 +228,9 @@ def upgrade() -> None:
         fk("issues", "company_id", "companies"),
         fk("issues", "carrier_id", "carriers"),
         one_of("issues", "severity", *SEVERITIES),
-        one_of("issues", "status", "resolution_in_progress", "self_resolved", "escalated", "supervisor_resolved"),
+        one_of(
+            "issues", "status", "resolution_in_progress", "self_resolved", "escalated", "supervisor_resolved"
+        ),
         one_of("issues", "ai_confidence", *CONFIDENCES),
     )
     indexes(

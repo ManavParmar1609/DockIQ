@@ -3,7 +3,18 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base, UTCDateTime, enum_column, utcnow
@@ -18,6 +29,7 @@ from app.domain.enums import (
     ProductCategory,
     RequestStatus,
     Role,
+    ScanResult,
     Severity,
 )
 
@@ -41,6 +53,7 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
     sku: Mapped[str] = mapped_column(String(32), unique=True)
+    gtin: Mapped[str | None] = mapped_column(String(14), unique=True)
     name: Mapped[str] = mapped_column(String(200))
     category: Mapped[ProductCategory] = mapped_column(enum_column(ProductCategory))
     weight_per_case: Mapped[float] = mapped_column(Float)
@@ -62,6 +75,10 @@ class User(Base):
     shift: Mapped[str] = mapped_column(String(16))
     zone: Mapped[str | None] = mapped_column(String(32))
     experience_level: Mapped[str | None] = mapped_column(String(32))
+    password_hash: Mapped[str | None] = mapped_column(String(255))
+    # An operator's supervisor; supervisors and quality staff have none. This is the team.
+    supervisor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class Carrier(Base):
@@ -134,6 +151,7 @@ class Issue(Base):
     operator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     supervisor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     issue_type: Mapped[str] = mapped_column(String(64), index=True)
+    issue_subtype: Mapped[str | None] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text)
     quick_tags: Mapped[list[str]] = mapped_column(JSON, default=list)
     severity: Mapped[Severity] = mapped_column(enum_column(Severity), index=True)
@@ -143,6 +161,7 @@ class Issue(Base):
         enum_column(IssueStatus), default=IssueStatus.RESOLUTION_IN_PROGRESS, index=True
     )
     ai_resolution: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    recurring_patterns: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     ai_confidence: Mapped[Confidence | None] = mapped_column(enum_column(Confidence))
     resolution_type: Mapped[str | None] = mapped_column(String(64))
     resolution_notes: Mapped[str | None] = mapped_column(Text)
@@ -229,4 +248,33 @@ class ChatMessage(Base):
     role: Mapped[ChatRole] = mapped_column(enum_column(ChatRole))
     message: Mapped[str] = mapped_column(Text)
     source_reference: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+
+class IssuePhoto(Base):
+    """Photo evidence, stored in the database: the free tiers have no object storage. The client
+    downscales to a JPEG well under MAX_PHOTO_BYTES before upload."""
+
+    __tablename__ = "issue_photos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    issue_id: Mapped[int] = mapped_column(ForeignKey("issues.id", ondelete="CASCADE"), index=True)
+    uploaded_by: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    content_type: Mapped[str] = mapped_column(String(32))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class ScanEvent(Base):
+    """Every barcode scan against an order, including mismatches — the audit trail for Scenario 3."""
+
+    __tablename__ = "scan_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    code: Mapped[str] = mapped_column(String(64))
+    result: Mapped[ScanResult] = mapped_column(enum_column(ScanResult))
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)

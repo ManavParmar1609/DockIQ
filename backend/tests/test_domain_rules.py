@@ -4,12 +4,17 @@ See docs/architecture/business-rules.md §2–§5.
 
 import pytest
 
+from app.domain.barcodes import decide_scan, demo_gtin, gs1_check_digit, is_valid_gtin, normalize_code
 from app.domain.cost import COST_MULTIPLIERS, estimate_cost_impact
 from app.domain.dock import DockEvent, transition
-from app.domain.enums import DockStatus, LifecyclePhase, Severity
-from app.domain.inspection import inspection_passes
+from app.domain.enums import DockStatus, IssueStatus, LifecyclePhase, ScanResult, Severity
+from app.domain.evidence import sniff_image_type
+from app.domain.inspection import evaluate_inspection, interior_temperature_limit
+from app.domain.lifecycle import can_transition
 from app.domain.recurrence import carrier_pattern, dock_pattern
 from app.domain.retrieval import FALLBACK_RESOLUTION, KbEntry, find_resolution
+from app.domain.severity import ISSUE_TYPE_WEIGHTS
+from app.domain.taxonomy import ISSUE_TAXONOMY, ISSUE_TYPES, is_quality_relevant, is_valid_subtype
 
 # ── Cost ──
 
@@ -21,13 +26,20 @@ def test_cost_multipliers_are_pinned() -> None:
         "Product Quality Concern": 0.8,
         "Damaged Pallet": 0.3,
         "SKU Mismatch": 0.1,
-        "Count Shortage": 1.0,
+        "Count Discrepancy": 1.0,
         "Lot/Expiry Issue": 1.0,
         "Seal/Trailer Condition": 0.5,
         "Barcode Issue": 0.0,
         "Equipment Failure": 0.0,
         "Paperwork Mismatch": 0.0,
+        "Safety Incident": 0.0,
+        "WMS/System Issue": 0.0,
     }
+
+
+def test_overage_is_not_a_product_loss() -> None:
+    assert estimate_cost_impact(20.0, 10, "Count Discrepancy", "Short count") == 200.0
+    assert estimate_cost_impact(20.0, 10, "Count Discrepancy", "Overage") == 0.0
 
 
 def test_cost_is_case_value_times_quantity_times_multiplier() -> None:
@@ -118,20 +130,103 @@ CLEAN = {"seal_condition": "intact", "interior_cleanliness": "clean", "visible_d
 
 
 def test_clean_inspection_without_temperature_passes() -> None:
-    assert inspection_passes(**CLEAN, interior_temperature=None)
+    assert evaluate_inspection(**CLEAN, interior_temperature=None).passed
 
 
 @pytest.mark.parametrize(("temperature", "passes"), [(45.0, True), (45.1, False), (-10.0, True)])
-def test_temperature_gate_is_45f(temperature: float, passes: bool) -> None:
-    assert inspection_passes(**CLEAN, interior_temperature=temperature) is passes
+def test_default_temperature_gate_is_45f(temperature: float, passes: bool) -> None:
+    assert evaluate_inspection(**CLEAN, interior_temperature=temperature).passed is passes
+
+
+def test_the_strictest_product_on_the_load_sets_the_limit() -> None:
+    # A frozen line (0°F) and a refrigerated line (40°F): the trailer must be a freezer.
+    assert interior_temperature_limit([40.0, 0.0, None]) == 0.0
+    assert interior_temperature_limit([None, None]) == 45.0
+    outcome = evaluate_inspection(**CLEAN, interior_temperature=40.0, temperature_limit=0.0)
+    assert (outcome.passed, outcome.failed_checks) == (False, ("temperature",))
 
 
 @pytest.mark.parametrize(
-    "failure",
-    [{"seal_condition": "broken"}, {"interior_cleanliness": "dirty"}, {"visible_damage": "minor"}],
+    ("failure", "check"),
+    [
+        ({"seal_condition": "broken"}, "seal"),
+        ({"interior_cleanliness": "dirty"}, "cleanliness"),
+        ({"visible_damage": "minor"}, "damage"),
+    ],
 )
-def test_any_failed_condition_fails_the_inspection(failure: dict[str, str]) -> None:
-    assert not inspection_passes(**{**CLEAN, **failure}, interior_temperature=None)
+def test_each_failed_condition_is_named(failure: dict[str, str], check: str) -> None:
+    outcome = evaluate_inspection(**{**CLEAN, **failure}, interior_temperature=None)
+    assert (outcome.passed, outcome.failed_checks) == (False, (check,))
+
+
+# ── Taxonomy ──
+
+
+def test_taxonomy_covers_every_weighted_type_and_the_docx_categories() -> None:
+    assert set(ISSUE_TYPES) == set(ISSUE_TYPE_WEIGHTS)
+    # The DOCX lists ~111 scenarios across issues and discrepancies; merged duplicates leave 87.
+    assert sum(len(spec.subtypes) for spec in ISSUE_TAXONOMY) == 87
+    assert "Employee injury" in ISSUE_TYPES["Safety Incident"].subtypes
+    assert "WMS offline or not responding" in ISSUE_TYPES["WMS/System Issue"].subtypes
+
+
+def test_subtype_must_belong_to_its_type() -> None:
+    assert is_valid_subtype("Count Discrepancy", "Overage")
+    assert is_valid_subtype("Count Discrepancy", None)
+    assert not is_valid_subtype("Barcode Issue", "Overage")
+
+
+def test_quality_relevance() -> None:
+    assert is_quality_relevant("Temperature Deviation", Severity.LOW)
+    assert is_quality_relevant("Barcode Issue", Severity.CRITICAL)
+    assert not is_quality_relevant("Barcode Issue", Severity.HIGH)
+
+
+# ── Lifecycle ──
+
+
+def test_resolved_issues_are_terminal() -> None:
+    assert can_transition(IssueStatus.RESOLUTION_IN_PROGRESS, IssueStatus.ESCALATED)
+    assert can_transition(IssueStatus.ESCALATED, IssueStatus.SUPERVISOR_RESOLVED)
+    assert not can_transition(IssueStatus.ESCALATED, IssueStatus.SELF_RESOLVED)
+    assert not can_transition(IssueStatus.SELF_RESOLVED, IssueStatus.ESCALATED)
+
+
+# ── Barcodes and evidence ──
+
+
+def test_demo_gtins_are_valid_and_restricted_circulation() -> None:
+    gtin = demo_gtin(1)
+    assert (len(gtin), gtin[1]) == (14, "2")
+    assert is_valid_gtin(gtin)
+    assert gs1_check_digit("629104150021") == "3"  # GS1's published worked example
+
+
+def test_scanner_output_normalizes_to_one_form() -> None:
+    gtin = demo_gtin(7)
+    assert normalize_code(gtin[1:]) == gtin  # EAN-13 -> GTIN-14
+    assert normalize_code(" crm-fz-1001 ") == "CRM-FZ-1001"
+
+
+def test_scan_decision() -> None:
+    expected = ["CRM-FZ-1001", "CRM-RF-1002"]
+    assert decide_scan("CRM-FZ-1001", expected).outcome is ScanResult.MATCH
+    assert decide_scan("BHC-RF-2002", expected).outcome is ScanResult.MISMATCH
+    assert decide_scan(None, expected).outcome is ScanResult.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        (b"\xff\xd8\xff\xe0rest", "image/jpeg"),
+        (b"\x89PNG\r\n\x1a\nrest", "image/png"),
+        (b"RIFF\x00\x00\x00\x00WEBPVP8 ", "image/webp"),
+        (b"<svg onload=alert(1)>", None),
+        (b"GIF89a", None),
+    ],
+)
+def test_image_type_is_sniffed_from_bytes(data: bytes, expected: str | None) -> None:
+    assert sniff_image_type(data) == expected
 
 
 # ── Dock transitions ──

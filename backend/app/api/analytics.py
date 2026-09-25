@@ -1,11 +1,12 @@
 from datetime import timedelta
 
 from fastapi import APIRouter
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, true
 
-from app.api.deps import SessionDep
+from app.api.access import issue_scope
+from app.api.deps import SessionDep, Staff
 from app.db import utcnow
-from app.domain.enums import IssueStatus
+from app.domain.enums import IssueStatus, Role
 from app.models import Carrier, Company, DockDoor, Issue, User
 from app.queries import elapsed_minutes
 from app.schemas import AnalyticsSummary
@@ -16,7 +17,9 @@ TREND_WINDOW_DAYS = 30
 
 
 @router.get("/summary")
-async def analytics_summary(session: SessionDep) -> AnalyticsSummary:
+async def analytics_summary(user: Staff, session: SessionDep) -> AnalyticsSummary:
+    """A supervisor sees their team; quality staff see every issue in the facility."""
+    scope = issue_scope(user) if user.role is Role.SUPERVISOR else true()
     totals = (
         await session.execute(
             select(
@@ -29,7 +32,7 @@ async def analytics_summary(session: SessionDep) -> AnalyticsSummary:
                 func.avg(elapsed_minutes(Issue.created_at, Issue.resolved_at)).filter(
                     Issue.resolved_at.is_not(None)
                 ),
-            )
+            ).where(scope)
         )
     ).one()
     total, self_resolved, escalated, total_cost, avg_minutes = totals
@@ -38,15 +41,20 @@ async def analytics_summary(session: SessionDep) -> AnalyticsSummary:
         select(Issue.issue_type, func.count().label("count"))
         .group_by(Issue.issue_type)
         .order_by(func.count().desc(), Issue.issue_type)
+        .where(scope)
     )
     by_severity = await session.execute(
-        select(Issue.severity, func.count().label("count")).group_by(Issue.severity).order_by(Issue.severity)
+        select(Issue.severity, func.count().label("count"))
+        .group_by(Issue.severity)
+        .order_by(Issue.severity)
+        .where(scope)
     )
     by_dock = await session.execute(
         select(DockDoor.door_number, func.count(Issue.id).label("count"))
         .join(DockDoor, Issue.dock_door_id == DockDoor.id)
         .group_by(DockDoor.door_number)
         .order_by(DockDoor.door_number)
+        .where(scope)
     )
     self_resolved_flag = case((Issue.status == IssueStatus.SELF_RESOLVED, 1), else_=0)
     by_operator = await session.execute(
@@ -58,6 +66,7 @@ async def analytics_summary(session: SessionDep) -> AnalyticsSummary:
         .join(User, Issue.operator_id == User.id)
         .group_by(User.id, User.name)
         .order_by(func.count(Issue.id).desc(), User.name)
+        .where(scope)
     )
     by_company = await session.execute(
         select(Company.name, func.count(Issue.id).label("count"))
@@ -65,12 +74,14 @@ async def analytics_summary(session: SessionDep) -> AnalyticsSummary:
         .group_by(Company.id, Company.name)
         .order_by(func.count(Issue.id).desc(), Company.name)
         .limit(10)
+        .where(scope)
     )
     by_carrier = await session.execute(
         select(Carrier.name, func.count(Issue.id).label("count"))
         .join(Carrier, Issue.carrier_id == Carrier.id)
         .group_by(Carrier.id, Carrier.name)
         .order_by(func.count(Issue.id).desc(), Carrier.name)
+        .where(scope)
     )
     day = func.date(Issue.created_at)
     over_time = await session.execute(
@@ -78,6 +89,7 @@ async def analytics_summary(session: SessionDep) -> AnalyticsSummary:
         .where(Issue.created_at >= utcnow() - timedelta(days=TREND_WINDOW_DAYS))
         .group_by(day)
         .order_by(day)
+        .where(scope)
     )
 
     return AnalyticsSummary(

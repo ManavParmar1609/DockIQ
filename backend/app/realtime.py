@@ -1,9 +1,14 @@
-"""WebSocket fan-out. `/ws` carries exactly the event types built below — see
-docs/requirements/functional-specs.md §4. Adding one means changing both frontend layouts too.
+"""WebSocket delivery. `/ws` carries exactly the event types built below — see
+docs/requirements/functional-specs.md §3. Adding one means changing the frontend handler too.
+
+The handshake is authenticated with the access token passed as the second WebSocket subprotocol
+(`new WebSocket(url, ["dockiq", token])`) — browsers cannot set headers on a WebSocket.
 """
 
 import asyncio
 import logging
+from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 from fastapi import WebSocket
@@ -11,32 +16,44 @@ from fastapi.encoders import jsonable_encoder
 
 logger = logging.getLogger(__name__)
 
+SUBPROTOCOL = "dockiq"
+
 
 class ConnectionManager:
+    """Authenticated sockets, grouped by user. Events are addressed to users, never broadcast to all."""
+
     def __init__(self) -> None:
-        self._sockets: set[WebSocket] = set()
+        self._sockets: dict[int, set[WebSocket]] = defaultdict(set)
 
-    async def connect(self, websocket: WebSocket) -> None:
-        await websocket.accept()
-        self._sockets.add(websocket)
+    async def connect(self, websocket: WebSocket, user_id: int, subprotocol: str) -> None:
+        await websocket.accept(subprotocol=subprotocol)
+        self._sockets[user_id].add(websocket)
 
-    def disconnect(self, websocket: WebSocket) -> None:
-        self._sockets.discard(websocket)
+    def disconnect(self, websocket: WebSocket, user_id: int) -> None:
+        sockets = self._sockets.get(user_id)
+        if sockets is not None:
+            sockets.discard(websocket)
+            if not sockets:
+                del self._sockets[user_id]
 
     @property
     def connection_count(self) -> int:
-        return len(self._sockets)
+        return sum(len(sockets) for sockets in self._sockets.values())
 
-    async def broadcast(self, event: dict[str, Any]) -> None:
+    async def send(self, user_ids: Iterable[int | None], event: dict[str, Any]) -> None:
         payload = jsonable_encoder(event)
-        sockets = list(self._sockets)
+        targets = [
+            (user_id, socket)
+            for user_id in {uid for uid in user_ids if uid is not None}
+            for socket in list(self._sockets.get(user_id, ()))
+        ]
         results = await asyncio.gather(
-            *(socket.send_json(payload) for socket in sockets), return_exceptions=True
+            *(socket.send_json(payload) for _, socket in targets), return_exceptions=True
         )
-        for socket, result in zip(sockets, results, strict=True):
+        for (user_id, socket), result in zip(targets, results, strict=True):
             if isinstance(result, Exception):
                 logger.debug("dropping dead websocket: %s", result)
-                self._sockets.discard(socket)
+                self.disconnect(socket, user_id)
 
 
 # ── Event constructors: the complete /ws vocabulary ──

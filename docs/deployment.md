@@ -46,6 +46,8 @@ Environment variables:
 |---|---|---|
 | `DATABASE_URL` | the Neon connection string | **yes** |
 | `CORS_ORIGINS` | your Vercel URL, e.g. `https://dockiq.vercel.app` (comma-separate several) | no |
+| `JWT_SECRET` | a random 32+ character string — e.g. `python -c "import secrets; print(secrets.token_urlsafe(48))"`. **The API refuses to start without it** | **yes** |
+| `DEMO_PASSWORD` | the password every seeded demo account signs in with. Unset = accounts are created without passwords and cannot sign in | **yes** |
 | `NVIDIA_API_KEY` | optional | **yes** |
 
 `ENVIRONMENT=production` is baked into the image. On every boot the container runs

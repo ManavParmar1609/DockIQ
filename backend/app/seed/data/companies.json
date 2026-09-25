@@ -8,7 +8,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Double-wrap all pallets. No product overhang beyond pallet edge."
+      "special": "Double-wrap all pallets. No product overhang beyond pallet edge.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Verify all lot numbers. Reject if temp >5°F above threshold.",
@@ -26,7 +30,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Club-pack orientation: barcode facing scanner side. Tier sheets between layers."
+      "special": "Club-pack orientation: barcode facing scanner side. Tier sheets between layers.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Count every case. No tolerance on Bulkhaven brand items.",
@@ -44,7 +52,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "facing_out",
-      "special": "Stack by department: dairy together, frozen together. No mixing categories on same pallet."
+      "special": "Stack by department: dairy together, frozen together. No mixing categories on same pallet.",
+      "floor_pattern": "straight",
+      "sequence": "by_category",
+      "segregate_categories": true,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Verify expiry dates are minimum 14 days out.",
@@ -62,7 +74,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "All pallets must have Beacon Goods pallet tags. No handwritten labels."
+      "special": "All pallets must have Beacon Goods pallet tags. No handwritten labels.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Scan every case barcode. Manual entry not permitted.",
@@ -80,7 +96,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Display-ready pallets must not be re-stacked. Ship as received from vendor."
+      "special": "Display-ready pallets must not be re-stacked. Ship as received from vendor.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Match ASN (Advance Ship Notice) to physical count.",
@@ -98,7 +118,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Use LMF-specific slip sheets (brown kraft). No substitutes."
+      "special": "Use LMF-specific slip sheets (brown kraft). No substitutes.",
+      "floor_pattern": "straight",
+      "sequence": "by_category",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Verify all lot numbers match purchase order.",
@@ -116,7 +140,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "facing_out",
-      "special": "Canned goods: labels facing same direction for shelf-ready display."
+      "special": "Canned goods: labels facing same direction for shelf-ready display.",
+      "floor_pattern": "straight",
+      "sequence": "by_category",
+      "segregate_categories": true,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Inspect for pest evidence on all produce pallets.",
@@ -134,7 +162,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Organic certification docs must accompany every organic pallet."
+      "special": "Organic certification docs must accompany every organic pallet.",
+      "floor_pattern": "straight",
+      "sequence": "by_category",
+      "segregate_categories": true,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Verify organic certification on all organic products.",
@@ -152,7 +184,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "facing_out",
-      "special": "Use Harborway Markets-branded pallet tags for all outbound shipments."
+      "special": "Use Harborway Markets-branded pallet tags for all outbound shipments.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Check for recalled product against active recall list.",
@@ -170,7 +206,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Pallets must be GMA standard (48x40). No oversized pallets."
+      "special": "Pallets must be GMA standard (48x40). No oversized pallets.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": 22
     },
     "sop_rules": {
       "receiving": "Verify vendor code matches approved vendor list.",
@@ -188,7 +228,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "any",
-      "special": "Display-ready packaging preferred. Minimize waste packaging."
+      "special": "Display-ready packaging preferred. Minimize waste packaging.",
+      "floor_pattern": "turned",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Standard receiving procedures apply.",
@@ -206,7 +250,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Private label products must be handled separately from vendor brands."
+      "special": "Private label products must be handled separately from vendor brands.",
+      "floor_pattern": "straight",
+      "sequence": "by_category",
+      "segregate_categories": true,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Verify all items are Captain's Pantry private label.",
@@ -224,7 +272,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "facing_out",
-      "special": "Standard Midwest distribution palletization rules."
+      "special": "Standard Midwest distribution palletization rules.",
+      "floor_pattern": "pinwheel",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Standard receiving procedures.",
@@ -242,7 +294,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "any",
-      "special": "Bulk items can be floor-stacked if pallet is unavailable."
+      "special": "Bulk items can be floor-stacked if pallet is unavailable.",
+      "floor_pattern": "turned",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Standard procedures. Valufresh accepts minor cosmetic damage.",
@@ -260,7 +316,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "facing_out",
-      "special": "Use Piedmont Foods delivery window scheduling. No early arrivals."
+      "special": "Use Piedmont Foods delivery window scheduling. No early arrivals.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Must arrive within scheduled delivery window.",
@@ -278,7 +338,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Premium presentation required. No damaged outer packaging."
+      "special": "Premium presentation required. No damaged outer packaging.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Higher quality standards than typical Tier 3.",
@@ -296,7 +360,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": true,
       "label_direction": "facing_out",
-      "special": "Club-size packaging. Verify multi-pack counts."
+      "special": "Club-size packaging. Verify multi-pack counts.",
+      "floor_pattern": "straight",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Verify inner pack count on multi-packs.",
@@ -314,7 +382,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "facing_out",
-      "special": "Foodservice packaging. Cases must withstand restaurant handling."
+      "special": "Foodservice packaging. Cases must withstand restaurant handling.",
+      "floor_pattern": "straight",
+      "sequence": "by_category",
+      "segregate_categories": true,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Verify HACCP documentation accompanies all shipments.",
@@ -332,7 +404,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "facing_out",
-      "special": "Route-optimized loading: first stop loaded last (nose of trailer)."
+      "special": "Route-optimized loading: first stop loaded last (nose of trailer).",
+      "floor_pattern": "pinwheel",
+      "sequence": "reverse_stop_order",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Standard foodservice receiving procedures.",
@@ -350,7 +426,11 @@
       "weight_placement": "heavy_bottom",
       "slip_sheets": false,
       "label_direction": "any",
-      "special": "Convenience store distribution. Mixed category pallets OK."
+      "special": "Convenience store distribution. Mixed category pallets OK.",
+      "floor_pattern": "pinwheel",
+      "sequence": "heaviest_to_nose",
+      "segregate_categories": false,
+      "max_pallets": null
     },
     "sop_rules": {
       "receiving": "Standard procedures. High volume, fast turnaround expected.",

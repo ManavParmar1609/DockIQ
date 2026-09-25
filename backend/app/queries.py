@@ -16,6 +16,7 @@ from app.models import (
     Company,
     DockDoor,
     Issue,
+    IssuePhoto,
     KnowledgeBaseEntry,
     Order,
     OrderItem,
@@ -28,6 +29,7 @@ from app.models import (
 def issue_select() -> Select[Any]:
     operator = aliased(User)
     supervisor = aliased(User)
+    photo_count = select(func.count(IssuePhoto.id)).where(IssuePhoto.issue_id == Issue.id).scalar_subquery()
     return (
         select(
             *Issue.__table__.c,
@@ -38,6 +40,7 @@ def issue_select() -> Select[Any]:
             Product.name.label("product_name"),
             Product.sku.label("product_sku"),
             Carrier.name.label("carrier_name"),
+            photo_count.label("photo_count"),
         )
         .outerjoin(operator, Issue.operator_id == operator.id)
         .outerjoin(supervisor, Issue.supervisor_id == supervisor.id)
@@ -73,6 +76,7 @@ def order_items_select(order_id: int) -> Select[Any]:
         select(
             *OrderItem.__table__.c,
             Product.sku,
+            Product.gtin,
             Product.name.label("product_name"),
             Product.category,
             Product.weight_per_case,

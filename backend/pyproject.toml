@@ -9,7 +9,9 @@ dependencies = [
     "asyncpg>=0.31.0",
     "fastapi[standard]>=0.141.1",
     "openai>=3.19.2",
+    "pwdlib[argon2]>=0.3.1",
     "pydantic-settings>=2.15.0",
+    "pyjwt>=2.15.0",
     "sqlalchemy[asyncio]>=2.1.1",
 ]
 
@@ -33,7 +35,6 @@ prepend_sys_path = ["."]
 [tool.ruff]
 line-length = 110
 target-version = "py312"
-extend-exclude = ["migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "ASYNC", "S", "SIM", "RUF", "PT", "DTZ"]

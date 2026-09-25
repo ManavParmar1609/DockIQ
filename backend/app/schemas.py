@@ -15,6 +15,7 @@ from app.domain.enums import (
     ProductCategory,
     RequestStatus,
     Role,
+    ScanResult,
     Severity,
 )
 
@@ -29,8 +30,8 @@ class Schema(BaseModel):
 class IssueCreate(BaseModel):
     order_id: int | None = None
     dock_door_id: int
-    operator_id: int
     issue_type: str = Field(min_length=1, max_length=64)
+    issue_subtype: str | None = Field(default=None, max_length=120)
     description: str | None = ""
     quick_tags: list[str] = []
     product_id: int | None = None
@@ -46,11 +47,9 @@ class IssueCreate(BaseModel):
 class IssueSelfResolve(BaseModel):
     resolution_type: str = Field(min_length=1, max_length=64)
     resolution_notes: str | None = ""
-    resolved_by: str = "worker"
 
 
 class IssueSupervisorResolve(BaseModel):
-    supervisor_id: int
     resolution_type: str = Field(min_length=1, max_length=64)
     supervisor_notes: str | None = ""
 
@@ -58,7 +57,6 @@ class IssueSupervisorResolve(BaseModel):
 class InspectionCreate(BaseModel):
     order_id: int | None = None
     dock_door_id: int
-    operator_id: int
     seal_condition: str
     interior_cleanliness: str
     interior_temperature: float | None = None
@@ -67,7 +65,6 @@ class InspectionCreate(BaseModel):
 
 
 class ChatCreate(BaseModel):
-    user_id: int
     message: str = Field(min_length=1, max_length=2000)
     company_id: int | None = None
     product_category: str | None = None
@@ -75,18 +72,15 @@ class ChatCreate(BaseModel):
 
 class QuickRequestCreate(BaseModel):
     dock_door_id: int | None = None
-    operator_id: int
     request_type: str = Field(min_length=1, max_length=64)
     details: str | None = ""
 
 
 class BroadcastCreate(BaseModel):
-    supervisor_id: int
     message: str = Field(min_length=1, max_length=1000)
 
 
 class ShiftHandoffCreate(BaseModel):
-    supervisor_id: int
     shift: str = Field(min_length=1, max_length=16)
     notes: str = Field(min_length=1)
 
@@ -97,9 +91,12 @@ class OrderItemUpdate(BaseModel):
 
 
 class OrderComplete(BaseModel):
-    order_id: int
     seal_number: str | None = None
     notes: str | None = ""
+
+
+class ScanCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
 
 
 # ── Responses ──
@@ -117,6 +114,26 @@ class UserOut(Schema):
     shift: str
     zone: str | None
     experience_level: str | None
+    supervisor_id: int | None
+
+
+class MeOut(UserOut):
+    supervisor_name: str | None
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"  # noqa: S105 — the OAuth2 scheme name, not a secret
+    expires_in: int
+    user: MeOut
+
+
+class DemoAccount(BaseModel):
+    employee_id: str
+    name: str
+    role: Role
+    zone: str | None
+    supervisor_name: str | None
 
 
 class CompanyOut(Schema):
@@ -132,6 +149,7 @@ class ProductOut(Schema):
     id: int
     company_id: int
     sku: str
+    gtin: str | None
     name: str
     category: ProductCategory
     weight_per_case: float
@@ -175,6 +193,7 @@ class OrderItemOut(Schema):
     actual_quantity: int
     verified: bool
     sku: str
+    gtin: str | None
     product_name: str
     category: ProductCategory
     weight_per_case: float
@@ -222,6 +241,7 @@ class IssueOut(Schema):
     operator_id: int | None
     supervisor_id: int | None
     issue_type: str
+    issue_subtype: str | None
     description: str | None
     quick_tags: list[str]
     severity: Severity
@@ -229,6 +249,7 @@ class IssueOut(Schema):
     severity_reason: str | None
     status: IssueStatus
     ai_resolution: dict[str, Any] | None
+    recurring_patterns: list[dict[str, Any]]
     ai_confidence: str | None
     resolution_type: str | None
     resolution_notes: str | None
@@ -248,6 +269,7 @@ class IssueOut(Schema):
     product_name: str | None
     product_sku: str | None
     carrier_name: str | None
+    photo_count: int
 
 
 class RecurringPattern(BaseModel):
@@ -269,6 +291,80 @@ class IssueCreated(BaseModel):
 class InspectionResult(BaseModel):
     id: int
     overall_pass: bool
+    temperature_limit: float
+    failed_checks: list[str]
+
+
+class ScanOut(BaseModel):
+    result: ScanResult
+    code: str
+    scanned_sku: str | None
+    scanned_product_name: str | None
+    expected_skus: list[str]
+    item: "OrderItemOut | None"
+
+
+class PlacedPalletOut(BaseModel):
+    load_sequence: int
+    row: int
+    side: str
+    level: int
+    orientation: str
+    sku: str
+    product_name: str
+    category: str
+    cases: int
+    weight_lbs: float
+    partial: bool
+    stop: int
+
+
+class LoadPlanOut(BaseModel):
+    order_id: int
+    company_name: str
+    floor_pattern: str
+    sequence: str
+    max_height: int
+    heavy_bottom: bool
+    slip_sheets: bool
+    label_direction: str
+    segregate_categories: bool
+    max_pallets: int | None
+    special: str
+    rows: int
+    floor_positions: int
+    stacks_used: int
+    total_pallets: int
+    total_weight_lbs: float
+    checklist: list[str]
+    warnings: list[str]
+    pallets: list[PlacedPalletOut]
+
+
+class PhotoOut(Schema):
+    id: int
+    issue_id: int
+    uploaded_by: int
+    content_type: str
+    size_bytes: int
+    created_at: datetime
+
+
+class IssueTypeOut(BaseModel):
+    name: str
+    group: str
+    icon: str
+    weight: int
+    subtypes: list[str]
+    quality_relevant: bool
+    floor: dict[str, Severity]
+
+
+class TaxonomyOut(BaseModel):
+    issue_types: list[IssueTypeOut]
+    operator_resolutions: list[str]
+    supervisor_decisions: list[str]
+    request_types: list[str]
 
 
 class ChatReply(BaseModel):

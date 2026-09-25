@@ -7,6 +7,7 @@ No model output may feed into it.
 from dataclasses import dataclass
 
 from app.domain.enums import Severity
+from app.domain.taxonomy import PEOPLE_RISK_TYPES, severity_floor
 
 ISSUE_TYPE_WEIGHTS: dict[str, int] = {
     "Temperature Deviation": 5,
@@ -15,10 +16,12 @@ ISSUE_TYPE_WEIGHTS: dict[str, int] = {
     "Seal/Trailer Condition": 4,
     "SKU Mismatch": 3,
     "Lot/Expiry Issue": 3,
-    "Count Shortage": 2,
+    "Count Discrepancy": 2,
     "Paperwork Mismatch": 2,
     "Barcode Issue": 1,
     "Equipment Failure": 2,
+    "Safety Incident": 5,
+    "WMS/System Issue": 3,
 }
 DEFAULT_ISSUE_WEIGHT = 2
 
@@ -35,12 +38,22 @@ CUSTOMER_TIER_MULTIPLIER: dict[int, float] = {
     3: 1.0,
 }
 
+DWELL_LIMIT_MINUTES = 30
+
 # Lower bound of each band, highest first.
 SEVERITY_BANDS: tuple[tuple[float, Severity], ...] = (
     (18, Severity.CRITICAL),
     (12, Severity.HIGH),
     (6, Severity.MEDIUM),
 )
+
+
+SEVERITY_RANK: dict[Severity, int] = {
+    Severity.LOW: 0,
+    Severity.MEDIUM: 1,
+    Severity.HIGH: 2,
+    Severity.CRITICAL: 3,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,18 +79,24 @@ def classify_severity(
     count_expected: int | None = None,
     count_actual: int | None = None,
     is_allergen: bool = False,
-    trailer_dwell_minutes: int = 0,
+    trailer_dwell_minutes: int | None = None,
+    issue_subtype: str | None = None,
 ) -> SeverityResult:
     base_weight = ISSUE_TYPE_WEIGHTS.get(issue_type, DEFAULT_ISSUE_WEIGHT)
-    product_multiplier = PRODUCT_RISK.get(product_category, 1.0) if product_category else 1.0
-    tier_multiplier = CUSTOMER_TIER_MULTIPLIER.get(customer_tier, 1.0) if customer_tier else 1.0
-
-    score = base_weight * product_multiplier * tier_multiplier
     reasons = [f"Issue type '{issue_type}' (weight: {base_weight})"]
-    if product_category:
-        reasons.append(f"Product category '{product_category}' (risk: ×{product_multiplier})")
-    if customer_tier:
-        reasons.append(f"Customer Tier {customer_tier} (×{tier_multiplier})")
+
+    if issue_type in PEOPLE_RISK_TYPES:
+        # The risk is to people: product and customer multipliers do not apply.
+        product_multiplier = tier_multiplier = 1.0
+        reasons.append("People risk — product and customer multipliers not applied")
+    else:
+        product_multiplier = PRODUCT_RISK.get(product_category, 1.0) if product_category else 1.0
+        tier_multiplier = CUSTOMER_TIER_MULTIPLIER.get(customer_tier, 1.0) if customer_tier else 1.0
+        if product_category:
+            reasons.append(f"Product category '{product_category}' (risk: ×{product_multiplier})")
+        if customer_tier:
+            reasons.append(f"Customer Tier {customer_tier} (×{tier_multiplier})")
+    score = base_weight * product_multiplier * tier_multiplier
 
     if temp_reading is not None and temp_threshold_max is not None:
         delta = temp_reading - temp_threshold_max
@@ -91,8 +110,8 @@ def classify_severity(
             score += 1
             reasons.append(f"Temperature delta {delta:.1f}°F above threshold (+1)")
 
-    # KNOWN DEFECT (roadmap 2C): truthiness skips count_actual == 0, a total non-delivery.
-    if count_expected and count_actual:
+    # Shortages only: an overage is recorded but does not raise severity (business-rules §1.4).
+    if count_expected is not None and count_actual is not None and count_expected > 0:
         shortage_pct = (count_expected - count_actual) / count_expected * 100
         if shortage_pct > 5:
             score += 3
@@ -105,10 +124,16 @@ def classify_severity(
         score += 2
         reasons.append("Allergen-sensitive product (+2)")
 
-    if trailer_dwell_minutes > 30:
+    if trailer_dwell_minutes is not None and trailer_dwell_minutes > DWELL_LIMIT_MINUTES:
         score += 2
-        reasons.append(f"Trailer dwell time {trailer_dwell_minutes} min > 30 min (+2)")
+        reasons.append(f"Trailer dwell time {trailer_dwell_minutes} min > {DWELL_LIMIT_MINUTES} min (+2)")
 
     severity = band_for(score)
+    floor = severity_floor(issue_type, issue_subtype)
+    if floor is not None and SEVERITY_RANK[floor] > SEVERITY_RANK[severity]:
+        severity = floor
+        label = f"'{issue_subtype}'" if issue_subtype else f"'{issue_type}'"
+        reasons.append(f"Floor: {label} is never below {floor.value.upper()}")
+
     reason = f"Score: {score:.1f} → {severity.value.upper()}. Factors: " + "; ".join(reasons)
     return SeverityResult(severity=severity, score=round(score, 1), reason=reason)

@@ -1,15 +1,32 @@
 """Floor operations: trailer inspections, quick requests, broadcasts, shift handoffs."""
 
-from fastapi import APIRouter
-from sqlalchemy import select
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+from fastapi import status as http
+from sqlalchemy import Select, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm.util import AliasedClass
 
 from app import realtime
-from app.api.deps import RealtimeDep, SessionDep, get_or_404
+from app.api.access import request_scope, supervisor_of, team_audience, visible_order
+from app.api.deps import CurrentUser, Operator, RealtimeDep, SessionDep, Supervisor, get_or_404
 from app.db import utcnow
 from app.domain.dock import DockEvent, transition
-from app.domain.enums import RequestStatus
-from app.domain.inspection import inspection_passes
-from app.models import Broadcast, DockDoor, QuickRequest, ShiftHandoff, TrailerInspection, User
+from app.domain.enums import RequestStatus, Role
+from app.domain.inspection import evaluate_inspection, interior_temperature_limit
+from app.domain.taxonomy import REQUEST_TYPES
+from app.models import (
+    Broadcast,
+    DockDoor,
+    OrderItem,
+    Product,
+    QuickRequest,
+    ShiftHandoff,
+    TrailerInspection,
+    User,
+)
 from app.queries import request_select
 from app.schemas import (
     BroadcastCreate,
@@ -29,22 +46,36 @@ router = APIRouter(tags=["floor"])
 
 
 @router.post("/inspections")
-async def create_inspection(body: InspectionCreate, session: SessionDep) -> InspectionResult:
+async def create_inspection(body: InspectionCreate, user: Operator, session: SessionDep) -> InspectionResult:
     dock = await get_or_404(session, DockDoor, body.dock_door_id, "Dock")
-    await get_or_404(session, User, body.operator_id, "Operator")
-    passed = inspection_passes(
-        body.seal_condition, body.interior_cleanliness, body.visible_damage, body.interior_temperature
+    order_id = body.order_id if body.order_id is not None else dock.current_order_id
+    limits: list[float | None] = []
+    if order_id is not None:
+        await visible_order(session, user, order_id)
+        limits = list(
+            await session.scalars(
+                select(Product.temp_max)
+                .join(OrderItem, OrderItem.product_id == Product.id)
+                .where(OrderItem.order_id == order_id)
+            )
+        )
+    outcome = evaluate_inspection(
+        body.seal_condition,
+        body.interior_cleanliness,
+        body.visible_damage,
+        body.interior_temperature,
+        interior_temperature_limit(limits),
     )
     now = utcnow()
     inspection = TrailerInspection(
-        order_id=body.order_id,
+        order_id=order_id,
         dock_door_id=dock.id,
-        operator_id=body.operator_id,
+        operator_id=user.id,
         seal_condition=body.seal_condition,
         interior_cleanliness=body.interior_cleanliness,
         interior_temperature=body.interior_temperature,
         visible_damage=body.visible_damage,
-        overall_pass=passed,
+        overall_pass=outcome.passed,
         notes=body.notes,
         created_at=now,
     )
@@ -54,12 +85,19 @@ async def create_inspection(body: InspectionCreate, session: SessionDep) -> Insp
     )
     dock.last_activity_at = now
     await session.commit()
-    return InspectionResult(id=inspection.id, overall_pass=passed)
+    return InspectionResult(
+        id=inspection.id,
+        overall_pass=outcome.passed,
+        temperature_limit=outcome.temperature_limit,
+        failed_checks=list(outcome.failed_checks),
+    )
 
 
 @router.get("/requests")
-async def list_requests(session: SessionDep, status: RequestStatus | None = None) -> list[QuickRequestOut]:
-    stmt = request_select()
+async def list_requests(
+    user: CurrentUser, session: SessionDep, status: RequestStatus | None = None
+) -> list[QuickRequestOut]:
+    stmt = request_select().where(request_scope(user))
     if status is not None:
         stmt = stmt.where(QuickRequest.status == status)
     return [QuickRequestOut.model_validate(dict(row._mapping)) for row in await session.execute(stmt)]
@@ -67,14 +105,17 @@ async def list_requests(session: SessionDep, status: RequestStatus | None = None
 
 @router.post("/requests")
 async def create_request(
-    body: QuickRequestCreate, session: SessionDep, events: RealtimeDep
+    body: QuickRequestCreate, user: Operator, session: SessionDep, events: RealtimeDep
 ) -> QuickRequestCreated:
-    await get_or_404(session, User, body.operator_id, "Operator")
+    if body.request_type not in REQUEST_TYPES:
+        raise HTTPException(
+            http.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown request type '{body.request_type}'"
+        )
     if body.dock_door_id is not None:
         await get_or_404(session, DockDoor, body.dock_door_id, "Dock")
     request = QuickRequest(
         dock_door_id=body.dock_door_id,
-        operator_id=body.operator_id,
+        operator_id=user.id,
         request_type=body.request_type,
         details=body.details,
         status=RequestStatus.PENDING,
@@ -82,58 +123,82 @@ async def create_request(
     )
     session.add(request)
     await session.commit()
-    await events.broadcast(realtime.new_request(request.id, request.request_type))
+    await events.send(
+        {user.id, await supervisor_of(session, user.id)},
+        realtime.new_request(request.id, request.request_type),
+    )
     return QuickRequestCreated(id=request.id, status=request.status)
 
 
 @router.put("/requests/{request_id}/fulfill")
-async def fulfill_request(request_id: int, session: SessionDep) -> StatusOut:
-    request = await get_or_404(session, QuickRequest, request_id, "Request")
+async def fulfill_request(request_id: int, user: Supervisor, session: SessionDep) -> StatusOut:
+    request = await session.scalar(
+        select(QuickRequest).where(QuickRequest.id == request_id, request_scope(user))
+    )
+    if request is None:
+        raise HTTPException(http.HTTP_404_NOT_FOUND, "Request not found")
     request.status = RequestStatus.FULFILLED
     request.fulfilled_at = utcnow()
     await session.commit()
     return StatusOut(status=RequestStatus.FULFILLED.value)
 
 
-@router.get("/broadcasts")
-async def list_broadcasts(session: SessionDep) -> list[BroadcastOut]:
-    stmt = (
-        select(*Broadcast.__table__.c, User.name.label("supervisor_name"))
-        .join(User, Broadcast.supervisor_id == User.id)
-        .order_by(Broadcast.created_at.desc())
-        .limit(20)
+def _author_select(
+    model: type[Broadcast] | type[ShiftHandoff], limit: int
+) -> tuple[Select[Any], AliasedClass[User]]:
+    author = aliased(User)
+    return (
+        select(*model.__table__.c, author.name.label("supervisor_name"))
+        .join(author, model.supervisor_id == author.id)
+        .order_by(model.created_at.desc())
+        .limit(limit),
+        author,
     )
+
+
+@router.get("/broadcasts")
+async def list_broadcasts(user: CurrentUser, session: SessionDep) -> list[BroadcastOut]:
+    """Operators hear their own supervisor; supervisors see their own; quality sees all."""
+    stmt, _ = _author_select(Broadcast, 20)
+    if user.role is Role.OPERATOR:
+        stmt = stmt.where(Broadcast.supervisor_id == user.supervisor_id)
+    elif user.role is Role.SUPERVISOR:
+        stmt = stmt.where(Broadcast.supervisor_id == user.id)
     return [BroadcastOut.model_validate(dict(row._mapping)) for row in await session.execute(stmt)]
 
 
 @router.post("/broadcasts")
-async def create_broadcast(body: BroadcastCreate, session: SessionDep, events: RealtimeDep) -> Created:
-    await get_or_404(session, User, body.supervisor_id, "Supervisor")
-    broadcast = Broadcast(supervisor_id=body.supervisor_id, message=body.message, created_at=utcnow())
+async def create_broadcast(
+    body: BroadcastCreate, user: Supervisor, session: SessionDep, events: RealtimeDep
+) -> Created:
+    broadcast = Broadcast(supervisor_id=user.id, message=body.message, created_at=utcnow())
     session.add(broadcast)
     await session.commit()
-    await events.broadcast(realtime.broadcast_message(broadcast.id, broadcast.message))
+    await events.send(
+        await team_audience(session, user.id), realtime.broadcast_message(broadcast.id, broadcast.message)
+    )
     return Created(id=broadcast.id)
 
 
+async def _zone_of(session: AsyncSession, user: User) -> str | None:
+    """A handoff belongs to a zone: the supervisor's zone, or an operator's supervisor's zone."""
+    if user.role is Role.SUPERVISOR:
+        return user.zone
+    if user.supervisor_id is None:
+        return None
+    return await session.scalar(select(User.zone).where(User.id == user.supervisor_id))
+
+
 @router.get("/shift-handoffs")
-async def list_handoffs(session: SessionDep) -> list[ShiftHandoffOut]:
-    stmt = (
-        select(*ShiftHandoff.__table__.c, User.name.label("supervisor_name"))
-        .join(User, ShiftHandoff.supervisor_id == User.id)
-        .order_by(ShiftHandoff.created_at.desc())
-        .limit(10)
-    )
+async def list_handoffs(user: CurrentUser, session: SessionDep) -> list[ShiftHandoffOut]:
+    stmt, author = _author_select(ShiftHandoff, 10)
+    if user.role is not Role.QUALITY:
+        stmt = stmt.where(author.zone == await _zone_of(session, user))
     return [ShiftHandoffOut.model_validate(dict(row._mapping)) for row in await session.execute(stmt)]
 
 
 @router.post("/shift-handoffs")
-async def create_handoff(body: ShiftHandoffCreate, session: SessionDep) -> StatusOut:
-    await get_or_404(session, User, body.supervisor_id, "Supervisor")
-    session.add(
-        ShiftHandoff(
-            supervisor_id=body.supervisor_id, shift=body.shift, notes=body.notes, created_at=utcnow()
-        )
-    )
+async def create_handoff(body: ShiftHandoffCreate, user: Supervisor, session: SessionDep) -> StatusOut:
+    session.add(ShiftHandoff(supervisor_id=user.id, shift=body.shift, notes=body.notes, created_at=utcnow()))
     await session.commit()
     return StatusOut(status="created")

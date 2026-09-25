@@ -5,7 +5,8 @@
     "employee_id": "OP-001",
     "shift": "day",
     "zone": null,
-    "experience_level": "senior"
+    "experience_level": "senior",
+    "supervisor": "SUP-001"
   },
   {
     "name": "Lisa Chen",
@@ -13,7 +14,8 @@
     "employee_id": "OP-002",
     "shift": "day",
     "zone": null,
-    "experience_level": "experienced"
+    "experience_level": "experienced",
+    "supervisor": "SUP-001"
   },
   {
     "name": "Carlos Rivera",
@@ -21,7 +23,8 @@
     "employee_id": "OP-003",
     "shift": "day",
     "zone": null,
-    "experience_level": "new"
+    "experience_level": "new",
+    "supervisor": "SUP-002"
   },
   {
     "name": "Jay Patel",
@@ -29,7 +32,8 @@
     "employee_id": "OP-004",
     "shift": "day",
     "zone": null,
-    "experience_level": "experienced"
+    "experience_level": "experienced",
+    "supervisor": "SUP-002"
   },
   {
     "name": "Tanya Brooks",
@@ -37,7 +41,8 @@
     "employee_id": "OP-005",
     "shift": "day",
     "zone": null,
-    "experience_level": "senior"
+    "experience_level": "senior",
+    "supervisor": "SUP-001"
   },
   {
     "name": "Derek Williams",
@@ -45,7 +50,8 @@
     "employee_id": "OP-006",
     "shift": "day",
     "zone": null,
-    "experience_level": "experienced"
+    "experience_level": "experienced",
+    "supervisor": "SUP-002"
   },
   {
     "name": "Maria Santos",
@@ -53,7 +59,8 @@
     "employee_id": "OP-007",
     "shift": "day",
     "zone": null,
-    "experience_level": "new"
+    "experience_level": "new",
+    "supervisor": "SUP-003"
   },
   {
     "name": "Ryan O'Brien",
@@ -61,7 +68,8 @@
     "employee_id": "OP-008",
     "shift": "day",
     "zone": null,
-    "experience_level": "experienced"
+    "experience_level": "experienced",
+    "supervisor": "SUP-003"
   },
   {
     "name": "Sarah Mitchell",
@@ -69,7 +77,8 @@
     "employee_id": "SUP-001",
     "shift": "day",
     "zone": "Zone A",
-    "experience_level": null
+    "experience_level": null,
+    "supervisor": null
   },
   {
     "name": "Tom Bradley",
@@ -77,7 +86,8 @@
     "employee_id": "SUP-002",
     "shift": "day",
     "zone": "Zone B",
-    "experience_level": null
+    "experience_level": null,
+    "supervisor": null
   },
   {
     "name": "Angela Foster",
@@ -85,6 +95,16 @@
     "employee_id": "SUP-003",
     "shift": "day",
     "zone": "Zone C",
-    "experience_level": null
+    "experience_level": null,
+    "supervisor": null
+  },
+  {
+    "name": "Dana Okafor",
+    "role": "quality",
+    "employee_id": "QA-001",
+    "shift": "day",
+    "zone": null,
+    "experience_level": null,
+    "supervisor": null
   }
 ]

@@ -24,10 +24,12 @@ def test_issue_type_weights_are_pinned() -> None:
         "Seal/Trailer Condition": 4,
         "SKU Mismatch": 3,
         "Lot/Expiry Issue": 3,
-        "Count Shortage": 2,
+        "Count Discrepancy": 2,
         "Paperwork Mismatch": 2,
         "Barcode Issue": 1,
         "Equipment Failure": 2,
+        "Safety Incident": 5,
+        "WMS/System Issue": 3,
     }
 
 
@@ -87,19 +89,60 @@ def test_count_shortage_modifier_steps(actual: int, added: int) -> None:
     assert result.score == 1 + added
 
 
-@pytest.mark.xfail(strict=True, reason="KNOWN DEFECT roadmap 2C: count_actual=0 is falsy; fixed in Phase 2")
 def test_total_non_delivery_scores_shortage_modifier() -> None:
-    result = classify_severity("Count Shortage", count_expected=100, count_actual=0)
+    # Fixed in Phase 2: 0 received is the worst shortage, not "no count given".
+    result = classify_severity("Count Discrepancy", count_expected=100, count_actual=0)
     assert result.score == 2 + 3
+
+
+def test_overage_does_not_raise_severity() -> None:
+    assert classify_severity("Count Discrepancy", count_expected=100, count_actual=120).score == 2
+
+
+def test_zero_expected_does_not_divide_by_zero() -> None:
+    assert classify_severity("Count Discrepancy", count_expected=0, count_actual=5).score == 2
 
 
 def test_allergen_adds_two() -> None:
     assert classify_severity("Barcode Issue", is_allergen=True).score == 3
 
 
-@pytest.mark.parametrize(("minutes", "added"), [(30, 0), (31, 2)])
-def test_trailer_dwell_modifier(minutes: int, added: int) -> None:
+@pytest.mark.parametrize(("minutes", "added"), [(None, 0), (30, 0), (31, 2)])
+def test_trailer_dwell_modifier(minutes: int | None, added: int) -> None:
     assert classify_severity("Barcode Issue", trailer_dwell_minutes=minutes).score == 1 + added
+
+
+# ── Phase 2: people risk and severity floors — see docs/architecture/business-rules.md §1.8 ──
+
+
+def test_safety_ignores_product_and_customer_multipliers() -> None:
+    result = classify_severity("Safety Incident", product_category="Frozen", customer_tier=1)
+    assert result.score == 5
+    assert "People risk" in result.reason
+
+
+@pytest.mark.parametrize(
+    ("subtype", "expected"),
+    [
+        ("Employee injury", Severity.CRITICAL),
+        ("Near miss", Severity.HIGH),
+        ("Pedestrian in loading area", Severity.HIGH),
+        ("Unsafe trailer condition", Severity.HIGH),
+        ("Product spill", Severity.MEDIUM),
+        (None, Severity.MEDIUM),
+    ],
+)
+def test_safety_severity_floors(subtype: str | None, expected: Severity) -> None:
+    assert classify_severity("Safety Incident", issue_subtype=subtype).severity == expected
+
+
+def test_a_floor_never_lowers_a_higher_score() -> None:
+    result = classify_severity(
+        "Safety Incident", issue_subtype="Product spill", trailer_dwell_minutes=60, is_allergen=True
+    )
+    assert result.score == 9  # 5 + 2 dwell + 2 allergen
+    assert result.severity == Severity.MEDIUM
+    assert "Floor" not in result.reason
 
 
 def test_modifiers_stack_after_multiplication() -> None:

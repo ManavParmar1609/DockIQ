@@ -1,21 +1,19 @@
 # Security Rules
 
-## 1. The current state — deliberate, demo-only, written down so it is never mistaken for an oversight
+## 1. The current state *(Phase 2A)*
 
-**There is no security model.**
+**Real authentication, demo-grade credentials.**
 
-- No login endpoint. No password column. No sessions, no tokens, no JWT.
-- `Login.jsx` calls `GET /api/users?role=` and lets you **pick a person from a list**.
-  `AuthContext` stores that object in `sessionStorage` under `dockiq_user`.
-- Role gating is **client-side only**, in `App.jsx`. Anyone can call any endpoint directly.
-- Actor identity — `operator_id`, `supervisor_id`, `user_id` — is a **client-supplied integer in
-  the request body that nothing validates**. Nothing checks the ID exists, that the caller is that
-  person, or that it holds the claimed role. `PUT /api/issues/{id}/escalate` takes no body at all.
-- CORS is an explicit origin list from `CORS_ORIGINS` (`app/config.py`) — but with no auth, CORS is
-  not a security boundary; anything that can reach the API can call it.
-- `WS /ws` is unauthenticated, has no rooms or topics, and **fans every issue payload to every
-  connected socket**.
-- `api.js` sends no `Authorization` header and has no 401 handling.
+- `POST /api/auth/login` checks an employee ID and an **Argon2** password hash and issues a signed
+  **JWT** (12 h). Every other route requires it; identity is **always** `current_user`, never a body
+  field. Details: `docs/requirements/functional-specs.md §5`.
+- Authorization is role dependencies plus row scoping, all in `app/api/access.py`. Out-of-scope
+  records are 404, not 403.
+- `WS /ws` is authenticated (token as the second subprotocol) and **addressed**: each event goes to
+  the users it concerns, never to every socket.
+- **What is still demo-grade:** every seeded account shares `DEMO_PASSWORD`; the login screen lists
+  the demo accounts (never the password); tokens sit in `sessionStorage`; rate limits are
+  in-process; there is no password reset, lockout or refresh token.
 
 ## 2. The standing rule that follows
 
@@ -59,25 +57,25 @@ and in API payloads. Seeded names, companies and SKUs are fictional and stay tha
 A checklist, not a mandate for any current task. It doubles as the acceptance criteria for
 Phase 2A (auth + teams):
 
-- [ ] Real identity: hashed credentials (`pwdlib` Argon2 — `passlib` is unmaintained) or SSO. No plaintext, no shared logins.
-- [ ] A server-side `get_current_user` dependency. **Every client-supplied actor ID is replaced
+- [x] Real identity: hashed credentials (`pwdlib` Argon2). *(Phase 2A — demo accounts share `DEMO_PASSWORD`; a real pilot issues individual passwords or SSO)*
+- [x] A server-side `get_current_user` dependency. *(Phase 2A)* **Every client-supplied actor ID is replaced
       by `current_user.id`.**
-- [ ] `require_role(...)` on every supervisor-only route (`supervisor-resolve`, `broadcasts`,
+- [x] `require_role(...)` on every supervisor-only route *(Phase 2A — `Operator`/`Supervisor`/`Staff` deps + `access.py` scoping)* (`supervisor-resolve`, `broadcasts`,
       `shift-handoffs`, `requests/{id}/fulfill`, `analytics`).
 - [x] Explicit CORS origin list. *(Phase 1)*
-- [ ] Authenticated WebSocket handshake and per-team scoping — a supervisor receives their team's
+- [x] Authenticated WebSocket handshake and per-team scoping *(Phase 2A)* — a supervisor receives their team's
       events, not the whole facility's.
-- [ ] Rate limiting on `POST /api/chat`.
-- [ ] Audit-trail integrity on issue resolution — who resolved, when, and that it cannot be edited
+- [x] Rate limiting on `POST /api/chat` and login. *(Phase 2A, in-process — sufficient for one instance)*
+- [ ] *(partial — resolved issues are terminal in the API, `domain/lifecycle.py`; no tamper-evident log)* Audit-trail integrity on issue resolution — who resolved, when, and that it cannot be edited
       after the fact.
 - [x] Response models, so a DB column rename cannot leak a new field to the client. *(Phase 1)*
-- [ ] `frontend/vercel.json` and the API base URL configured so a missing `VITE_API_URL` **fails
+- [x] `frontend/vercel.json` and the API base URL configured so a missing `VITE_API_URL` **fails
       loudly** instead of returning the HTML shell with a 200.
 
 ## 6. Do not
 
-- Do not add a "temporary" auth bypass, hardcoded admin, or magic token. The demo already has no
-  auth; a fake one is worse because it looks like one.
+- Do not add a "temporary" auth bypass, hardcoded admin, or magic token. Every route goes through
+  `get_current_user`; a test hook that skips it is a production hole.
 - Do not log request bodies — they will contain whatever a user typed into chat.
 - Do not read `.env` files in this repo, or anywhere else, to "check the key". The settings deny
   it; the hook warns on it; the answer is always "set it in the environment."

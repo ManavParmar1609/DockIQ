@@ -2,11 +2,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import SecretStr, field_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+DEV_JWT_SECRET = "dev-only-insecure-jwt-secret-do-not-deploy"  # noqa: S105 — rejected in production
+DEV_DEMO_PASSWORD = "dockiq-demo"  # noqa: S105 — development default, documented in the README
 DEFAULT_SQLITE_URL = f"sqlite+aiosqlite:///{(BACKEND_DIR / 'dev.db').as_posix()}"
 
 
@@ -30,6 +32,16 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+
+    # Signs access tokens. Production must set a long random value (see docs/deployment.md).
+    jwt_secret: SecretStr = SecretStr(DEV_JWT_SECRET)
+    access_token_minutes: int = 12 * 60  # one shift
+
+    # Password given to seeded demo accounts. Development falls back to DEV_DEMO_PASSWORD;
+    # production seeds no passwords unless this is set.
+    demo_password: SecretStr | None = None
+    # Public list of demo accounts (names and employee IDs only) on the login screen.
+    demo_accounts_listed: bool = True
 
     nvidia_api_key: SecretStr | None = None
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
@@ -57,6 +69,20 @@ class Settings(BaseSettings):
                 query["ssl"] = sslmode
             url = url.set(query=query)
         return url.render_as_string(hide_password=False)
+
+    @model_validator(mode="after")
+    def _production_secrets(self) -> "Settings":
+        if self.environment == "production":
+            secret = self.jwt_secret.get_secret_value()
+            if secret == DEV_JWT_SECRET or len(secret) < 32:
+                raise ValueError("JWT_SECRET must be set to a random value of 32+ characters in production")
+        return self
+
+    @property
+    def effective_demo_password(self) -> str | None:
+        if self.demo_password is not None:
+            return self.demo_password.get_secret_value()
+        return None if self.environment == "production" else DEV_DEMO_PASSWORD
 
     @property
     def is_sqlite(self) -> bool:

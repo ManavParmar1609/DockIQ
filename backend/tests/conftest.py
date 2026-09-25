@@ -6,7 +6,7 @@ Locally that is a temp SQLite file. Set TEST_DATABASE_URL to run the same suite 
 
 import asyncio
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -17,6 +17,8 @@ from app.db import Database
 from app.main import create_app
 from app.migrate import downgrade, upgrade
 from app.seed import seed
+
+DEMO_PASSWORD = "test-password"
 
 
 def make_settings(database_url: str) -> Settings:
@@ -42,7 +44,7 @@ async def _prepare(settings: Settings, *, with_seed: bool) -> None:
         await upgrade(database.engine, configure_logging=False)
         if with_seed:
             async with database.sessionmaker() as session:
-                await seed(session)
+                await seed(session, demo_password=DEMO_PASSWORD)
     finally:
         await database.dispose()
 
@@ -63,3 +65,27 @@ def seeded_db(settings: Settings) -> Settings:
 def client(seeded_db: Settings) -> Iterator[TestClient]:
     with TestClient(create_app(seeded_db)) as test_client:
         yield test_client
+
+
+Headers = dict[str, str]
+
+
+@pytest.fixture
+def login(client: TestClient) -> Callable[[str], Headers]:
+    """`login("OP-001")` → Authorization headers for that seeded account (cached per test)."""
+    cache: dict[str, Headers] = {}
+
+    def _login(employee_id: str) -> Headers:
+        if employee_id not in cache:
+            response = client.post(
+                "/api/auth/login", data={"username": employee_id, "password": DEMO_PASSWORD}
+            )
+            assert response.status_code == 200, response.text
+            cache[employee_id] = {"Authorization": f"Bearer {response.json()['access_token']}"}
+        return cache[employee_id]
+
+    return _login
+
+
+def token_of(headers: Headers) -> str:
+    return headers["Authorization"].removeprefix("Bearer ")

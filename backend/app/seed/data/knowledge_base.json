@@ -307,7 +307,7 @@
     ]
   },
   {
-    "issue_type": "Count Shortage",
+    "issue_type": "Count Discrepancy",
     "scenario": "Count is within customer tolerance",
     "keywords": [
       "short",
@@ -337,7 +337,7 @@
     ]
   },
   {
-    "issue_type": "Count Shortage",
+    "issue_type": "Count Discrepancy",
     "scenario": "Count exceeds customer tolerance",
     "keywords": [
       "major shortage",
@@ -712,7 +712,7 @@
     ]
   },
   {
-    "issue_type": "Count Shortage",
+    "issue_type": "Count Discrepancy",
     "scenario": "Overage — received more than expected",
     "keywords": [
       "extra",
@@ -825,6 +825,427 @@
     "source_reference": "Cold Chain SOP 2.5 — Produce Temperature Standards",
     "applicable_categories": [
       "Produce"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Safety Incident",
+    "scenario": "Employee injury",
+    "keywords": [
+      "injury",
+      "injured",
+      "hurt",
+      "bleeding",
+      "fell",
+      "fall",
+      "cut",
+      "employee injury"
+    ],
+    "resolution_steps": [
+      "STOP all equipment in the area immediately",
+      "Do not move the injured person unless they are in further danger",
+      "Call for first aid — trained responders are listed at every dock station",
+      "Your supervisor and site safety have been notified automatically",
+      "Keep the area clear and preserve the scene for the incident report",
+      "Do not resume work at this dock until a supervisor releases it"
+    ],
+    "confidence": "high",
+    "source_reference": "Safety SOP 10.1 — Injury Response",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Safety Incident",
+    "scenario": "Near miss",
+    "keywords": [
+      "near miss",
+      "almost hit",
+      "close call",
+      "nearly",
+      "near-miss"
+    ],
+    "resolution_steps": [
+      "Stop and make the area safe",
+      "Nobody was hurt — but report it now while details are fresh",
+      "Describe what happened, where, and what equipment was involved",
+      "Your supervisor will review it before the next shift",
+      "Near misses are tracked: repeated ones at the same dock trigger a root-cause review"
+    ],
+    "confidence": "high",
+    "source_reference": "Safety SOP 10.2 — Near-Miss Reporting",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Safety Incident",
+    "scenario": "Slip hazard or product spill",
+    "keywords": [
+      "slip",
+      "ice",
+      "water",
+      "spill",
+      "wet floor",
+      "leak",
+      "slippery",
+      "product spill"
+    ],
+    "resolution_steps": [
+      "Stop forklift traffic through the affected area",
+      "Mark the hazard with a cone or wet-floor sign from your station",
+      "For product spills: check the SDS if it is a chemical or cleaning product",
+      "Request cleanup with the Quick Request button — 'Cleanup Needed'",
+      "Do not drive over ice or liquid on a dock plate",
+      "Resume only once the surface is dry and clear"
+    ],
+    "confidence": "high",
+    "source_reference": "Safety SOP 10.3 — Slip Hazards and Spills",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Safety Incident",
+    "scenario": "Pedestrian in the loading area",
+    "keywords": [
+      "pedestrian",
+      "person",
+      "walking",
+      "walker",
+      "someone in",
+      "people in"
+    ],
+    "resolution_steps": [
+      "STOP the forklift and sound the horn",
+      "Make eye contact and wait for the pedestrian to leave the travel path",
+      "Do not resume until the loading area is clear",
+      "Loading areas are forklift-only while a trailer is being worked",
+      "Report repeat incursions — they point to a signage or barrier problem"
+    ],
+    "confidence": "high",
+    "source_reference": "Safety SOP 10.4 — Pedestrian Separation",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Safety Incident",
+    "scenario": "Overweight, oversized or unstable load",
+    "keywords": [
+      "overweight",
+      "oversized",
+      "too heavy",
+      "clearance",
+      "unstable",
+      "shifted",
+      "stacking",
+      "leaning"
+    ],
+    "resolution_steps": [
+      "Do not lift or move a load that exceeds the forklift's rated capacity",
+      "Check the capacity plate on your forklift against the pallet weight",
+      "For oversized loads: confirm trailer door and ceiling clearance before entry",
+      "For shifted or leaning loads inside a trailer: do not enter — escalate",
+      "Re-palletising must be approved by your supervisor"
+    ],
+    "confidence": "high",
+    "source_reference": "Safety SOP 10.5 — Load Stability and Capacity",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Safety Incident",
+    "scenario": "Poor lighting or obstructed path",
+    "keywords": [
+      "dark",
+      "lighting",
+      "light out",
+      "obstructed",
+      "blocked",
+      "exit",
+      "aisle blocked"
+    ],
+    "resolution_steps": [
+      "Do not work inside a trailer you cannot see into clearly",
+      "Use the portable dock light at your station",
+      "Blocked emergency exits must be cleared immediately — this is a fire code requirement",
+      "Submit a Quick Request for maintenance if a fixture is out"
+    ],
+    "confidence": "medium",
+    "source_reference": "Safety SOP 10.6 — Visibility and Egress",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "WMS/System Issue",
+    "scenario": "WMS offline or not responding",
+    "keywords": [
+      "wms offline",
+      "wms down",
+      "not responding",
+      "system down",
+      "offline",
+      "cannot connect",
+      "timeout"
+    ],
+    "resolution_steps": [
+      "Check whether other scanners at nearby docks are also affected",
+      "If only your device: restart it and log back in",
+      "If the WMS is down facility-wide: switch to the paper load sheet at your dock station",
+      "Record every pallet on the paper sheet — it will be keyed in when the WMS returns",
+      "Do not guess pallet locations while the system is down",
+      "Your supervisor has been notified"
+    ],
+    "confidence": "high",
+    "source_reference": "Systems SOP 11.1 — WMS Outage Procedure",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "WMS/System Issue",
+    "scenario": "Pallet not found in WMS",
+    "keywords": [
+      "not found",
+      "pallet not found",
+      "no record",
+      "cannot find",
+      "missing in system",
+      "unknown pallet"
+    ],
+    "resolution_steps": [
+      "Re-scan the pallet label — check you scanned the pallet (SSCC) label, not a case",
+      "Search the WMS by SKU and lot as well as pallet ID",
+      "If still not found: set the pallet aside in the hold lane, do not load it",
+      "Supervisor will reconcile it with inventory control"
+    ],
+    "confidence": "medium",
+    "source_reference": "Systems SOP 11.2 — Unknown Pallet",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "WMS/System Issue",
+    "scenario": "Task missing or wrong assignment",
+    "keywords": [
+      "task missing",
+      "no task",
+      "wrong dock",
+      "wrong trailer",
+      "assignment",
+      "already loaded",
+      "marked loaded"
+    ],
+    "resolution_steps": [
+      "Confirm the trailer number on the dock matches the BOL",
+      "Refresh your task list — assignments sync every minute",
+      "If the WMS shows a different dock or trailer: do not start loading",
+      "Escalate so dispatch can correct the assignment"
+    ],
+    "confidence": "medium",
+    "source_reference": "Systems SOP 11.3 — Task and Dock Assignment",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "WMS/System Issue",
+    "scenario": "System inventory differs from physical",
+    "keywords": [
+      "inventory mismatch",
+      "system shows",
+      "different quantity",
+      "different location",
+      "cannot confirm",
+      "won't confirm"
+    ],
+    "resolution_steps": [
+      "Count the physical pallet carefully and note the real quantity",
+      "Do not force-confirm a pick that does not match",
+      "Record both the system and the physical count in the report",
+      "Inventory control will cycle-count the location"
+    ],
+    "confidence": "medium",
+    "source_reference": "Systems SOP 11.4 — Inventory Variance",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Count Discrepancy",
+    "scenario": "Mixed SKUs on one pallet",
+    "keywords": [
+      "mixed",
+      "mixed sku",
+      "two products",
+      "different products",
+      "mixed pallet"
+    ],
+    "resolution_steps": [
+      "Stop — a single-SKU pallet must not carry mixed product",
+      "Identify every SKU on the pallet and count each",
+      "Do not load or put away a mixed pallet as if it were single-SKU",
+      "Supervisor decides whether to re-palletise or reject"
+    ],
+    "confidence": "high",
+    "source_reference": "Receiving SOP 5.7 — Mixed-SKU Pallets",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Count Discrepancy",
+    "scenario": "Missing or extra pallet",
+    "keywords": [
+      "missing pallet",
+      "extra pallet",
+      "not on load",
+      "staging",
+      "wrong number of pallets"
+    ],
+    "resolution_steps": [
+      "Recount the pallets staged against the load plan",
+      "Check adjacent staging lanes for the missing pallet",
+      "An extra pallet not on the load must not be loaded",
+      "Escalate with the pallet IDs of any missing or extra pallets"
+    ],
+    "confidence": "high",
+    "source_reference": "Loading SOP 3.4 — Pallet Count Reconciliation",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Seal/Trailer Condition",
+    "scenario": "Trailer restraint not engaged or trailer shifted",
+    "keywords": [
+      "restraint",
+      "not engaged",
+      "trailer moved",
+      "shifted",
+      "creep",
+      "gap",
+      "pulled away"
+    ],
+    "resolution_steps": [
+      "STOP — do not drive onto a trailer that is not restrained",
+      "Check the restraint indicator light at the dock (green = engaged)",
+      "If the trailer has moved away from the dock: exit the trailer and do not re-enter",
+      "The driver must re-back and the restraint must re-engage before work resumes"
+    ],
+    "confidence": "high",
+    "source_reference": "Security SOP 8.3 — Trailer Restraint",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Paperwork Mismatch",
+    "scenario": "Waiting for paperwork or trailer at max weight",
+    "keywords": [
+      "waiting for paperwork",
+      "no paperwork",
+      "max weight",
+      "weight limit",
+      "overweight trailer"
+    ],
+    "resolution_steps": [
+      "Do not start unloading without the BOL",
+      "Ask dispatch for the paperwork and note the waiting time",
+      "If a trailer reaches maximum weight before the load is complete: stop loading",
+      "Supervisor decides which pallets move to the next trailer"
+    ],
+    "confidence": "medium",
+    "source_reference": "Shipping SOP 6.4 — Documentation Holds",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
     ],
     "applicable_companies": [
       "all"
