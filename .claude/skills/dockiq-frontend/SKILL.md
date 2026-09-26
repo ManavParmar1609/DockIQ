@@ -51,7 +51,7 @@ things or raises alarms; it never decorates.
 - All API calls through `src/api/` hooks; render data with `QueryBoundary`, errors with `MutationError`.
 - No side effects inside `setState` updaters.
 - Keep the `prefers-*`, `:focus-visible` and safe-area rules.
-- Skills: `apple-design` for motion/materials/type, `redesign-existing-projects` for audits,
+- Skills: `gsap-react` and `design-motion-principles` for motion, `redesign-existing-projects` for audits,
   `impeccable` for the quality pass, `design-taste-frontend` for the landing page.
 
 ## The system is built — extend it
