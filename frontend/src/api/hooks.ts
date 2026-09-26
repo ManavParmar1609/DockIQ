@@ -3,7 +3,7 @@
  * data it changes, and the realtime channel (realtime.ts) invalidates what other people change.
  */
 import { QueryClient, useMutation, useQuery, useQueryClient, type Query } from '@tanstack/react-query';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { ApiError, api, unwrap } from './client';
 import {
@@ -18,6 +18,13 @@ import {
   type CountRunner,
   type CountWrite,
 } from './countQueue';
+import {
+  dismissRefused,
+  fileReport,
+  offlineReportsState,
+  sendQueuedReports,
+  subscribeReports,
+} from './offline';
 import type {
   Analytics,
   Broadcast,
@@ -39,6 +46,7 @@ import type {
   IssueStatus,
   LedgerEntry,
   LoadPlan,
+  Me,
   Order,
   OrderDetail,
   Pallet,
@@ -419,6 +427,10 @@ export interface IssueFilters {
   /** A door number. */
   dock?: number;
   carrier_id?: number;
+  /** An issue type from the taxonomy. */
+  issue_type?: string;
+  /** Quality's disposition of the held product. */
+  disposition?: Disposition;
   /** Filed on or after / on or before this day (UTC, "2026-09-25"). */
   from?: string;
   to?: string;
@@ -441,29 +453,75 @@ export function useExportIssues() {
   });
 }
 
-export function useIssue(id: number) {
+export function useIssue(id: number, enabled = true) {
   return useQuery<Issue>({
     queryKey: keys.issue(id),
     queryFn: () => unwrap(api.GET('/api/issues/{issue_id}', { params: { path: { issue_id: id } } })),
+    enabled,
   });
 }
 
 function useIssueInvalidation() {
   const client = useQueryClient();
-  return () => {
+  return useCallback(() => {
     void client.invalidateQueries({ queryKey: keys.issues });
     void client.invalidateQueries({ queryKey: keys.docks });
     void client.invalidateQueries({ queryKey: keys.analytics });
     // An open issue can block an order's sign-off (completion_blockers).
     void invalidateOrders(client);
-  };
+  }, [client]);
 }
 
+/**
+ * File a report. With no connection it is kept on this tablet and sent later (`api/offline.ts`): the
+ * mutation then fails with `QueuedOffline`, whose message says so. Every report carries a
+ * `client_key`, so a retry is never filed twice.
+ */
 export function useReportIssue() {
+  const client = useQueryClient();
   const invalidate = useIssueInvalidation();
   return useMutation<IssueCreated, Error, IssueCreate>({
-    mutationFn: (body) => unwrap(api.POST('/api/issues', { body })),
+    // Offline, a paused mutation would hang: fail at once so the report is queued.
+    networkMode: 'always',
+    mutationFn: (body) => fileReport(body, client.getQueryData<Me>(['me'])?.id ?? null),
     onSuccess: invalidate,
+  });
+}
+
+const OFFLINE_RETRY_MS = 30_000;
+
+/**
+ * This person's reports waiting on the tablet. Mounting it sends them: now, whenever the browser
+ * says it is back online, and every 30 seconds while any wait (a sleeping server is not "offline").
+ */
+export function useOfflineReports(userId: number) {
+  const invalidate = useIssueInvalidation();
+  const state = useSyncExternalStore(subscribeReports, () => offlineReportsState(userId));
+  const send = useCallback(() => {
+    void sendQueuedReports(userId).then((filed) => {
+      if (filed > 0) invalidate();
+    });
+  }, [userId, invalidate]);
+  useEffect(() => {
+    send();
+    window.addEventListener('online', send);
+    return () => window.removeEventListener('online', send);
+  }, [send]);
+  useEffect(() => {
+    if (state.waiting === 0) return;
+    const timer = window.setInterval(send, OFFLINE_RETRY_MS);
+    return () => window.clearInterval(timer);
+  }, [state.waiting, send]);
+  return { ...state, retry: send, dismiss: dismissRefused };
+}
+
+/** The operator withdraws their own pending quick request. */
+export function useCancelRequest() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.PUT('/api/requests/{request_id}/cancel', { params: { path: { request_id: id } } })),
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.requests }),
   });
 }
 

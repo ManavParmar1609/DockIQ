@@ -556,17 +556,6 @@ function TrailerView({
         rx="2"
         fill="var(--color-sage)"
       />
-      <text
-        x={noseLabelX}
-        y={noseLabelY}
-        textAnchor="middle"
-        fontSize={Math.max(11, Math.min(22, (FOCAL * 0.32) / Math.max(length - camera, 1)))}
-        fontWeight="600"
-        fontFamily="var(--font-sans)"
-        fill="var(--color-ink-soft)"
-      >
-        Nose
-      </text>
       {/* Rows: a rib on each wall and the row number on the floor */}
       {Array.from({ length: plan.rows }, (_, row) => {
         const zFar = length - row * ROW_DEPTH;
@@ -726,6 +715,22 @@ function TrailerView({
           strokeDasharray="2 12"
         />
       )}
+      {/* The nose label on top, outlined against the stage, so no pallet can cover it. */}
+      <text
+        x={noseLabelX}
+        y={noseLabelY}
+        textAnchor="middle"
+        fontSize={Math.max(11, Math.min(22, (FOCAL * 0.32) / Math.max(length - camera, 1)))}
+        fontWeight="600"
+        fontFamily="var(--font-sans)"
+        fill="var(--color-ink-soft)"
+        stroke="var(--color-paper)"
+        strokeWidth="4"
+        strokeLinejoin="round"
+        paintOrder="stroke"
+      >
+        Nose
+      </text>
       {pin && current && (
         <g className="lp-pin" transform={`translate(${pin[0].toFixed(1)} ${(pin[1] - 30).toFixed(1)})`}>
           <path d="M-9 13 L0 26 L9 13 Z" fill="var(--color-accent)" />
@@ -748,7 +753,7 @@ function TrailerView({
 
 // ── The whole trailer from above: progress at a glance, and a way to jump to any stack ──
 
-const MAP_ROW = 30;
+const MAP_ROW = 36; // rendered at >= 44px tall, a gloved target
 const MAP_LANE = 52;
 const MAP_GAP = 6;
 const MAP_LABEL = 26;
@@ -786,7 +791,7 @@ function TrailerMap({
       viewBox={`0 0 ${width} ${height}`}
       role="group"
       aria-label={`The whole trailer from above: ${String(plan.stacks_used)} stacks on ${String(plan.floor_positions)} floor positions`}
-      className="mx-auto block h-auto w-full max-w-44"
+      className="mx-auto block h-auto w-full max-w-48"
     >
       <Patterns prefix={prefix} />
       <text
@@ -1031,7 +1036,7 @@ function NowLoading({
         </p>
       )}
 
-      <div ref={actions} className="flex flex-wrap gap-3">
+      <div ref={actions} className="lp-actions flex flex-wrap gap-3">
         <button
           type="button"
           className="btn btn-secondary px-5"

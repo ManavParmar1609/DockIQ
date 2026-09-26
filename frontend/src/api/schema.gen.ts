@@ -712,6 +712,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/requests/{request_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cancel Request
+         * @description The operator who asked withdraws a request still pending. Their supervisor's list drops it
+         *     (`new_request` with status `cancelled`). Someone else's request is a 404.
+         */
+        put: operations["cancel_request_api_requests__request_id__cancel_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/broadcasts": {
         parameters: {
             query?: never;
@@ -1301,13 +1322,14 @@ export interface components {
             /** By Company */
             by_company: components["schemas"]["NameCount"][];
             /** By Carrier */
-            by_carrier: components["schemas"]["NameCount"][];
+            by_carrier: components["schemas"]["CarrierCount"][];
             /** Over Time */
             over_time: components["schemas"]["DateCount"][];
             /** Repeat At Doors */
             repeat_at_doors: components["schemas"]["DockRepeat"][];
             /** Repeat With Carriers */
             repeat_with_carriers: components["schemas"]["CarrierRepeat"][];
+            quality?: components["schemas"]["QualityAnalytics"] | null;
         };
         /** Body_login_api_auth_login_post */
         Body_login_api_auth_login_post: {
@@ -1369,6 +1391,15 @@ export interface components {
             /** Supervisor Name */
             supervisor_name: string;
         };
+        /** CarrierCount */
+        CarrierCount: {
+            /** Count */
+            count: number;
+            /** Name */
+            name: string;
+            /** Carrier Id */
+            carrier_id: number;
+        };
         /** CarrierOut */
         CarrierOut: {
             /** Id */
@@ -1389,6 +1420,8 @@ export interface components {
             issue_type: string;
             /** Name */
             name: string;
+            /** Carrier Id */
+            carrier_id?: number | null;
         };
         /** ChatCreate */
         ChatCreate: {
@@ -1552,6 +1585,12 @@ export interface components {
          * @enum {string}
          */
         Disposition: "hold" | "release" | "destroy" | "return_to_vendor";
+        /** DispositionCount */
+        DispositionCount: {
+            /** Count */
+            count: number;
+            disposition: components["schemas"]["Disposition"];
+        };
         /** DockCount */
         DockCount: {
             /** Count */
@@ -1859,6 +1898,8 @@ export interface components {
             count_actual?: number | null;
             /** Lot */
             lot?: string | null;
+            /** Client Key */
+            client_key?: string | null;
         };
         /** IssueCreated */
         IssueCreated: {
@@ -2065,6 +2106,8 @@ export interface components {
              * @default false
              */
             self_resolve_needs_note?: boolean;
+            /** Decided By Name */
+            decided_by_name?: string | null;
         };
         /** IssueSelfResolve */
         IssueSelfResolve: {
@@ -2109,6 +2152,11 @@ export interface components {
             floor: {
                 [key: string]: components["schemas"]["Severity"];
             };
+            /**
+             * Resolutions
+             * @default []
+             */
+            resolutions?: string[];
         };
         /** IssuesCard */
         IssuesCard: {
@@ -2628,6 +2676,24 @@ export interface components {
             /** Case Value */
             case_value: number;
         };
+        /**
+         * QualityAnalytics
+         * @description Quality's own figures (business-rules §7.3), over the same issues and dates as the summary.
+         */
+        QualityAnalytics: {
+            /** Avg Minutes To Disposition */
+            avg_minutes_to_disposition: number | null;
+            /** Disposed */
+            disposed: number;
+            /** By Disposition */
+            by_disposition: components["schemas"]["DispositionCount"][];
+            /** Pallets On Hold */
+            pallets_on_hold: number;
+            /** Issues On Hold */
+            issues_on_hold: number;
+            /** Excursions By Room */
+            excursions_by_room: components["schemas"]["RoomCount"][];
+        };
         /** QuickRequestCreate */
         QuickRequestCreate: {
             /** Dock Door Id */
@@ -2666,6 +2732,8 @@ export interface components {
             created_at: string;
             /** Fulfilled At */
             fulfilled_at: string | null;
+            /** Cancelled At */
+            cancelled_at?: string | null;
             /** Operator Name */
             operator_name: string | null;
             /** Door Number */
@@ -2735,12 +2803,19 @@ export interface components {
          * RequestStatus
          * @enum {string}
          */
-        RequestStatus: "pending" | "fulfilled";
+        RequestStatus: "pending" | "fulfilled" | "cancelled";
         /**
          * Role
          * @enum {string}
          */
         Role: "operator" | "supervisor" | "quality";
+        /** RoomCount */
+        RoomCount: {
+            /** Count */
+            count: number;
+            /** Room */
+            room: string;
+        };
         /** RoomLine */
         RoomLine: {
             /** Code */
@@ -3126,6 +3201,11 @@ export interface components {
              * @default []
              */
             pending_decisions?: string[];
+            /**
+             * Noted Decisions
+             * @default []
+             */
+            noted_decisions?: string[];
             /**
              * Decision Targets
              * @default {}
@@ -4143,6 +4223,10 @@ export interface operations {
                 from?: string | null;
                 /** @description Filed on or before this day (UTC) */
                 to?: string | null;
+                /** @description An issue type from the taxonomy */
+                issue_type?: string | null;
+                /** @description Quality's disposition */
+                disposition?: components["schemas"]["Disposition"] | null;
                 limit?: number;
             };
             header?: never;
@@ -4218,6 +4302,10 @@ export interface operations {
                 from?: string | null;
                 /** @description Filed on or before this day (UTC) */
                 to?: string | null;
+                /** @description An issue type from the taxonomy */
+                issue_type?: string | null;
+                /** @description Quality's disposition */
+                disposition?: components["schemas"]["Disposition"] | null;
                 limit?: number;
             };
             header?: never;
@@ -4666,6 +4754,37 @@ export interface operations {
         };
     };
     fulfill_request_api_requests__request_id__fulfill_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_request_api_requests__request_id__cancel_put: {
         parameters: {
             query?: never;
             header?: never;

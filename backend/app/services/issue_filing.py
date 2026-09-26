@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Base, utcnow
 from app.domain.cost import estimate_cost_impact
-from app.domain.dock import DockEvent, transition
+from app.domain.dock import DockEvent
 from app.domain.enums import Confidence, IssueStatus
 from app.domain.lifecycle import requires_supervisor
 from app.domain.recurrence import RECURRENCE_WINDOW_DAYS, carrier_pattern, dock_pattern
@@ -26,6 +26,7 @@ from app.domain.taxonomy import ISSUE_TYPES, is_valid_subtype
 from app.models import Carrier, Company, DockDoor, Issue, Order, OrderItem, Product
 from app.queries import count_recent_issues, load_kb_entries
 from app.schemas import IssueCreate
+from app.services.dock_status import apply_issue_event
 
 
 def _unprocessable(detail: str) -> HTTPException:
@@ -211,19 +212,19 @@ async def file_issue(
         bol_number=order.bol_number if order is not None else None,
         sim_minute=sim_minute,
         held_pallets=[],
+        client_key=body.client_key,
     )
     session.add(issue)
     if requires_supervisor(issue.severity):  # critical: straight to the supervisor (§7.1)
         issue.status = IssueStatus.ESCALATED
         issue.escalated_at = now
     if dock is not None:
-        dock.status, dock.lifecycle_phase = transition(
-            dock.status, dock.lifecycle_phase, DockEvent.ISSUE_REPORTED
+        # The door reads everything open on it, this report included: a second, lesser report never
+        # downgrades a critical door (business-rules §7.7).
+        event = (
+            DockEvent.ISSUE_ESCALATED if issue.status is IssueStatus.ESCALATED else DockEvent.ISSUE_REPORTED
         )
-        if issue.status is IssueStatus.ESCALATED:
-            dock.status, dock.lifecycle_phase = transition(
-                dock.status, dock.lifecycle_phase, DockEvent.ISSUE_ESCALATED, severity=issue.severity
-            )
+        await apply_issue_event(session, dock, event, issue.severity)
         dock.last_activity_at = now
     await session.flush()
     return issue

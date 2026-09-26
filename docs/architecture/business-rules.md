@@ -300,6 +300,34 @@ wrap*: check the cases under the wrap, **re-wrap and continue** — torn wrap al
 reject. Before, "torn" matched *Packaging is punctured on food items* (stop, quarantine, full
 rejection). Punctured or open cases under the wrap are still reported as damaged cartons.
 
+### 3.4 The procedure's suggested decision *(advice, never a decision)*
+
+`knowledge_base.suggested_decision` (seeded from `knowledge_base.json`, migration `0008`), carried in
+the issue's procedure (`ai_resolution.suggested_decision`, `null` when the procedure implies none).
+Where an SOP's own words name the outcome, the procedure names the supervisor decision they point to;
+the decision panel shows it as *"Procedure suggests: ‹decision›"*. It is **never auto-selected** and
+never enters a severity, cost or acceptance rule (architecture invariant 5): the supervisor decides,
+and the notes rules of §7.2 apply to whatever they choose. Pinned by `test_suggested_decisions_are_pinned`;
+every value must be one of the taxonomy's supervisor decisions.
+
+| Procedure (scenario) | SOP | Suggests | Because the SOP says |
+|---|---|---|---|
+| Less than 5% of cases damaged | Company SOP 4.1 | **Partial Accept** | *"If damaged cases are ≤5% of total: partial accept the pallet"* |
+| More than 5% of cases damaged | Company SOP 4.2 | **Full Reject** | *"Mark the pallet with a REJECT tag"* |
+| Packaging is punctured on food items | FDA / Company SOP 4.3 | **Full Reject** | *"requires supervisor authorization for full rejection"* |
+| Temperature more than 5°F above threshold | Cold Chain SOP 2.3 | **Full Reject** | Critical Temperature Rejection: *"DO NOT UNLOAD … do NOT sign the BOL"* |
+| Reefer unit not running on trailer | Equipment SOP 7.2 | **Contact Carrier** | *"The carrier is responsible for functioning reefer equipment"* |
+| Count is within customer tolerance | Receiving SOP 5.4 | **Accept** | *"If within tolerance: accept the shipment and note the shortage"* |
+| Count exceeds customer tolerance | Receiving SOP 5.5 | **Contact Carrier** | *"escalated to supervisor for carrier contact"* |
+| Trailer seal is broken or missing | Security SOP 8.1 | **Contact Carrier** | *"Supervisor will need to contact the carrier"* |
+| Product expiry date has already passed | Quality SOP 9.1 | **Full Reject** | *"automatic rejection — no supervisor override allowed"* |
+| Overage — received more than expected | Receiving SOP 5.6 | **Accept** | *"If confirmed overage: accept and note the actual count"* |
+| Pallet wood is broken but product is fine | Company SOP 4.4 | **Accept** | *"the product can still be accepted"* |
+| Torn or loose shrink wrap | Company SOP 4.5 | **Accept** | *"torn or loose wrap alone is not a reason to reject"* |
+
+Every other procedure suggests nothing: its outcome depends on a re-probe, the customer's policy, the
+vendor, or Quality — or, when loading, there is no load to accept or reject.
+
 ---
 
 ## 4. Operational thresholds
@@ -460,12 +488,16 @@ it: they are recorded with the completion.
 ### 7.2 Supervisor decisions take effect
 
 `PUT /api/issues/{id}/supervisor-resolve`, `domain/lifecycle.py`. `GET /api/taxonomy` lists
-`accept_decisions` and `pending_decisions` so the screen can say which is which.
+`accept_decisions`, `pending_decisions` and `noted_decisions` (`ALWAYS_NOTED_DECISIONS`: Full Reject
+and Override — Accept Anyway, which always need the reason) so the screen can say which is which and
+hold its submit until the reason is written. The procedure's suggested decision (§3.4) is shown beside
+the choices as advice.
 
 | Decision | Status | Effect |
 |---|---|---|
-| Accept · Partial Accept · Override — Accept Anyway | `supervisor_resolved` | The dock goes back to `active`. On a **critical** or **temperature** (cold-chain) issue the decision needs the supervisor's reason in `supervisor_notes` — **422** without it |
-| Full Reject | `supervisor_resolved` | The order is blocked from sign-off (*"Rejected by ‹supervisor› — ‹notes›"*), and the dock is flagged `issue` (`DockEvent.LOAD_REJECTED` through `transition()`), not reopened |
+| Accept · Partial Accept | `supervisor_resolved` | The dock goes back to `active`. On a **critical** or **temperature** (cold-chain) issue the decision needs the supervisor's reason in `supervisor_notes` — **422** without it |
+| Override — Accept Anyway | `supervisor_resolved` | As Accept, but the reason is required on **every** issue (**422** without): overriding the procedure is always explained |
+| Full Reject | `supervisor_resolved` | The reason is required on **every** issue (**422** without). The order is blocked from sign-off (*"Rejected by ‹supervisor› — ‹notes›"*), and the dock is flagged `issue` (`DockEvent.LOAD_REJECTED` through `transition()`), not reopened |
 | Contact Carrier | `on_hold` | Still open, `pending_action` *"Awaiting the carrier"*; the dock stays as it is |
 | Request Re-inspection | `on_hold` | Still open, *"Awaiting a re-inspection"*; the order is blocked until a trailer inspection passes after the request |
 | Other | `supervisor_resolved` | As Accept, without the notes rule |
@@ -513,8 +545,8 @@ change the issue's status: the supervisor still decides the issue.
 idle ──▶ inspection ──▶ loading | unloading ──▶ complete
 ```
 
-Dock `status` and `lifecycle_phase` change only through `domain/dock.py` → `transition()`.
-⚠️ Resolving an issue still sets the dock back to `active` even if another issue is open on it.
+Dock `status` and `lifecycle_phase` change only through `domain/dock.py` → `transition()`; the
+status follows everything open on the door (§7.7).
 
 ### 7.4 Decision targets: when an open issue is overdue
 
@@ -553,7 +585,8 @@ away: a worker who then fixes it closes it, as long as it is not a decision that
 | already resolved | No — resolved is terminal | **409** |
 | someone else's issue | No — out of scope | **404** — its existence is not disclosed (`api/access.py`) |
 
-The resolution must be one of the taxonomy's `operator_resolutions` (**422** otherwise). The note is
+The resolution must be one of the taxonomy's `operator_resolutions` **that fits the issue type**
+(§7.6; **422** otherwise, naming the ones that fit). The note is
 stored trimmed. The issue becomes `self_resolved` and the dock goes back to `active` through
 `transition()`. After the commit, `issue_resolved` (`method` = `self_resolved`) goes to the reporter,
 their supervisor, the supervisor who acknowledged it (if any) and — for a quality-relevant issue —
@@ -564,6 +597,55 @@ filing response), so the screens offer *Resolve it yourself* — inline on *My i
 and on the report's result — from the rule itself, never a copy of it. The assistant follows the same
 rule: `my_open_issues` marks an escalated issue `note_required`, and `draft_self_resolve` drafts it
 with the note left for the worker to write on the card.
+
+### 7.6 Resolutions that fit the issue type
+
+`domain/taxonomy.py` → `RESOLUTIONS_BY_TYPE`, `allowed_resolutions()`; served per type as
+`issue_types[].resolutions` by `GET /api/taxonomy`, enforced by `PUT /self-resolve` (**422** for one
+that does not fit). A worker closing a forklift fault is never offered *Temp Re-check OK*, and a
+temperature deviation is never closed as *Equipment Swapped*. Listed in `operator_resolutions` order;
+**Other** is always offered (with the note for the record). Pinned by
+`test_resolutions_by_issue_type_are_pinned`.
+
+| Issue type | Resolutions offered |
+|---|---|
+| Temperature Deviation | Full Reject · Temp Re-check OK · Product Segregated · Other |
+| Product Quality Concern | Partial Accept · Full Reject · Product Segregated · Other |
+| Damaged Pallet | Partial Accept · Full Reject · Product Segregated · Corrected and Continued · Other |
+| SKU Mismatch | Full Reject · Product Segregated · Corrected and Continued · Other |
+| Count Discrepancy | Partial Accept · Full Reject · Corrected and Continued · Other |
+| Lot/Expiry Issue | Partial Accept · Full Reject · Product Segregated · Corrected and Continued · Other |
+| Seal/Trailer Condition | Full Reject · Corrected and Continued · Other |
+| Safety Incident | Corrected and Continued · Other |
+| Equipment Failure | Equipment Swapped · Corrected and Continued · Other |
+| WMS/System Issue | Manual Entry · Corrected and Continued · Other |
+| Barcode Issue | Manual Entry · Corrected and Continued · Other |
+| Paperwork Mismatch | Manual Entry · Corrected and Continued · Other |
+
+The simulated crew's resolutions (§12.3, `wms/engine.py` → `SELF_RESOLUTION`, and the outage's
+*Manual Entry*) and the seeded history use the same map; a test holds the simulator to it. The
+assistant's `draft_self_resolve` drops a resolution that does not fit, and the worker picks on the card.
+
+### 7.7 The door shows everything still open on it
+
+`domain/dock.py` → `door_status()`, `worst_severity()`, `transition(…, open_severity=, rejected=)`;
+the facts come from `queries.door_issues` through `services/dock_status.apply_issue_event`. Every
+issue event — reported, escalated, resolved (either path), Full Reject, and the simulator's reset —
+recomputes the door's `status` from the door's open issues **after** the event:
+
+| What is open on the door | `status` |
+|---|---|
+| any open issue is **critical** | `critical` |
+| any open issue (low · medium · high), or the door's current load was **fully rejected** | `issue` |
+| nothing open, a trailer being worked (`inspection`, `loading`, `unloading`) | `active` |
+| nothing open, no trailer being worked (`idle`, `complete`) | `idle` |
+
+Severity order for "worst": low < medium < high < critical (`SEVERITY_RANK`). A reported or escalated
+issue is itself open, so its door is at least `issue`. The simulator's reset (§12.5) deletes the
+simulated issues and then recomputes every door: a person's report outlives the reset and keeps its
+door flagged. Before 2026-09-26 the status followed the last event alone — a later, lesser report
+downgraded a critical door, and resolving one issue set the door `active` while another was open.
+Pinned by `test_the_door_status_is_the_worst_open_severity` and the tests around it.
 
 ---
 
@@ -928,6 +1010,8 @@ unchanged.
 
 | Date | Change |
 |---|---|
+| 2026-09-26 | §7.7 the door's status follows everything open on it (worst open severity, a rejected load), on every issue event and after a simulator reset — the known "resolve sets the dock active" defect is fixed. |
+| 2026-09-26 | §3.4 a procedure's suggested decision (12 procedures; advice only, never selected); §7.2 Full Reject and Override — Accept Anyway always need the supervisor's reason (422); §7.6 resolutions by issue type (422 on one that does not fit). Migration 0008 (also a cancelled quick request and a report's idempotency key). |
 | 2026-09-25 | §7.5 self-resolve: the reporter may close an escalated issue that is not critical, with a note (422 without); never critical, on hold or resolved (409). Migration 0007 rewrites stored "3th"-style recurrence ordinals (§6). |
 | 2026-09-25 | §11.1 probe guidance follows the order's direction: loading gets *do not load / hold at the dock*, never *do not unload*. |
 | 2026-09-25 | §7.4 decision targets (critical 15 · high 60 · medium 240 · low 480 minutes), overdue flag in the queue; per-door `open_issues` count. |

@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowUpRight, Check, RotateCcw } from 'lucide-react';
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { errorMessage } from '../../api/client';
@@ -12,11 +12,13 @@ import {
   useTaxonomy,
   useUploadPhoto,
 } from '../../api/hooks';
+import { QueuedOffline } from '../../api/offline';
 import { aiResolutionOf, type IssueCreated, type IssueTypeSpec, type OrderDetail } from '../../api/types';
 import { PhotoPicker, VoiceButton } from '../../components/Evidence';
 import { issueIcon } from '../../components/icons';
 import { ProcedureCard, RecurringPatterns, SeverityDerivation } from '../../components/Resolution';
 import { SelfResolveForm } from '../../components/SelfResolve';
+import { TempInput } from '../../components/TempInput';
 import {
   ErrorBlock,
   FieldLabel,
@@ -28,6 +30,7 @@ import {
   QueryBoundary,
 } from '../../components/ui';
 import { formatTemp } from '../../lib/format';
+import { bringIntoView } from '../../lib/motion';
 import { rovingKeyDown, rovingTabIndex } from '../../lib/roving';
 import { readPrefill } from './reportLink';
 
@@ -101,7 +104,7 @@ function TypeStep({
           style={{ '--i': groupIndex } as CSSProperties}
         >
           <div className="mb-3 flex flex-wrap items-baseline gap-3 border-b border-hairline pb-2">
-            <h2 className="heading flex items-center gap-2 text-2xl">
+            <h2 className="serif-title flex items-center gap-2 text-3xl">
               <span className="file-dot" aria-hidden="true" />
               {group.title}
             </h2>
@@ -122,10 +125,11 @@ function TypeStep({
                     <span className="medallion">
                       <Icon size={22} aria-hidden="true" />
                     </span>
-                    <span>
+                    <span className="min-w-0">
                       <span className="block text-lg">{type.name}</span>
-                      <span className="text-sm font-normal text-ink-mute">
-                        {type.subtypes.length} situations
+                      <span className="block text-sm font-normal text-ink-mute">
+                        {type.subtypes[0]}
+                        {type.subtypes.length > 1 && ` · +${String(type.subtypes.length - 1)} more`}
                       </span>
                     </span>
                   </button>
@@ -212,6 +216,15 @@ function DetailsStep({
       productId: item.product_id,
       limit: draft.limit || (item.temp_max === null ? '' : String(item.temp_max)),
     });
+  const pickSubtype = (subtype: string) => {
+    const first = draft.subtype === null;
+    set({ subtype });
+    // The first pick brings the next question into view; changing your mind does not jump the page.
+    if (first) {
+      window.setTimeout(() => bringIntoView(document.getElementById('report-rest'), 'start'), 60);
+    }
+  };
+  const missing = !draft.subtype ? 'Pick what exactly happened, above' : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -227,9 +240,10 @@ function DetailsStep({
           className="grid gap-2 sm:grid-cols-2"
           role="radiogroup"
           aria-label="Situation"
-          onKeyDown={rovingKeyDown('radio', subtypeIndex, type.subtypes.length, (index) =>
-            set({ subtype: type.subtypes[index] ?? null }),
-          )}
+          onKeyDown={rovingKeyDown('radio', subtypeIndex, type.subtypes.length, (index) => {
+            const subtype = type.subtypes[index];
+            if (subtype) pickSubtype(subtype);
+          })}
         >
           {type.subtypes.map((subtype, index) => (
             <button
@@ -239,7 +253,7 @@ function DetailsStep({
               aria-checked={draft.subtype === subtype}
               tabIndex={rovingTabIndex(index, subtypeIndex)}
               className="choice"
-              onClick={() => set({ subtype })}
+              onClick={() => pickSubtype(subtype)}
             >
               {subtype}
             </button>
@@ -254,187 +268,183 @@ function DetailsStep({
         )}
       </Panel>
 
-      {!order && <DockPicker value={draft.dockId} onChange={(dockId) => set({ dockId })} />}
+      <div id="report-rest" className="flex scroll-mt-24 flex-col gap-6">
+        {!order && <DockPicker value={draft.dockId} onChange={(dockId) => set({ dockId })} />}
 
-      {isProduct && order && order.items.length > 0 && (
-        <Panel title="Which product?">
-          <div
-            className="grid gap-2 sm:grid-cols-2"
-            role="radiogroup"
-            aria-label="Product"
-            onKeyDown={rovingKeyDown('radio', productIndex, products.length, (index) => {
-              const item = products[index];
-              if (item) pickProduct(item);
-            })}
-          >
-            {order.items.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                role="radio"
-                aria-checked={draft.productId === item.product_id}
-                tabIndex={rovingTabIndex(index, productIndex)}
-                className="choice"
-                onClick={() => pickProduct(item)}
-              >
-                <span>
-                  <span className="block">{item.product_name}</span>
-                  <span className="telemetry text-sm font-normal opacity-80">
-                    {item.sku} · {item.category}
+        {isProduct && order && order.items.length > 0 && (
+          <Panel title="Which product?">
+            <div
+              className="grid gap-2 sm:grid-cols-2"
+              role="radiogroup"
+              aria-label="Product"
+              onKeyDown={rovingKeyDown('radio', productIndex, products.length, (index) => {
+                const item = products[index];
+                if (item) pickProduct(item);
+              })}
+            >
+              {order.items.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.productId === item.product_id}
+                  tabIndex={rovingTabIndex(index, productIndex)}
+                  className="choice"
+                  onClick={() => pickProduct(item)}
+                >
+                  <span>
+                    <span className="block">{item.product_name}</span>
+                    <span className="telemetry text-sm font-normal opacity-80">
+                      {item.sku} · {item.category}
+                    </span>
                   </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </Panel>
-      )}
+                </button>
+              ))}
+            </div>
+          </Panel>
+        )}
 
-      {type.name === 'Temperature Deviation' && (
-        <Panel title="Readings">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <FieldLabel htmlFor="temp">Probe reading (°F)</FieldLabel>
-              <input
-                id="temp"
-                type="number"
-                step="0.1"
-                inputMode="decimal"
-                className="field text-2xl"
-                value={draft.temp}
-                onChange={(event) => set({ temp: event.target.value })}
-              />
+        {type.name === 'Temperature Deviation' && (
+          <Panel title="Readings">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor="temp">Probe reading (°F)</FieldLabel>
+                <TempInput id="temp" value={draft.temp} onChange={(temp) => set({ temp })} />
+              </div>
+              <div>
+                <FieldLabel
+                  htmlFor="limit"
+                  hint={
+                    product && product.temp_max !== null
+                      ? `Product max ${formatTemp(product.temp_max)}`
+                      : undefined
+                  }
+                >
+                  Limit (°F)
+                </FieldLabel>
+                <TempInput id="limit" value={draft.limit} onChange={(limit) => set({ limit })} />
+              </div>
             </div>
-            <div>
-              <FieldLabel
-                htmlFor="limit"
-                hint={
-                  product && product.temp_max !== null
-                    ? `Product max ${formatTemp(product.temp_max)}`
-                    : undefined
-                }
-              >
-                Limit (°F)
-              </FieldLabel>
-              <input
-                id="limit"
-                type="number"
-                step="0.1"
-                inputMode="decimal"
-                className="field text-2xl"
-                value={draft.limit}
-                onChange={(event) => set({ limit: event.target.value })}
-              />
-            </div>
-          </div>
-        </Panel>
-      )}
+          </Panel>
+        )}
 
-      {type.name === 'Count Discrepancy' && (
-        <Panel title="Counts">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <FieldLabel htmlFor="expected">Expected</FieldLabel>
-              <input
-                id="expected"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                className="field text-2xl"
-                value={draft.expected}
-                onChange={(event) => set({ expected: event.target.value })}
-              />
+        {type.name === 'Count Discrepancy' && (
+          <Panel title="Counts">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor="expected">Expected</FieldLabel>
+                <input
+                  id="expected"
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  className="field text-2xl"
+                  value={draft.expected}
+                  onChange={(event) => set({ expected: event.target.value })}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="actual" hint="0 = nothing arrived">
+                  Actual
+                </FieldLabel>
+                <input
+                  id="actual"
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  className="field text-2xl"
+                  value={draft.actual}
+                  onChange={(event) => set({ actual: event.target.value })}
+                />
+              </div>
             </div>
-            <div>
-              <FieldLabel htmlFor="actual" hint="0 = nothing arrived">
-                Actual
-              </FieldLabel>
-              <input
-                id="actual"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                className="field text-2xl"
-                value={draft.actual}
-                onChange={(event) => set({ actual: event.target.value })}
-              />
-            </div>
-          </div>
-        </Panel>
-      )}
+          </Panel>
+        )}
 
-      {isProduct && (
-        <Panel title="Cases affected">
-          <label htmlFor="quantity" className="sr-only">
-            Cases affected
+        {isProduct && (
+          <Panel title="Cases affected">
+            <label htmlFor="quantity" className="sr-only">
+              Cases affected
+            </label>
+            <input
+              id="quantity"
+              type="number"
+              min={0}
+              inputMode="numeric"
+              className="field w-40 text-2xl"
+              value={draft.quantity}
+              onChange={(event) => set({ quantity: event.target.value })}
+            />
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="Quick tags">
+              {QUICK_TAGS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className="choice min-h-11 py-1"
+                  aria-pressed={draft.tags.includes(tag)}
+                  onClick={() =>
+                    set({
+                      tags: draft.tags.includes(tag)
+                        ? draft.tags.filter((t) => t !== tag)
+                        : [...draft.tags, tag],
+                    })
+                  }
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </Panel>
+        )}
+
+        <Panel
+          title="Describe it"
+          aside={
+            <VoiceButton
+              onText={(text) =>
+                set({
+                  description: (draft.description ? `${draft.description} ${text}` : text).slice(0, 2000),
+                })
+              }
+            />
+          }
+        >
+          <label htmlFor="description" className="sr-only">
+            Description
           </label>
-          <input
-            id="quantity"
-            type="number"
-            min={0}
-            inputMode="numeric"
-            className="field w-40 text-2xl"
-            value={draft.quantity}
-            onChange={(event) => set({ quantity: event.target.value })}
+          <textarea
+            id="description"
+            rows={3}
+            className="field text-lg"
+            maxLength={2000}
+            value={draft.description}
+            onChange={(event) => set({ description: event.target.value })}
+            placeholder="What you see, where, how much"
           />
-          <div className="mt-4 flex flex-wrap gap-2" aria-label="Quick tags">
-            {QUICK_TAGS.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                className="choice min-h-11 py-1"
-                aria-pressed={draft.tags.includes(tag)}
-                onClick={() =>
-                  set({
-                    tags: draft.tags.includes(tag)
-                      ? draft.tags.filter((t) => t !== tag)
-                      : [...draft.tags, tag],
-                  })
-                }
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
         </Panel>
-      )}
 
-      <Panel
-        title="Describe it"
-        aside={
-          <VoiceButton
-            onText={(text) =>
-              set({ description: (draft.description ? `${draft.description} ${text}` : text).slice(0, 2000) })
-            }
-          />
-        }
-      >
-        <label htmlFor="description" className="sr-only">
-          Description
-        </label>
-        <textarea
-          id="description"
-          rows={3}
-          className="field text-lg"
-          maxLength={2000}
-          value={draft.description}
-          onChange={(event) => set({ description: event.target.value })}
-          placeholder="What you see, where, how much"
-        />
-      </Panel>
+        <Panel title="Photos">
+          <PhotoPicker photos={draft.photos} onChange={(photos) => set({ photos })} />
+        </Panel>
 
-      <Panel title="Photos">
-        <PhotoPicker photos={draft.photos} onChange={(photos) => set({ photos })} />
-      </Panel>
-
-      <MutationError error={error} />
-      <button
-        type="button"
-        className="btn btn-primary text-lg"
-        disabled={!draft.subtype || pending}
-        onClick={onSubmit}
-      >
-        {pending ? 'Scoring and finding the procedure…' : 'Submit and get the procedure'}
-      </button>
+        <MutationError error={error} />
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            className="btn btn-primary text-lg"
+            disabled={!draft.subtype || pending}
+            aria-describedby={missing ? 'report-missing' : undefined}
+            onClick={onSubmit}
+          >
+            {pending ? 'Scoring and finding the procedure…' : 'Submit and get the procedure'}
+          </button>
+          {missing && (
+            <p id="report-missing" className="label text-center">
+              {missing}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -480,6 +490,7 @@ function ResultStep({
         <Panel title="Resolve it yourself" index={2}>
           <SelfResolveForm
             issueId={created.id}
+            issueType={type.name}
             needsNote={created.self_resolve_needs_note === true}
             columns={4}
             disabled={escalate.isPending}
@@ -534,6 +545,39 @@ const EMPTY_DRAFT: Draft = {
   photos: [],
 };
 
+const DRAFT_KEY = 'dockiq.report.draft';
+
+/** What was typed, kept for this session so leaving the page loses nothing. Photos are not kept. */
+function loadStored(): { typeName: string | null; draft: Draft } | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { typeName?: unknown; draft?: Partial<Draft> };
+    return {
+      typeName: typeof parsed.typeName === 'string' ? parsed.typeName : null,
+      draft: { ...EMPTY_DRAFT, ...parsed.draft, photos: [] },
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeDraft(typeName: string | null, draft: Draft) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ typeName, draft: { ...draft, photos: [] } }));
+  } catch {
+    /* the draft lasts for this page view only */
+  }
+}
+
+function clearStoredDraft() {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* nothing kept */
+  }
+}
+
 function toNumber(value: string): number | null {
   if (value.trim() === '') return null;
   const parsed = Number(value);
@@ -547,18 +591,29 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
   const report = useReportIssue();
   const upload = useUploadPhoto();
   const [type, setType] = useState<IssueTypeSpec | null>(null);
-  const [draft, setDraft] = useState<Draft>(() => ({
-    ...EMPTY_DRAFT,
-    subtype: prefill.subtype ?? null,
-    description: prefill.description ?? '',
-    temp: prefill.temp === undefined ? '' : String(prefill.temp),
-    limit: prefill.limit === undefined ? '' : String(prefill.limit),
-    expected: prefill.expected === undefined ? '' : String(prefill.expected),
-    actual: prefill.actual === undefined ? '' : String(prefill.actual),
-  }));
+  // A pre-filled link starts fresh; otherwise the session's unfinished report comes back.
+  const [stored] = useState(() => (search.size > 0 ? null : loadStored()));
+  const [restoredType, setRestoredType] = useState<string | null>(stored?.typeName ?? null);
+  const [draft, setDraft] = useState<Draft>(
+    () =>
+      stored?.draft ?? {
+        ...EMPTY_DRAFT,
+        subtype: prefill.subtype ?? null,
+        description: prefill.description ?? '',
+        temp: prefill.temp === undefined ? '' : String(prefill.temp),
+        limit: prefill.limit === undefined ? '' : String(prefill.limit),
+        expected: prefill.expected === undefined ? '' : String(prefill.expected),
+        actual: prefill.actual === undefined ? '' : String(prefill.actual),
+      },
+  );
   const [created, setCreated] = useState<IssueCreated | null>(null);
   const [photoProblem, setPhotoProblem] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<'resolved' | 'escalated' | null>(null);
+  const typeName = type?.name ?? restoredType;
+  useEffect(() => {
+    if (created) return;
+    if (typeName || draft.subtype || draft.description.trim()) storeDraft(typeName, draft);
+  }, [typeName, draft, created]);
 
   if (taxonomy.isPending) return <LoadingBlock label="Loading issue types" />;
   if (!taxonomy.data)
@@ -573,7 +628,12 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
         (spec) => spec.name === prefill.type && (order !== undefined || spec.group !== 'product'),
       )
     : undefined;
-  const current = type ?? prefilledType ?? null;
+  const restored = restoredType
+    ? taxonomy.data.issue_types.find(
+        (spec) => spec.name === restoredType && (order !== undefined || spec.group !== 'product'),
+      )
+    : undefined;
+  const current = type ?? prefilledType ?? restored ?? null;
   const step = outcome ? 3 : created ? 2 : current ? 1 : 0;
 
   const attachPhotos = async (issueId: number) => {
@@ -614,8 +674,13 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
       },
       {
         onSuccess: (result) => {
+          clearStoredDraft();
           setCreated(result);
           void attachPhotos(result.id);
+        },
+        // Offline: the report is kept on the tablet and sent later (api/offline.ts), its message says so.
+        onError: (error) => {
+          if (error instanceof QueuedOffline) clearStoredDraft();
         },
       },
     );
@@ -628,6 +693,8 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
 
   const restart = () => {
     clearPrefill();
+    clearStoredDraft();
+    setRestoredType(null);
     setType(null);
     setDraft(EMPTY_DRAFT);
     setCreated(null);
@@ -639,63 +706,77 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
   return (
     <div className="flex flex-col gap-6">
       <StepBar step={step} />
-      {step === 0 && (
-        <TypeStep
-          types={taxonomy.data.issue_types}
-          hasOrder={order !== undefined}
-          onPick={(spec) => {
-            setType(spec);
-            setDraft({ ...draft, subtype: null });
-          }}
-        />
-      )}
-      {step === 1 && current && (
-        <DetailsStep
-          type={current}
-          order={order}
-          draft={draft}
-          setDraft={setDraft}
-          onBack={() => {
-            // Back to the types, keeping what was typed; a pre-filled link must not pull straight back.
-            clearPrefill();
-            setType(null);
-          }}
-          onSubmit={submit}
-          pending={report.isPending}
-          error={report.error}
-        />
-      )}
-      {step === 2 && current && created && (
-        <ResultStep type={current} created={created} photoProblem={photoProblem} onDone={setOutcome} />
-      )}
-      {step === 3 && created && (
-        <Panel title="Logged">
-          <div className="flex items-center gap-4">
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
-              <Check size={36} aria-hidden="true" />
-            </span>
-            <div>
-              <p className="display text-3xl">{outcome === 'escalated' ? 'Escalated' : 'Resolved'}</p>
-              <p className="text-lg text-ink-soft">
-                {outcome === 'escalated'
-                  ? 'Your supervisor has it, with everything you recorded.'
-                  : 'Recorded as resolved by you. It counts toward the dock and carrier history.'}
-              </p>
+      <StepMotion step={step}>
+        {step === 0 && (
+          <TypeStep
+            types={taxonomy.data.issue_types}
+            hasOrder={order !== undefined}
+            onPick={(spec) => {
+              setType(spec);
+              setDraft({ ...draft, subtype: null });
+            }}
+          />
+        )}
+        {step === 1 && current && (
+          <DetailsStep
+            type={current}
+            order={order}
+            draft={draft}
+            setDraft={setDraft}
+            onBack={() => {
+              // Back to the types, keeping what was typed; a pre-filled link must not pull straight back.
+              clearPrefill();
+              setRestoredType(null);
+              setType(null);
+            }}
+            onSubmit={submit}
+            pending={report.isPending}
+            error={report.error}
+          />
+        )}
+        {step === 2 && current && created && (
+          <ResultStep type={current} created={created} photoProblem={photoProblem} onDone={setOutcome} />
+        )}
+        {step === 3 && created && (
+          <Panel title="Logged">
+            <div className="flex items-center gap-4">
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
+                <Check size={36} aria-hidden="true" />
+              </span>
+              <div>
+                <p className="display text-3xl">{outcome === 'escalated' ? 'Escalated' : 'Resolved'}</p>
+                <p className="text-lg text-ink-soft">
+                  {outcome === 'escalated'
+                    ? 'Your supervisor has it, with everything you recorded.'
+                    : 'Recorded as resolved by you. It counts toward the dock and carrier history.'}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link to={`/app/issues/${created.id}`} className="btn btn-secondary">
-              View issue <span className="telemetry">#{created.id}</span>
-            </Link>
-            <button type="button" className="btn btn-secondary" onClick={restart}>
-              <RotateCcw size={18} aria-hidden="true" /> Report another
-            </button>
-            <Link to="/app" className="btn btn-primary">
-              Back to shift
-            </Link>
-          </div>
-        </Panel>
-      )}
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link to={`/app/issues/${created.id}`} className="btn btn-secondary">
+                View issue <span className="telemetry">#{created.id}</span>
+              </Link>
+              <button type="button" className="btn btn-secondary" onClick={restart}>
+                <RotateCcw size={18} aria-hidden="true" /> Report another
+              </button>
+              <Link to="/app" className="btn btn-primary">
+                Back to shift
+              </Link>
+            </div>
+          </Panel>
+        )}
+      </StepMotion>
+    </div>
+  );
+}
+
+/** Keys a step's content so it slides in from the side it lies on: forward from the right, back from the left. */
+function StepMotion({ step, children }: { step: number; children: React.ReactNode }) {
+  const [shown, setShown] = useState({ step, direction: 1 });
+  if (shown.step !== step) setShown({ step, direction: step > shown.step ? 1 : -1 });
+  return (
+    <div key={step} className="tab-swap" style={{ '--dir': shown.direction } as CSSProperties}>
+      {children}
     </div>
   );
 }

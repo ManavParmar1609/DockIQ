@@ -67,6 +67,7 @@ class LifecyclePhase(StrEnum):
 class RequestStatus(StrEnum):
     PENDING = "pending"
     FULFILLED = "fulfilled"
+    CANCELLED = "cancelled"  # withdrawn by the operator who asked, before it was fulfilled
 
 
 class Disposition(StrEnum):

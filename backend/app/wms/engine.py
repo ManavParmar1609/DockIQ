@@ -44,6 +44,7 @@ from app.models import (
 from app.queries import issue_select
 from app.realtime import ConnectionManager
 from app.schemas import IssueCreate, IssueOut
+from app.services.dock_status import apply_issue_event
 from app.services.issue_filing import SystemFiling, file_issue
 from app.wms import ledger
 from app.wms.client import HoldRequest
@@ -711,7 +712,7 @@ class SimulationEngine:
                 and f"{key}:fu" not in applied
                 and minute >= exception_at + exception.follow_up_minutes
             ):
-                self._follow_up(issue, dock, notices)
+                await self._follow_up(session, issue, dock, notices)
                 self._record(
                     session,
                     f"{key}:fu",
@@ -772,17 +773,13 @@ class SimulationEngine:
             notices.resolved.append(issue)
         return issue.status
 
-    def _follow_up(self, issue: Issue, dock: DockDoor, notices: Notices) -> None:
+    async def _follow_up(self, session: AsyncSession, issue: Issue, dock: DockDoor, notices: Notices) -> None:
         match self._settle(issue, notices):
             case IssueStatus.ESCALATED:
-                dock.status, dock.lifecycle_phase = transition(
-                    dock.status, dock.lifecycle_phase, DockEvent.ISSUE_ESCALATED, severity=issue.severity
-                )
+                await apply_issue_event(session, dock, DockEvent.ISSUE_ESCALATED, issue.severity)
             case IssueStatus.SELF_RESOLVED:
                 issue.resolution_notes = "Resolved at the dock with the suggested procedure (simulated)"
-                dock.status, dock.lifecycle_phase = transition(
-                    dock.status, dock.lifecycle_phase, DockEvent.ISSUE_RESOLVED
-                )
+                await apply_issue_event(session, dock, DockEvent.ISSUE_RESOLVED, issue.severity)
 
     async def _report_outage(self, session: AsyncSession, minute: float) -> Issue | None:
         """A simulated crew member at a door reports the WMS as offline, as they would on the floor."""
@@ -883,11 +880,14 @@ class SimulationEngine:
             await session.execute(delete(TrailerInspection).where(TrailerInspection.order_id.in_(sim_orders)))
             await session.execute(delete(ScanEvent).where(ScanEvent.order_id.in_(sim_orders)))
             await session.execute(delete(Order).where(Order.simulated))
-            # Doors the simulation left mid-visit go back to idle.
-            for dock in await session.scalars(select(DockDoor).where(DockDoor.current_order_id.is_(None))):
-                dock.status, dock.lifecycle_phase = transition(
-                    dock.status, dock.lifecycle_phase, DockEvent.ORDER_COMPLETED
-                )
+            # Doors the simulation left mid-visit go back to idle; then every door shows what is still
+            # open on it — the simulated issues are gone, a person's report is not (business-rules §7.7).
+            for dock in await session.scalars(select(DockDoor).order_by(DockDoor.id)):
+                if dock.current_order_id is None:
+                    dock.status, dock.lifecycle_phase = transition(
+                        dock.status, dock.lifecycle_phase, DockEvent.ORDER_COMPLETED
+                    )
+                await apply_issue_event(session, dock, DockEvent.ISSUES_CHANGED)
             state = await session.get(SimState, 1)
             if state is not None:
                 state.outage_until_minute = None
@@ -1087,7 +1087,7 @@ class SimulationEngine:
         if issue.severity in (Severity.HIGH, Severity.CRITICAL):
             dock = await session.get(DockDoor, order.dock_door_id)
             if dock is not None:
-                self._follow_up(issue, dock, notices)
+                await self._follow_up(session, issue, dock, notices)
         notices.floor_changed = True
         return INJECTABLE[kind]
 

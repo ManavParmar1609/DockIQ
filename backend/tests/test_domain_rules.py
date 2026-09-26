@@ -393,6 +393,64 @@ def test_issue_lifecycle_moves_dock_status_and_keeps_phase() -> None:
     assert transition(*state, DockEvent.ISSUE_RESOLVED) == (DockStatus.ACTIVE, LifecyclePhase.LOADING)
 
 
+def test_a_later_lesser_report_never_downgrades_a_critical_door() -> None:
+    # see docs/architecture/business-rules.md §7.7
+    critical = (DockStatus.CRITICAL, LifecyclePhase.UNLOADING)
+    reported = transition(
+        *critical, DockEvent.ISSUE_REPORTED, severity=Severity.LOW, open_severity=Severity.CRITICAL
+    )
+    assert reported == critical
+    escalated = transition(
+        *critical, DockEvent.ISSUE_ESCALATED, severity=Severity.HIGH, open_severity=Severity.CRITICAL
+    )
+    assert escalated == critical
+
+
+def test_resolving_one_issue_leaves_the_door_flagged_by_what_is_still_open() -> None:
+    # see docs/architecture/business-rules.md §7.7
+    loading = LifecyclePhase.LOADING
+    resolved = DockEvent.ISSUE_RESOLVED
+    assert transition(DockStatus.CRITICAL, loading, resolved, open_severity=Severity.CRITICAL)[0] == (
+        DockStatus.CRITICAL
+    )
+    assert transition(DockStatus.CRITICAL, loading, resolved, open_severity=Severity.MEDIUM)[0] == (
+        DockStatus.ISSUE
+    )
+    assert transition(DockStatus.ISSUE, loading, resolved)[0] == DockStatus.ACTIVE  # nothing left open
+    assert transition(DockStatus.ISSUE, loading, resolved, rejected=True)[0] == DockStatus.ISSUE
+    # With no trailer being worked, a door with nothing open is idle, not active.
+    assert transition(DockStatus.ISSUE, LifecyclePhase.COMPLETE, resolved)[0] == DockStatus.IDLE
+    assert transition(DockStatus.ISSUE, LifecyclePhase.IDLE, resolved)[0] == DockStatus.IDLE
+
+
+def test_the_door_status_is_the_worst_open_severity() -> None:
+    # see docs/architecture/business-rules.md §7.7
+    from app.domain.dock import SEVERITY_RANK, door_status, worst_severity
+
+    assert [s for s, _ in sorted(SEVERITY_RANK.items(), key=lambda item: item[1])] == [
+        Severity.LOW,
+        Severity.MEDIUM,
+        Severity.HIGH,
+        Severity.CRITICAL,
+    ]
+    assert worst_severity([Severity.LOW, None, Severity.HIGH, Severity.MEDIUM]) is Severity.HIGH
+    assert worst_severity([]) is None
+    for severity in Severity:
+        expected = DockStatus.CRITICAL if severity is Severity.CRITICAL else DockStatus.ISSUE
+        assert door_status(severity, LifecyclePhase.LOADING) is expected
+    assert door_status(None, LifecyclePhase.LOADING) is DockStatus.ACTIVE
+    assert door_status(None, LifecyclePhase.LOADING, rejected=True) is DockStatus.ISSUE
+    assert door_status(Severity.CRITICAL, LifecyclePhase.LOADING, rejected=True) is DockStatus.CRITICAL
+    # A reset recomputes from what is open: nothing left means the door is at rest.
+    assert transition(DockStatus.CRITICAL, LifecyclePhase.COMPLETE, DockEvent.ISSUES_CHANGED) == (
+        DockStatus.IDLE,
+        LifecyclePhase.COMPLETE,
+    )
+    assert (
+        transition(DockStatus.ISSUE, LifecyclePhase.LOADING, DockEvent.LOAD_REJECTED)[0] == DockStatus.ISSUE
+    )
+
+
 def test_inspection_and_completion_move_the_phase() -> None:
     assert transition(DockStatus.ACTIVE, LifecyclePhase.IDLE, DockEvent.INSPECTION_SUBMITTED) == (
         DockStatus.ACTIVE,
@@ -557,12 +615,23 @@ def test_pending_decisions_put_an_issue_on_hold_and_keep_it_open() -> None:
 def test_accepting_product_on_a_critical_or_temperature_issue_needs_a_reason() -> None:
     from app.domain.lifecycle import decision_needs_notes
 
-    for decision in ("Accept", "Partial Accept", "Override — Accept Anyway"):
+    for decision in ("Accept", "Partial Accept"):
         assert decision_needs_notes(decision, Severity.CRITICAL, "Damaged Pallet")
         assert decision_needs_notes(decision, Severity.LOW, "Temperature Deviation")
         assert not decision_needs_notes(decision, Severity.HIGH, "Damaged Pallet")
-    assert not decision_needs_notes("Full Reject", Severity.CRITICAL, "Temperature Deviation")
     assert not decision_needs_notes("Contact Carrier", Severity.CRITICAL, "Temperature Deviation")
+    assert not decision_needs_notes("Other", Severity.LOW, "Equipment Failure")
+
+
+def test_full_reject_and_override_always_need_a_reason() -> None:
+    # see docs/architecture/business-rules.md §7.2
+    from app.domain.lifecycle import ALWAYS_NOTED_DECISIONS, decision_needs_notes
+
+    assert frozenset({"Full Reject", "Override — Accept Anyway"}) == ALWAYS_NOTED_DECISIONS
+    for decision in ALWAYS_NOTED_DECISIONS:
+        for severity in Severity:
+            assert decision_needs_notes(decision, severity, "Equipment Failure")
+            assert decision_needs_notes(decision, severity, "Temperature Deviation")
 
 
 def test_decision_targets_are_pinned() -> None:
@@ -666,3 +735,103 @@ def test_hold_scope_and_final_dispositions() -> None:
     assert can_dispose(Disposition.HOLD, Disposition.DESTROY)
     for final in (Disposition.RELEASE, Disposition.DESTROY, Disposition.RETURN_TO_VENDOR):
         assert not can_dispose(final, Disposition.HOLD)
+
+
+# ── Resolutions by issue type (business-rules §7.6) ──
+
+
+def test_resolutions_by_issue_type_are_pinned() -> None:
+    # see docs/architecture/business-rules.md §7.6
+    from app.domain.taxonomy import RESOLUTIONS_BY_TYPE
+
+    assert RESOLUTIONS_BY_TYPE == {
+        "Temperature Deviation": ("Full Reject", "Temp Re-check OK", "Product Segregated", "Other"),
+        "Product Quality Concern": ("Partial Accept", "Full Reject", "Product Segregated", "Other"),
+        "Damaged Pallet": (
+            "Partial Accept",
+            "Full Reject",
+            "Product Segregated",
+            "Corrected and Continued",
+            "Other",
+        ),
+        "SKU Mismatch": ("Full Reject", "Product Segregated", "Corrected and Continued", "Other"),
+        "Count Discrepancy": ("Partial Accept", "Full Reject", "Corrected and Continued", "Other"),
+        "Lot/Expiry Issue": (
+            "Partial Accept",
+            "Full Reject",
+            "Product Segregated",
+            "Corrected and Continued",
+            "Other",
+        ),
+        "Seal/Trailer Condition": ("Full Reject", "Corrected and Continued", "Other"),
+        "Safety Incident": ("Corrected and Continued", "Other"),
+        "Equipment Failure": ("Equipment Swapped", "Corrected and Continued", "Other"),
+        "WMS/System Issue": ("Manual Entry", "Corrected and Continued", "Other"),
+        "Barcode Issue": ("Manual Entry", "Corrected and Continued", "Other"),
+        "Paperwork Mismatch": ("Manual Entry", "Corrected and Continued", "Other"),
+    }
+
+
+def test_every_issue_type_has_its_resolutions_and_other_is_always_one() -> None:
+    from app.domain.taxonomy import OPERATOR_RESOLUTIONS, RESOLUTIONS_BY_TYPE, allowed_resolutions
+
+    assert set(RESOLUTIONS_BY_TYPE) == set(ISSUE_TYPES)
+    for issue_type, allowed in RESOLUTIONS_BY_TYPE.items():
+        assert "Other" in allowed, issue_type
+        assert set(allowed) <= set(OPERATOR_RESOLUTIONS), issue_type
+        # Listed in the taxonomy's order, so every screen shows them the same way.
+        assert list(allowed) == [r for r in OPERATOR_RESOLUTIONS if r in allowed], issue_type
+    assert allowed_resolutions("Not a type") == OPERATOR_RESOLUTIONS
+    assert "Temp Re-check OK" not in allowed_resolutions("Equipment Failure")
+    assert "Equipment Swapped" not in allowed_resolutions("Temperature Deviation")
+
+
+def test_the_simulated_crew_closes_issues_with_a_resolution_their_type_allows() -> None:
+    from app.domain.taxonomy import allowed_resolutions
+    from app.wms.engine import SELF_RESOLUTION
+
+    for issue_type, resolution in SELF_RESOLUTION.items():
+        assert resolution in allowed_resolutions(issue_type), issue_type
+    assert "Manual Entry" in allowed_resolutions("WMS/System Issue")  # the outage's paper sheet
+
+
+# ── The procedure's suggested decision (business-rules §3.4) ──
+
+
+def test_suggested_decisions_are_pinned() -> None:
+    # see docs/architecture/business-rules.md §3.4
+    suggested = {
+        row["scenario"]: row["suggested_decision"]
+        for row in load_seed("knowledge_base")
+        if row.get("suggested_decision")
+    }
+    assert suggested == {
+        "Less than 5% of cases damaged": "Partial Accept",
+        "More than 5% of cases damaged": "Full Reject",
+        "Packaging is punctured on food items": "Full Reject",
+        "Temperature more than 5°F above threshold": "Full Reject",
+        "Reefer unit not running on trailer": "Contact Carrier",
+        "Count is within customer tolerance": "Accept",
+        "Count exceeds customer tolerance": "Contact Carrier",
+        "Trailer seal is broken or missing": "Contact Carrier",
+        "Product expiry date has already passed": "Full Reject",
+        "Overage — received more than expected": "Accept",
+        "Pallet wood is broken but product is fine": "Accept",
+        "Torn or loose shrink wrap": "Accept",
+    }
+
+
+def test_a_suggested_decision_is_a_supervisor_decision_and_travels_with_the_procedure() -> None:
+    from app.domain.taxonomy import SUPERVISOR_DECISIONS
+
+    for row in load_seed("knowledge_base"):
+        assert row.get("suggested_decision") in (None, *SUPERVISOR_DECISIONS), row["scenario"]
+    entries = [
+        kb("Less than 5% of cases damaged", ["minor"], suggested_decision="Partial Accept"),
+        kb("Pallet came apart", ["apart"]),
+    ]
+    assert (
+        find_resolution(entries, "Damaged Pallet", "minor damage")["suggested_decision"] == "Partial Accept"
+    )
+    assert find_resolution(entries, "Damaged Pallet", "it came apart")["suggested_decision"] is None
+    assert "suggested_decision" not in find_resolution(entries, "Safety Incident", "")  # the fallback

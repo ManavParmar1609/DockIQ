@@ -39,7 +39,7 @@ from app.domain.retrieval import (
     find_resolution,
     temperature_band,
 )
-from app.domain.taxonomy import ISSUE_TYPES, OPERATOR_RESOLUTIONS, is_valid_subtype
+from app.domain.taxonomy import ISSUE_TYPES, OPERATOR_RESOLUTIONS, allowed_resolutions, is_valid_subtype
 from app.models import Carrier, Company, DockDoor, Issue, Order, OrderItem, Product, User
 from app.queries import load_kb_entries
 from app.schemas import (
@@ -651,6 +651,9 @@ async def draft_self_resolve(ctx: ToolContext, args: dict[str, Any]) -> ToolOutc
     resolution = args.get("resolution_type") or None
     if resolution is not None and resolution not in OPERATOR_RESOLUTIONS:
         raise ToolError(f"resolution_type must be one of: {', '.join(OPERATOR_RESOLUTIONS)}")
+    if resolution is not None and resolution not in allowed_resolutions(issue.issue_type):
+        # The worker picks on the card from the ones that fit (business-rules §7.6).
+        resolution = None
     title = issue.issue_subtype or issue.issue_type
     if why := why_not_self_resolve(issue.status, issue.severity):
         # Nothing to confirm: a critical or on-hold issue is the supervisor's decision.

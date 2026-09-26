@@ -1,9 +1,9 @@
-import { Check, RotateCw } from 'lucide-react';
-import { useState, type SyntheticEvent } from 'react';
+import { Check, Plus, RotateCw } from 'lucide-react';
+import { useId, useState, type SyntheticEvent } from 'react';
 import { Link, useLocation } from 'react-router';
 
 import { useDocks, useHandoffDraft, useHandoffs, useIssues, useSubmitHandoff } from '../../api/hooks';
-import type { Dock, HandoffDraft, Issue } from '../../api/types';
+import type { Dock, Handoff as HandoffRecord, HandoffDraft, Issue } from '../../api/types';
 import { useUser } from '../../auth/AuthProvider';
 import { HandoffNote, ReadReceipt } from '../../components/HandoffNote';
 import { SeverityMark, severityLabel } from '../../components/Severity';
@@ -18,7 +18,9 @@ import {
   Stat,
   StatGrid,
 } from '../../components/ui';
-import { formatDateTime } from '../../lib/format';
+import { elapsed, formatDateTime } from '../../lib/format';
+import { doorStatus, waitingSince } from '../../lib/triage';
+import { useNow } from '../../lib/useNow';
 import { composeHandoff, HANDOFF_MAX, sectionsFrom, type HandoffSection } from '../../lib/handoff';
 import { bySeverityThenAge, DOCK_STATUS, LIFECYCLE } from '../../lib/vocab';
 
@@ -115,6 +117,41 @@ function HandoffEditor({
   );
 }
 
+/** An earlier handoff as a hairline row: tap to read it; the plus turns to a cross while it is open. */
+function PastHandoff({ handoff }: { handoff: HandoffRecord }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <li className="border-b border-hairline">
+      <button
+        type="button"
+        className="accordion-row flex w-full items-center gap-3 py-3 text-left"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">
+            {handoff.supervisor_name} · <span className="capitalize">{handoff.shift}</span> shift
+          </span>
+          <span className="telemetry block text-sm text-ink-mute">
+            {formatDateTime(handoff.created_at)} · {handoff.read_at ? 'Read' : 'Not read yet'}
+          </span>
+        </span>
+        <Plus size={22} aria-hidden="true" className="accordion-icon shrink-0 text-ink-mute" />
+      </button>
+      <div id={id} role="region" aria-label={`Handoff, ${formatDateTime(handoff.created_at)}`} hidden={!open}>
+        {open && (
+          <div className="accordion-body flex flex-col gap-2 pb-4">
+            <p className="text-base whitespace-pre-line">{handoff.notes}</p>
+            <ReadReceipt handoff={handoff} />
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export default function Handoff() {
   const user = useUser();
   const docks = useDocks();
@@ -135,6 +172,8 @@ export default function Handoff() {
   const zoneDocks = docks.data && inZone(docks.data);
   const unresolved = open.data && sorted(open.data);
   const count = (list: unknown[] | undefined) => list?.length ?? '—';
+  const criticalCount = unresolved?.filter((issue) => issue.severity === 'critical').length;
+  const now = useNow();
 
   return (
     <div className="flex flex-col gap-6">
@@ -150,10 +189,17 @@ export default function Handoff() {
           value={count(zoneDocks?.filter((dock) => dock.status !== 'idle'))}
           index={0}
         />
+        {/* A count of every open issue is not an alarm; the criticals among it are named, not painted. */}
         <Stat
           label="Open issues"
           value={count(unresolved)}
-          alert={unresolved?.some((issue) => issue.severity === 'critical') ?? false}
+          sub={
+            criticalCount === undefined
+              ? undefined
+              : criticalCount > 0
+                ? `${String(criticalCount)} critical`
+                : 'None critical'
+          }
           index={1}
         />
         <Stat
@@ -192,7 +238,15 @@ export default function Handoff() {
                             {issue.issue_subtype ?? issue.issue_type}
                           </span>
                           <span className="telemetry text-sm text-ink-mute">
-                            Dock {issue.door_number ?? '—'} · {issue.operator_name}
+                            Dock {issue.door_number ?? '—'} · {issue.operator_name} ·{' '}
+                            {issue.status === 'on_hold'
+                              ? (issue.pending_action ?? 'On hold')
+                              : issue.acknowledged_at
+                                ? `Taken by ${issue.acknowledged_by_name ?? 'a supervisor'}`
+                                : issue.status === 'escalated'
+                                  ? 'Not taken'
+                                  : 'At the dock'}{' '}
+                            · {elapsed(waitingSince(issue), now)}
                           </span>
                         </span>
                         <span className="label">{severityLabel(issue.severity)}</span>
@@ -220,7 +274,7 @@ export default function Handoff() {
                         {dock.company_name ?? 'No load'} · {LIFECYCLE[dock.lifecycle_phase]}
                       </span>
                     </span>
-                    <span className="label">{DOCK_STATUS[dock.status]}</span>
+                    <span className="label">{DOCK_STATUS[doorStatus(dock, open.data ?? [])]}</span>
                   </li>
                 ))}
               </ul>
@@ -250,24 +304,20 @@ export default function Handoff() {
             list.length === 0 ? (
               <EmptyState title="None yet" />
             ) : (
-              <ul className="flex flex-col gap-3">
-                {list.map((handoff, index) => (
-                  <li key={handoff.id} className="rounded-lg bg-paper-sunk px-4 py-3">
-                    {index === 0 ? (
-                      <HandoffNote handoff={handoff} />
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <p className="label">
-                          {handoff.supervisor_name} · {handoff.shift} shift ·{' '}
-                          {formatDateTime(handoff.created_at)}
-                        </p>
-                        <p className="text-base whitespace-pre-line">{handoff.notes}</p>
-                        <ReadReceipt handoff={handoff} />
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <div className="flex flex-col gap-4">
+                {list[0] && (
+                  <div className="rounded-lg bg-paper-sunk px-4 py-3">
+                    <HandoffNote handoff={list[0]} />
+                  </div>
+                )}
+                {list.length > 1 && (
+                  <ul className="flex flex-col border-t border-hairline">
+                    {list.slice(1).map((handoff) => (
+                      <PastHandoff key={handoff.id} handoff={handoff} />
+                    ))}
+                  </ul>
+                )}
+              </div>
             )
           }
         </QueryBoundary>

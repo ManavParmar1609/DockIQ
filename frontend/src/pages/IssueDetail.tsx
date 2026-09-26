@@ -51,9 +51,12 @@ function escalatedOnFiling(issue: Issue): boolean {
   return Math.abs(Date.parse(issue.escalated_at) - Date.parse(issue.created_at)) < SAME_MOMENT_MS;
 }
 
-/** Accepting product on a critical or cold-chain issue needs the reason (mirrors the API's 422). */
+/** Full Reject and Override always need the reason; accepting product on a critical or cold-chain
+ * issue does too (mirrors the API's 422, business-rules §7.2). */
 function decisionNeedsNotes(decision: string | null, issue: Issue, taxonomy: Taxonomy | undefined) {
-  if (!decision || !taxonomy?.accept_decisions?.includes(decision)) return false;
+  if (!decision || !taxonomy) return false;
+  if (taxonomy.noted_decisions?.includes(decision)) return true;
+  if (!taxonomy.accept_decisions?.includes(decision)) return false;
   return issue.severity === 'critical' || (taxonomy.cold_chain_issue_types ?? []).includes(issue.issue_type);
 }
 
@@ -254,6 +257,8 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
   const pending = decision ? pendingActions[decision] : undefined;
   const needsNotes = decisionNeedsNotes(decision, issue, taxonomy.data);
   const missingNotes = needsNotes && !notes.trim();
+  const alwaysNoted = decision !== null && (taxonomy.data?.noted_decisions ?? []).includes(decision);
+  const suggested = aiResolutionOf(issue)?.suggested_decision ?? null;
 
   if (resolve.isSuccess && resolve.variables.resolution_type) {
     const onHold = resolve.variables.resolution_type in pendingActions;
@@ -277,7 +282,7 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
   }
   const options = (taxonomy.data?.supervisor_decisions ?? []).map((option) => ({
     value: option,
-    label: option,
+    label: option === suggested ? `${option} · suggested` : option,
   }));
   return (
     <Panel title="Your decision">
@@ -292,6 +297,14 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
           </span>
         </p>
       )}
+      {suggested && (
+        <p className="bracket mb-3 text-base text-ink-soft">
+          <span>
+            Procedure suggests: <span className="hl hl-cream font-semibold">{suggested}</span>. Advice from
+            the SOP — the call is yours.
+          </span>
+        </p>
+      )}
       <ChoiceGroup label="Decision" options={options} value={decision} onChange={setDecision} />
       {Object.keys(pendingActions).length > 0 && (
         <p className="mt-2 text-sm text-ink-mute">
@@ -299,7 +312,10 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
         </p>
       )}
       <div className="mt-4">
-        <FieldLabel htmlFor="supervisor-notes" hint={needsNotes ? 'Required: why accept it' : undefined}>
+        <FieldLabel
+          htmlFor="supervisor-notes"
+          hint={needsNotes ? (alwaysNoted ? 'Required: your reason' : 'Required: why accept it') : undefined}
+        >
           Notes for the record
         </FieldLabel>
         <textarea
@@ -314,16 +330,23 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
         />
         {needsNotes && (
           <p className="mt-1 text-sm text-ink-mute">
-            Accepting product on a {issue.severity === 'critical' ? 'critical' : 'temperature'} issue is
-            recorded with your reason.
+            {alwaysNoted
+              ? `${decision} is always recorded with your reason.`
+              : `Accepting product on a ${issue.severity === 'critical' ? 'critical' : 'temperature'} issue is recorded with your reason.`}
           </p>
         )}
       </div>
       <div className="mt-4 flex flex-col gap-2">
         <MutationError error={resolve.error} />
+        {decision && missingNotes && (
+          <p className="text-sm text-ink-soft" id="decision-blocked">
+            Write your reason in the notes to record {decision}.
+          </p>
+        )}
         <button
           type="button"
           className="btn btn-primary text-lg"
+          aria-describedby={decision && missingNotes ? 'decision-blocked' : undefined}
           disabled={!decision || missingNotes || resolve.isPending}
           onClick={() =>
             decision &&
@@ -334,7 +357,9 @@ function SupervisorDecision({ issue }: { issue: Issue }) {
             ? 'Recording…'
             : pending
               ? `Put on hold — ${pending.toLowerCase()}`
-              : 'Resolve issue'}
+              : decision
+                ? `Record: ${decision}`
+                : 'Choose a decision'}
         </button>
       </div>
     </Panel>
@@ -447,6 +472,7 @@ function OperatorActions({ issue }: { issue: Issue }) {
       ) : issue.can_self_resolve ? (
         <SelfResolveForm
           issueId={issue.id}
+          issueType={issue.issue_type}
           needsNote={issue.self_resolve_needs_note === true}
           disabled={escalate.isPending}
         />

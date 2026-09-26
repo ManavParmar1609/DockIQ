@@ -215,6 +215,8 @@ class Issue(Base):
     disposition_notes: Mapped[str | None] = mapped_column(Text)
     disposition_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     disposition_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # The reporting tablet's key for this report: a retry from its offline queue is filed once.
+    client_key: Mapped[str | None] = mapped_column(String(64), unique=True)
 
 
 class KnowledgeBaseEntry(Base):
@@ -229,6 +231,8 @@ class KnowledgeBaseEntry(Base):
     source_reference: Mapped[str] = mapped_column(String(200))
     applicable_categories: Mapped[list[str]] = mapped_column(JSON, default=list)
     applicable_companies: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # The supervisor decision the procedure's own words point to, as advice only (business-rules §3.4).
+    suggested_decision: Mapped[str | None] = mapped_column(String(64))
 
 
 class TrailerInspection(Base):
@@ -260,6 +264,7 @@ class QuickRequest(Base):
     )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
     fulfilled_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    cancelled_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class Broadcast(Base):

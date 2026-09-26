@@ -3,11 +3,12 @@
  * Photos are downscaled on the device before upload: the API caps them at 600 kB and 4 per issue
  * (business-rules §9), and a tablet on warehouse Wi-Fi should not push 5 MB camera originals.
  */
-import { ImagePlus, Mic, MicOff, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImagePlus, Mic, MicOff, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { usePhotoBlob, usePhotos } from '../api/hooks';
 import { formatDateTime } from '../lib/format';
+import { prefersStill } from '../lib/motion';
 
 const MAX_PHOTOS = 4;
 const MAX_EDGE = 1280;
@@ -138,15 +139,64 @@ function StoredPhoto({ id, createdAt }: { id: number; createdAt: string }) {
   );
 }
 
-/** The photos attached to an issue. */
+/**
+ * The photos attached to an issue, as the reference's carousel: a snapping track with the neighbours
+ * peeking, round arrows, and a count of where you are.
+ */
 export function PhotoStrip({ issueId, count }: { issueId: number; count: number }) {
   const photos = usePhotos(issueId, count > 0);
+  const track = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState(0);
   if (count === 0) return <p className="text-ink-mute">No photos attached.</p>;
+  const list = photos.data ?? [];
+  const go = (delta: number) => {
+    const element = track.current;
+    const card = element?.firstElementChild;
+    if (!element || !(card instanceof HTMLElement)) return;
+    element.scrollBy({ left: delta * (card.offsetWidth + 12), behavior: prefersStill() ? 'auto' : 'smooth' });
+  };
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {(photos.data ?? []).map((photo) => (
-        <StoredPhoto key={photo.id} id={photo.id} createdAt={photo.created_at} />
-      ))}
+    <div className="flex flex-col gap-3">
+      <div
+        ref={track}
+        className="photo-track"
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          const card = element.firstElementChild;
+          if (card instanceof HTMLElement) setAt(Math.round(element.scrollLeft / (card.offsetWidth + 12)));
+        }}
+      >
+        {list.map((photo) => (
+          <StoredPhoto key={photo.id} id={photo.id} createdAt={photo.created_at} />
+        ))}
+      </div>
+      {list.length > 1 && (
+        <div className="flex items-center justify-between gap-3">
+          <span className="telemetry text-sm text-ink-mute" aria-live="polite">
+            {Math.min(at, list.length - 1) + 1} / {list.length}
+          </span>
+          <span className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-secondary h-12 w-12 px-0"
+              aria-label="Previous photo"
+              disabled={at <= 0}
+              onClick={() => go(-1)}
+            >
+              <ChevronLeft size={20} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary h-12 w-12 px-0"
+              aria-label="Next photo"
+              disabled={at >= list.length - 1}
+              onClick={() => go(1)}
+            >
+              <ChevronRight size={20} aria-hidden="true" />
+            </button>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

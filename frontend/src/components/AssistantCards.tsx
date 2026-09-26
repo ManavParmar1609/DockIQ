@@ -15,7 +15,7 @@ import type {
   IssueDraft,
   SelfResolveDraft,
 } from '../api/assistant';
-import { useReportIssue, useSelfResolve, useSendBroadcast, useTaxonomy } from '../api/hooks';
+import { useIssue, useReportIssue, useSelfResolve, useSendBroadcast, useTaxonomy } from '../api/hooks';
 import { duration, formatDate, formatTemp } from '../lib/format';
 import { parseSeverityReason } from '../lib/vocab';
 import { PalletList } from './PalletList';
@@ -35,13 +35,11 @@ function CardFrame({
 }) {
   return (
     <section className={`card overflow-hidden ${draft ? 'ring-2 ring-accent' : ''}`}>
-      <header className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
-        <p className={`font-caption text-sm font-semibold ${draft ? 'text-accent-ink' : 'text-ink-soft'}`}>
-          {kicker}
-        </p>
-        {title && <p className="telemetry text-sm text-ink-mute">{title}</p>}
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 pt-4">
+        <h3 className={`serif-title text-xl ${draft ? 'text-accent-ink' : ''}`}>{kicker}</h3>
+        {title && <span className="bracket telemetry text-sm text-ink-mute">{title}</span>}
       </header>
-      <div className="px-5 pt-2 pb-5">{children}</div>
+      <div className="px-5 pt-3 pb-5">{children}</div>
     </section>
   );
 }
@@ -408,6 +406,10 @@ function HandoffDraftView({ draft }: { draft: HandoffDraft }) {
 
 function SelfResolveDraftView({ draft }: { draft: SelfResolveDraft }) {
   const taxonomy = useTaxonomy();
+  // Only the resolutions that fit this issue's type (business-rules §7.6); all of them until it is known.
+  const issue = useIssue(draft.issue_id);
+  const spec = taxonomy.data?.issue_types.find((type) => type.name === issue.data?.issue_type);
+  const options = spec?.resolutions?.length ? spec.resolutions : (taxonomy.data?.operator_resolutions ?? []);
   const resolve = useSelfResolve();
   const [choice, setChoice] = useState<string | null>(draft.resolution_type);
   // Escalated: the worker writes the note themselves before confirming (business-rules §7.5).
@@ -436,7 +438,7 @@ function SelfResolveDraftView({ draft }: { draft: SelfResolveDraft }) {
         <>
           <p className="label mt-3 mb-1">What you did</p>
           <div className="grid gap-2 sm:grid-cols-2" aria-label="Resolution">
-            {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
+            {options.map((option) => (
               <button
                 key={option}
                 type="button"

@@ -45,6 +45,7 @@ def can_transition(current: IssueStatus, target: IssueStatus) -> bool:
 # ── Supervisor decisions (business-rules §7.2) ──
 
 FULL_REJECT = "Full Reject"
+OVERRIDE = "Override — Accept Anyway"
 REQUEST_REINSPECTION = "Request Re-inspection"
 CONTACT_CARRIER = "Contact Carrier"
 
@@ -62,8 +63,16 @@ def decision_status(decision: str) -> IssueStatus:
     return IssueStatus.ON_HOLD if decision in PENDING_DECISIONS else IssueStatus.SUPERVISOR_RESOLVED
 
 
+# Decisions that always carry the supervisor's reason, whatever the issue: rejecting a load and
+# overriding the procedure are the two calls an auditor asks "why?" about first.
+ALWAYS_NOTED_DECISIONS: frozenset[str] = frozenset({FULL_REJECT, OVERRIDE})
+
+
 def decision_needs_notes(decision: str, severity: Severity, issue_type: str) -> bool:
-    """Accepting product on a critical or temperature issue is recorded with the supervisor's reason."""
+    """Full Reject and Override always need the supervisor's reason; accepting product on a critical
+    or temperature issue does too."""
+    if decision in ALWAYS_NOTED_DECISIONS:
+        return True
     return decision in ACCEPT_DECISIONS and (
         severity is Severity.CRITICAL or issue_type in COLD_CHAIN_ISSUE_TYPES
     )

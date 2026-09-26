@@ -9,7 +9,9 @@ export default defineConfig(({ command, mode }) => {
   // A production bundle without an API origin would call /api on the static host and get the
   // SPA's index.html back with a 200. Refuse to build it rather than ship that.
   if (command === 'build' && mode === 'production' && !env.VITE_API_URL) {
-    throw new Error('VITE_API_URL is not set. Set it to the API origin, e.g. https://dockiq-api.onrender.com');
+    throw new Error(
+      'VITE_API_URL is not set. Set it to the API origin, e.g. https://dockiq-api.onrender.com',
+    );
   }
 
   return {

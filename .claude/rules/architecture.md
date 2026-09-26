@@ -117,7 +117,6 @@ Listed so it is visible rather than rediscovered. Do not "fix" it incidentally i
 | No migrations, no indexes, no FKs, JSON in TEXT | ✅ Fixed in Phase 1 |
 | Dual dock state mutated by five handlers | ✅ Centralised in `domain/dock.py` (the two columns remain) |
 | `print()` logging | ✅ Fixed in Phase 1 |
-| Resolution sets the dock `active` even when another issue is still open on it | Open — preserved behaviour, see functional-specs §4 |
 | Known rule defects (zero-count shortage, unreachable dwell modifier, missing company bonus, fixed 45°F gate) | Open → Phase 2C; marked `KNOWN DEFECT` in code |
 
 ### Frontend

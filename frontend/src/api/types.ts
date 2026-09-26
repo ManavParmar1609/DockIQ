@@ -62,6 +62,8 @@ export interface AiResolution {
   steps: string[];
   source?: string;
   issue_type?: string;
+  /** The supervisor decision the SOP's words point to — advice, never applied (business-rules §3.4). */
+  suggested_decision?: string | null;
 }
 
 /** `ai_resolution` is JSON on the wire; this narrows it for display. */

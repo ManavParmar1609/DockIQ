@@ -1,5 +1,5 @@
 import { Camera, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useIssues } from '../../api/hooks';
@@ -9,6 +9,7 @@ import { SelfResolveForm } from '../../components/SelfResolve';
 import { SeverityBadge } from '../../components/Severity';
 import { EmptyState, IssueStatusTag, PageHeader, QueryBoundary } from '../../components/ui';
 import { formatDateTime } from '../../lib/format';
+import { bringIntoView } from '../../lib/motion';
 import { useNow } from '../../lib/useNow';
 import { ISSUE_STATUS } from '../../lib/vocab';
 
@@ -34,6 +35,12 @@ function waitingOn(issue: Issue): string | null {
 /** Close it here, without opening it: any open issue of theirs that is not critical or on hold (§7.5). */
 function ResolveInline({ issue }: { issue: Issue }) {
   const [open, setOpen] = useState(false);
+  const form = useRef<HTMLDivElement>(null);
+  // Opening the form brings its last line (Confirm) into view.
+  useEffect(() => {
+    if (!open) return;
+    bringIntoView(form.current);
+  }, [open]);
   if (issue.severity === 'critical' && ISSUE_STATUS[issue.status].open) {
     return (
       <p className="border-t border-hairline bg-paper-sunk px-5 py-3 text-sm font-semibold text-ink-soft">
@@ -45,12 +52,15 @@ function ResolveInline({ issue }: { issue: Issue }) {
   return (
     <div className="border-t border-hairline bg-paper-sunk px-5 py-3">
       {open ? (
-        <SelfResolveForm
-          issueId={issue.id}
-          needsNote={issue.self_resolve_needs_note === true}
-          onResolved={() => setOpen(false)}
-          onCancel={() => setOpen(false)}
-        />
+        <div ref={form} className="unroll">
+          <SelfResolveForm
+            issueId={issue.id}
+            issueType={issue.issue_type}
+            needsNote={issue.self_resolve_needs_note === true}
+            onResolved={() => setOpen(false)}
+            onCancel={() => setOpen(false)}
+          />
+        </div>
       ) : (
         <button
           type="button"

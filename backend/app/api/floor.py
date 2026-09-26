@@ -185,6 +185,29 @@ async def fulfill_request(
     return StatusOut(status=RequestStatus.FULFILLED.value)
 
 
+@router.put("/requests/{request_id}/cancel")
+async def cancel_request(
+    request_id: PathId, user: Operator, session: SessionDep, events: RealtimeDep
+) -> StatusOut:
+    """The operator who asked withdraws a request still pending. Their supervisor's list drops it
+    (`new_request` with status `cancelled`). Someone else's request is a 404."""
+    request = await session.scalar(
+        select(QuickRequest).where(QuickRequest.id == request_id, QuickRequest.operator_id == user.id)
+    )
+    if request is None:
+        raise HTTPException(http.HTTP_404_NOT_FOUND, "Request not found")
+    if request.status is not RequestStatus.PENDING:
+        raise HTTPException(http.HTTP_409_CONFLICT, f"Request is already {request.status.value}")
+    request.status = RequestStatus.CANCELLED
+    request.cancelled_at = utcnow()
+    await session.commit()
+    await events.send(
+        {user.id, await supervisor_of(session, user.id)},
+        realtime.new_request(request.id, request.request_type, RequestStatus.CANCELLED.value),
+    )
+    return StatusOut(status=RequestStatus.CANCELLED.value)
+
+
 def _author_select(
     model: type[Broadcast] | type[ShiftHandoff], limit: int
 ) -> tuple[Select[Any], AliasedClass[User]]:

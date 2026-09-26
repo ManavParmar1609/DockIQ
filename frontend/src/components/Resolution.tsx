@@ -2,7 +2,8 @@
  * The product's "explainable, not magic" claim made visible (rules §2.4.4): the score derivation,
  * the match confidence, and the cited SOP source — never just a verdict.
  */
-import { BookOpen, Repeat2 } from 'lucide-react';
+import { BookOpen, Check, Repeat2 } from 'lucide-react';
+import { useState } from 'react';
 
 import type { AiResolution, RecurringPattern, Severity } from '../api/types';
 import { formatMoney } from '../lib/format';
@@ -78,6 +79,46 @@ export function RecurringPatterns({
   );
 }
 
+/**
+ * The steps as a working checklist: the step to do now is bright, finished ones dim with a tick, the
+ * rest wait. Ticks are a working aid on this screen only; nothing is recorded.
+ */
+function ProcedureSteps({ steps }: { steps: string[] }) {
+  const [done, setDone] = useState<Set<number>>(() => new Set());
+  const now = steps.findIndex((_, i) => !done.has(i));
+  const toggle = (i: number) =>
+    setDone((current) => {
+      const next = new Set(current);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  return (
+    <ol className="flex flex-col gap-1" aria-label="Procedure steps">
+      {steps.map((step, i) => {
+        const finished = done.has(i);
+        const state = finished ? 'done' : i === now ? 'now' : 'next';
+        return (
+          <li key={step}>
+            <button
+              type="button"
+              className={`proc-step proc-${state}`}
+              aria-pressed={finished}
+              onClick={() => toggle(i)}
+            >
+              <span className="proc-num telemetry" aria-hidden="true">
+                {finished ? <Check size={16} strokeWidth={3} /> : i + 1}
+              </span>
+              <span className="pt-0.5 text-left">{step}</span>
+              <span className="sr-only">{finished ? ', done' : i === now ? ', do this now' : ''}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function ProcedureCard({
   resolution,
   fallbackTitle,
@@ -96,16 +137,7 @@ export function ProcedureCard({
       index={index}
     >
       {!resolution.found && resolution.message && <p className="mb-3 font-semibold">{resolution.message}</p>}
-      <ol className="flex flex-col gap-2">
-        {resolution.steps.map((step, i) => (
-          <li key={step} className="flex gap-3 text-lg">
-            <span className="telemetry grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-base text-on-accent">
-              {i + 1}
-            </span>
-            <span className="pt-0.5">{step}</span>
-          </li>
-        ))}
-      </ol>
+      <ProcedureSteps steps={resolution.steps} />
       {resolution.source && (
         <p className="mt-4 flex items-center gap-2 border-t border-hairline pt-3 text-base">
           <BookOpen size={18} aria-hidden="true" />

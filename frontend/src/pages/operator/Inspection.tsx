@@ -16,6 +16,7 @@ import {
   PageHeader,
   Panel,
 } from '../../components/ui';
+import { TempInput } from '../../components/TempInput';
 import { formatDateTime, formatTemp } from '../../lib/format';
 import { reportLink } from './reportLink';
 
@@ -240,16 +241,11 @@ export default function Inspection() {
             >
               Interior temperature (°F)
             </FieldLabel>
-            <input
+            <TempInput
               id="interior-temp"
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              className="field text-2xl"
               value={temperature}
               required={needsTemperature}
-              aria-required={needsTemperature}
-              onChange={(event) => setTemperature(event.target.value)}
+              onChange={setTemperature}
             />
           </Panel>
           <Panel

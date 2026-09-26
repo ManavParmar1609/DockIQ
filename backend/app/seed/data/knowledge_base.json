@@ -20,6 +20,7 @@
     ],
     "confidence": "high",
     "source_reference": "Company SOP 4.1 — Damaged Product Receiving",
+    "suggested_decision": "Partial Accept",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -51,6 +52,7 @@
     ],
     "confidence": "high",
     "source_reference": "Company SOP 4.2 — Major Damage Rejection",
+    "suggested_decision": "Full Reject",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -82,6 +84,7 @@
     ],
     "confidence": "high",
     "source_reference": "FDA Food Safety Guidelines / Company SOP 4.3",
+    "suggested_decision": "Full Reject",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -143,6 +146,7 @@
     ],
     "confidence": "high",
     "source_reference": "Cold Chain SOP 2.3 — Critical Temperature Rejection",
+    "suggested_decision": "Full Reject",
     "applicable_categories": [
       "Frozen",
       "Refrigerated"
@@ -173,6 +177,7 @@
     ],
     "confidence": "medium",
     "source_reference": "Equipment SOP 7.2 — Reefer Troubleshooting",
+    "suggested_decision": "Contact Carrier",
     "applicable_categories": [
       "Frozen",
       "Refrigerated"
@@ -326,6 +331,7 @@
     ],
     "confidence": "high",
     "source_reference": "Receiving SOP 5.4 — Minor Count Discrepancy",
+    "suggested_decision": "Accept",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -357,6 +363,7 @@
     ],
     "confidence": "high",
     "source_reference": "Receiving SOP 5.5 — Major Count Discrepancy",
+    "suggested_decision": "Contact Carrier",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -389,6 +396,7 @@
     ],
     "confidence": "high",
     "source_reference": "Security SOP 8.1 — Seal Verification",
+    "suggested_decision": "Contact Carrier",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -610,6 +618,7 @@
     ],
     "confidence": "high",
     "source_reference": "Quality SOP 9.1 — Expired Product Rejection",
+    "suggested_decision": "Full Reject",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -732,6 +741,7 @@
     ],
     "confidence": "medium",
     "source_reference": "Receiving SOP 5.6 — Overage Handling",
+    "suggested_decision": "Accept",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -793,6 +803,7 @@
     ],
     "confidence": "high",
     "source_reference": "Company SOP 4.4 — Pallet-Only Damage",
+    "suggested_decision": "Accept",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",
@@ -1280,6 +1291,7 @@
     ],
     "confidence": "high",
     "source_reference": "Company SOP 4.5 — Pallet Wrap Integrity",
+    "suggested_decision": "Accept",
     "applicable_categories": [
       "Frozen",
       "Refrigerated",

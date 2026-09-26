@@ -1,16 +1,18 @@
 import { Check, X } from 'lucide-react';
 import { useId, useState } from 'react';
 
-import { useSelfResolve, useTaxonomy } from '../api/hooks';
+import { useIssue, useSelfResolve, useTaxonomy } from '../api/hooks';
 import { VoiceButton } from './Evidence';
 import { ChoiceGroup, FieldLabel, MutationError } from './ui';
 
 /**
- * The worker closes their own issue: what they did (the taxonomy's operator resolutions) and a note.
- * The note is required when the issue is escalated — the server says so (`self_resolve_needs_note`).
+ * The worker closes their own issue: what they did (the resolutions that fit its type, from the
+ * taxonomy — business-rules §7.6) and a note. The note is required when the issue is escalated — the
+ * server says so (`self_resolve_needs_note`). Without `issueType` the issue is read to find it.
  */
 export function SelfResolveForm({
   issueId,
+  issueType,
   needsNote,
   columns = 2,
   disabled = false,
@@ -18,6 +20,7 @@ export function SelfResolveForm({
   onCancel,
 }: {
   issueId: number;
+  issueType?: string;
   needsNote: boolean;
   columns?: 2 | 3 | 4;
   /** Another action on the same issue is under way. */
@@ -26,6 +29,13 @@ export function SelfResolveForm({
   onCancel?: () => void;
 }) {
   const taxonomy = useTaxonomy();
+  const issue = useIssue(issueId, issueType === undefined);
+  const type = issueType ?? issue.data?.issue_type;
+  const spec = taxonomy.data?.issue_types.find((candidate) => candidate.name === type);
+  // The ones that fit the type; every one until the type is known (the server still refuses a misfit).
+  const resolutions = spec?.resolutions?.length
+    ? spec.resolutions
+    : (taxonomy.data?.operator_resolutions ?? []);
   const resolve = useSelfResolve();
   const [choice, setChoice] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -41,7 +51,7 @@ export function SelfResolveForm({
       </p>
       <ChoiceGroup
         label="What you did"
-        options={(taxonomy.data?.operator_resolutions ?? []).map((option) => ({
+        options={resolutions.map((option) => ({
           value: option,
           label: option,
         }))}

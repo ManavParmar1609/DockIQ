@@ -100,6 +100,7 @@ export const TAXONOMY: Taxonomy = {
   request_types: ['Pallet jack'],
   accept_decisions: ['Accept'],
   pending_decisions: ['Contact Carrier', 'Request Re-inspection'],
+  noted_decisions: ['Full Reject'],
   decision_targets: { critical: 15, high: 60, medium: 240, low: 480 },
   pending_actions: {
     'Contact Carrier': 'Awaiting the carrier',

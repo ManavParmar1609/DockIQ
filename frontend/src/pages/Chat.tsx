@@ -1,5 +1,15 @@
-import { ArrowUpRight, BookOpen, Check, CircleAlert, LoaderCircle, Send, Warehouse } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  Check,
+  CircleAlert,
+  LoaderCircle,
+  Send,
+  Warehouse,
+} from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
+import { Link } from 'react-router';
 
 import { useAssistant, type Exchange, type Step } from '../api/assistant';
 import { useActiveOrder, useChatHistory, useOrder } from '../api/hooks';
@@ -10,9 +20,9 @@ import { VoiceButton } from '../components/Evidence';
 import { Inline, RichAnswer } from '../components/RichAnswer';
 import { PageHeader, QueryBoundary } from '../components/ui';
 
-function Question({ text }: { text: string }) {
+function Question({ text, arrive = false }: { text: string; arrive?: boolean }) {
   return (
-    <li className="flex justify-end">
+    <li className={`flex justify-end ${arrive ? 'turn-arrive' : ''}`}>
       <p className="bubble-user">{text}</p>
     </li>
   );
@@ -31,15 +41,22 @@ function Turn({
   source,
   busy,
   live,
+  arrive = false,
   children,
 }: {
   source?: string | null;
   busy?: boolean;
   live?: boolean;
+  /** The latest turn when the conversation reopens: it fades up so the eye lands on it. */
+  arrive?: boolean;
   children: ReactNode;
 }) {
   return (
-    <li className="turn" aria-live={live ? 'polite' : undefined} aria-busy={busy}>
+    <li
+      className={`turn ${arrive ? 'turn-arrive' : ''}`}
+      aria-live={live ? 'polite' : undefined}
+      aria-busy={busy}
+    >
       <Mark />
       <div className="flex min-w-0 flex-col gap-3">
         <p className="turn-name">DockIQ</p>
@@ -55,11 +72,19 @@ function Turn({
   );
 }
 
-/** A past turn from history: text only. */
-function PastAnswer({ message }: { message: ChatMessage }) {
+/** History keeps an answer's text, not its draft: a drafted handoff links to where it is written. */
+const HANDOFF_DRAFTED = /handoff note drafted|on the handoff screen/i;
+
+/** A past turn from history: text only, plus the way to the Handoff screen for a drafted note. */
+function PastAnswer({ message, role, arrive }: { message: ChatMessage; role: Role; arrive: boolean }) {
   return (
-    <Turn source={message.source_reference}>
+    <Turn source={message.source_reference} arrive={arrive}>
       <RichAnswer text={message.message} />
+      {role === 'supervisor' && HANDOFF_DRAFTED.test(message.message) && (
+        <Link to="/app/handoff" className="btn btn-secondary self-start">
+          Open Handoff <ArrowRight size={18} aria-hidden="true" />
+        </Link>
+      )}
     </Turn>
   );
 }
@@ -176,8 +201,19 @@ export default function Chat() {
 
   const latest = exchanges.at(-1);
   useEffect(() => {
+    if (exchanges.length === 0) return;
     bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [exchanges.length, latest?.steps.length, latest?.cards.length, latest?.actions.length]);
+
+  // Reopened with history: land on the latest turn, not the top of the conversation. A jump, never a
+  // scroll animation, so reduced motion needs nothing more.
+  const landed = useRef(false);
+  const hasHistory = history.data !== undefined;
+  useEffect(() => {
+    if (!hasHistory || landed.current) return;
+    landed.current = true;
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+  }, [hasHistory]);
 
   const send = (text: string) => {
     if (!text.trim() || busy) return;
@@ -240,13 +276,14 @@ export default function Chat() {
             </section>
           ) : (
             <ul className="flex flex-col gap-8">
-              {earlier.map((message) =>
-                message.role === 'user' ? (
-                  <Question key={message.id} text={message.message} />
+              {earlier.map((message, index) => {
+                const arrive = exchanges.length === 0 && index === earlier.length - 1;
+                return message.role === 'user' ? (
+                  <Question key={message.id} text={message.message} arrive={arrive} />
                 ) : (
-                  <PastAnswer key={message.id} message={message} />
-                ),
-              )}
+                  <PastAnswer key={message.id} message={message} role={user.role} arrive={arrive} />
+                );
+              })}
               {exchanges.map((exchange) => (
                 <Fragment key={exchange.id}>
                   <Question text={exchange.question} />

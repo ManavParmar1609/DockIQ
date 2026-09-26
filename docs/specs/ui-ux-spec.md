@@ -43,7 +43,7 @@ record: `DESIGN.md`; product truth: `PRODUCT.md`.
 | `pink` / `blue` + `-ink` / `lilac` + `-ink` (+ `-soft`) | `#FEC5FB` / `#00BAE2` `#4FD3EF` / `#9D95FF` `#B4AEFF` on dark washes | Filing: zones (A pink, B blue, C lilac), report groups (Product blue, People pink, Systems lilac), inspection sections, cold rooms |
 | `orangey` / `signal` | `#FF8709` | The simulated mark (an orange highlighter block), trailer lamps |
 | `hazard` / `orange` / `amber` | red `#C9372C` (white 5.2:1; marks `#FF5A4F`, text `#FF9B90` on `#2B1311`) / amber `#FFC062` / citron `#E3E37D` | **Severity only**, always with a word and a shape |
-| `chart-1…4` | `#00B320` `#7A71CF` `#DC7100` `#0096B9` | Categorical data, fixed order; the highlighters stepped into the dark chart band; dataviz checks pass |
+| `chart-1…4` | `#00B320` `#7A71CF` `#B28500` `#0096B9` | Categorical data, fixed order; the highlighters stepped into the dark chart band, slot 3 a deep gold because orange marks simulated data; dataviz checks pass |
 
 - **Type:** Host Grotesk (the free stand-in for Mori and Messina Sans) for everything: page titles
   at 44–66px, 600, −0.035em (`.display`), body 16px, labels, controls. Source Serif 4 at its display
@@ -55,10 +55,28 @@ record: `DESIGN.md`; product truth: `PRODUCT.md`.
 - **Signatures:** `{ bracket }` notes beside titles (never stacked above one); highlighter blocks
   (`.hl-*`) for your place and the simulated mark; the green announcement bar; soft 3D gradient
   shapes on the landing page only.
-- **Motion:** titles wipe up; screens rise out of a blur, staggered; the green rises through the
-  primary pill on hover and press; nav items slide a bar in; cards rise and light their rule in their
-  filing colour. On the landing page, words light as they scroll and shapes drift. Never on an alert;
-  reduced motion is honoured.
+- **Motion** (gsap.com's own ease tokens: `--ease-out` `(.23,1,.32,1)`, `--ease-in`, `--ease-colour`
+  `(.645,.045,.355,1)`): titles wipe up; screens rise out of a blur, staggered; every pill fills from
+  the exact point it was pressed (`lib/flair.ts`, ≤150ms on press) and its label inverts; nav bars
+  slide in; cards lift and light their filing rule. Work screens: a scan rings the matched line
+  (with a match / mismatch / unknown tone, mutable per device), a count tap pops a tick on the
+  button (the number never moves) and offers a 5-second undo, a step slides in from the side it lies
+  on, the procedure is a checklist (the step to do now bright, done steps dim), evidence photos are a
+  snapping carousel. The landing hero is built letter by letter with GSAP SplitText, once; words
+  light as they scroll; shapes drift. Entrance animations hold only their first frame
+  (`backwards`), so nothing they wrap loses fixed positioning. Never on an alert, a severity mark, a
+  temperature or a count; reduced motion shows the final state.
+- **Staff patterns:** issue rows file their type with a group dot or the type as a category word in
+  its hue (`IssueGroupDot`, `IssueTypeLabel`); the priority queue reorders with GSAP Flip (critical
+  rows jump, never glide) and says how far past its target an issue is; alert cards carry a thin
+  timer bar for their 12s life and sit clear of page-header buttons; the dock sheet opens on its open
+  issues with an inline "On my way"; Issue-log filters are outlined pills, filled cream when set, and
+  a table that must scroll shows its scroll edge; the simulator's scenarios and reset sit behind
+  "Demo controls" with a confirm; past handoffs are accordion rows; Analytics cells drill into the
+  Issue log.
+- **Work-screen patterns:** `TempInput` (a ± key, since frozen readings are negative); the load
+  guide's actions pinned above the tab bar on phones; the quick request as a rail pill (lg) or a
+  56px disc above the tab bar; the Order step and a report draft survive navigation (URL, session).
 
 ### 2.1 The severity and confidence channels
 

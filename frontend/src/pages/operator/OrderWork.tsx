@@ -1,6 +1,6 @@
-import { Check, Minus, Plus, RotateCw, TriangleAlert } from 'lucide-react';
-import { useState, type SyntheticEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Camera, Check, Minus, Plus, RotateCw, TriangleAlert, Undo2, Volume2, VolumeX } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties, type SyntheticEvent } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import {
   useActiveOrder,
@@ -31,8 +31,9 @@ import type {
 import { Barcode } from '../../components/Barcode';
 import { LoadPlanView } from '../../components/LoadPlanView';
 import { PalletList } from '../../components/PalletList';
-import { ScanField } from '../../components/ScanField';
+import { CameraScanner, ScanField } from '../../components/ScanField';
 import { Tabs } from '../../components/Tabs';
+import { TempInput } from '../../components/TempInput';
 import {
   EmptyState,
   ErrorBlock,
@@ -45,7 +46,10 @@ import {
   QueryBoundary,
   Tag,
 } from '../../components/ui';
+import { hasBarcodeCamera } from '../../lib/camera';
 import { formatDateTime, formatTemp, percent } from '../../lib/format';
+import { bringIntoView } from '../../lib/motion';
+import { isMuted, playScanTone, setMuted } from '../../lib/sound';
 import { reportLink } from './reportLink';
 
 type Tab = 'plan' | 'temperature' | 'checks' | 'count' | 'signoff';
@@ -127,8 +131,21 @@ function StockLocations({ sku }: { sku: string }) {
   return <PalletList pallets={stock.data} />;
 }
 
-function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
+/** A tick that pops on the button just pressed; the count itself never moves. */
+function TapTick({ show }: { show: number | undefined }) {
+  if (show === undefined) return null;
+  return (
+    <span key={show} className="tap-tick" aria-hidden="true">
+      <Check size={13} strokeWidth={3.2} />
+    </span>
+  );
+}
+
+function LineItem({ order, item, flash }: { order: OrderDetail; item: OrderItem; flash?: number }) {
   const counter = useCounter(order.id);
+  const row = useRef<HTMLLIElement>(null);
+  const [tick, setTick] = useState<{ key: string; at: number } | null>(null);
+  const [undo, setUndo] = useState<{ label: string; restore: number; at: number } | null>(null);
   const [manual, setManual] = useState('');
   const [showCode, setShowCode] = useState(false);
   const [showStock, setShowStock] = useState(false);
@@ -140,16 +157,42 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
   const done = item.actual_quantity >= item.expected_quantity;
   const over = item.actual_quantity - item.expected_quantity;
 
+  // A count change can be taken back for five seconds; the tick shows for one.
+  useEffect(() => {
+    if (!tick) return undefined;
+    const timer = window.setTimeout(() => setTick(null), 1000);
+    return () => window.clearTimeout(timer);
+  }, [tick]);
+  useEffect(() => {
+    if (!undo) return undefined;
+    const timer = window.setTimeout(() => setUndo(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [undo]);
+  // A scan that matched this line brings it into view, so the ring is seen.
+  useEffect(() => {
+    if (flash === undefined) return;
+    bringIntoView(row.current);
+  }, [flash]);
+
+  const act = (key: string, label: string, run: () => void) => {
+    const at = Date.now();
+    setTick({ key, at });
+    setUndo({ label, restore: item.actual_quantity, at });
+    run();
+  };
+  const tickOn = (key: string) => (tick?.key === key ? tick.at : undefined);
+
   const submitManual = (event: SyntheticEvent) => {
     event.preventDefault();
     const value = Number.parseInt(manual, 10);
     if (Number.isNaN(value) || value < 0) return;
-    apply(value);
+    act('set', `set to ${String(value)}`, () => apply(value));
     setManual('');
   };
 
   return (
-    <li className="card">
+    <li ref={row} className="card relative">
+      {flash !== undefined && <span key={flash} className="scan-ring" aria-hidden="true" />}
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline p-4">
         <div className="min-w-0">
           <p className="heading flex items-center gap-2 text-xl">
@@ -207,9 +250,10 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
             type="button"
             className="btn btn-secondary"
             aria-label="Remove one case"
-            onClick={() => change(-1)}
+            onClick={() => act('minus', '−1', () => change(-1))}
           >
             <Minus size={20} aria-hidden="true" />1
+            <TapTick show={tickOn('minus')} />
           </button>
           {[1, 5, 10, 25].map((step) => (
             <button
@@ -217,10 +261,11 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
               type="button"
               className="btn btn-primary"
               disabled={outbound && done}
-              onClick={() => change(step)}
+              onClick={() => act(`+${String(step)}`, `+${String(step)}`, () => change(step))}
             >
               <Plus size={18} aria-hidden="true" />
               {step}
+              <TapTick show={tickOn(`+${String(step)}`)} />
             </button>
           ))}
           {item.cases_per_pallet > 0 && (
@@ -229,9 +274,10 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
               className="btn btn-primary"
               disabled={outbound && done}
               aria-label={`Add one pallet, ${item.cases_per_pallet} cases`}
-              onClick={() => change(item.cases_per_pallet)}
+              onClick={() => act('pallet', '+1 pallet', () => change(item.cases_per_pallet))}
             >
               <Plus size={18} aria-hidden="true" />1 pallet
+              <TapTick show={tickOn('pallet')} />
             </button>
           )}
           <form onSubmit={submitManual} className="flex gap-2">
@@ -250,8 +296,24 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
             />
             <button type="submit" className="btn btn-secondary">
               Set
+              <TapTick show={tickOn('set')} />
             </button>
           </form>
+        </div>
+        <div aria-live="polite">
+          {undo && (
+            <button
+              key={undo.at}
+              type="button"
+              className="btn btn-pill undo-chip mt-3 min-h-11 px-4 text-sm"
+              onClick={() => {
+                apply(undo.restore);
+                setUndo(null);
+              }}
+            >
+              <Undo2 size={16} aria-hidden="true" /> Undo {undo.label}
+            </button>
+          )}
         </div>
       </div>
     </li>
@@ -306,16 +368,46 @@ function ScanOutcome({ result, order }: { result: ScanResult; order: OrderDetail
   );
 }
 
+function SoundToggle() {
+  const [muted, setMutedState] = useState(isMuted);
+  return (
+    <button
+      type="button"
+      className="btn btn-pill min-h-11 px-3 text-sm"
+      aria-pressed={!muted}
+      onClick={() => {
+        setMuted(!muted);
+        setMutedState(!muted);
+      }}
+    >
+      {muted ? <VolumeX size={16} aria-hidden="true" /> : <Volume2 size={16} aria-hidden="true" />}
+      {muted ? 'Sound off' : 'Sound on'}
+    </button>
+  );
+}
+
 function CountTab({ order }: { order: OrderDetail }) {
   const scan = useScan(order.id);
+  const [flash, setFlash] = useState<{ id: number; at: number } | null>(null);
   const expected = order.items.reduce((sum, item) => sum + item.expected_quantity, 0);
   const counted = order.items.reduce((sum, item) => sum + item.actual_quantity, 0);
+  const onScan = (code: string) =>
+    scan.mutate(code, {
+      onSuccess: (result) => {
+        playScanTone(result.result);
+        if (result.result === 'match' && result.item) setFlash({ id: result.item.id, at: Date.now() });
+      },
+    });
   return (
     <div className="flex flex-col gap-4">
-      <Panel title="Scan a case">
-        <ScanField onScan={(code) => scan.mutate(code)} disabled={scan.isPending} />
+      <Panel title="Scan a case" aside={<SoundToggle />}>
+        <ScanField onScan={onScan} disabled={scan.isPending} />
         <div className="mt-3 flex flex-col gap-2">
-          {scan.data && <ScanOutcome result={scan.data} order={order} />}
+          {scan.data && (
+            <div key={scan.submittedAt} className="slide-up">
+              <ScanOutcome result={scan.data} order={order} />
+            </div>
+          )}
           <MutationError error={scan.error} />
         </div>
       </Panel>
@@ -328,7 +420,12 @@ function CountTab({ order }: { order: OrderDetail }) {
       </Panel>
       <ul className="flex flex-col gap-4">
         {order.items.map((item) => (
-          <LineItem key={item.id} order={order} item={item} />
+          <LineItem
+            key={item.id}
+            order={order}
+            item={item}
+            flash={flash?.id === item.id ? flash.at : undefined}
+          />
         ))}
       </ul>
     </div>
@@ -454,15 +551,7 @@ function TemperatureTab({
             <FieldLabel htmlFor="probe" hint="Probe the centre of a case, never the edge">
               Reading (°F)
             </FieldLabel>
-            <input
-              id="probe"
-              type="number"
-              step="0.1"
-              inputMode="decimal"
-              className="field text-2xl"
-              value={reading}
-              onChange={(event) => setReading(event.target.value)}
-            />
+            <TempInput id="probe" value={reading} onChange={setReading} />
           </div>
           <button type="submit" className="btn btn-primary" disabled={check.isPending || reading === ''}>
             {check.isPending ? 'Logging…' : 'Check'}
@@ -628,6 +717,7 @@ function SignOffTab({
   const complete = useCompleteOrder(order.id);
   const queue = useCountQueue(order.id);
   const [seal, setSeal] = useState('');
+  const [sealCamera, setSealCamera] = useState(false);
   const outbound = order.type === 'outbound';
   // `verified`, not a zero count: counting a line as 0 (nothing arrived) is a count.
   const uncounted = order.items.filter((item) => !item.verified);
@@ -642,16 +732,37 @@ function SignOffTab({
             <th className="label py-2">SKU</th>
             <th className="label py-2 text-right">Expected</th>
             <th className="label py-2 text-right">{outbound ? 'Loaded' : 'Received'}</th>
+            <th className="label py-2 pl-4">Line</th>
           </tr>
         </thead>
         <tbody>
-          {order.items.map((item) => (
-            <tr key={item.id} className="border-b border-hairline">
-              <td className="telemetry py-2">{item.sku}</td>
-              <td className="telemetry py-2 text-right">{item.expected_quantity}</td>
-              <td className="telemetry py-2 text-right">{item.actual_quantity}</td>
-            </tr>
-          ))}
+          {order.items.map((item) => {
+            const diff = item.actual_quantity - item.expected_quantity;
+            return (
+              <tr key={item.id} className="border-b border-hairline">
+                <td className="telemetry py-2">{item.sku}</td>
+                <td className="telemetry py-2 text-right">{item.expected_quantity}</td>
+                <td className="telemetry py-2 text-right">{item.actual_quantity}</td>
+                <td className="py-2 pl-4">
+                  {!item.verified ? (
+                    <span className="text-sm text-ink-mute">Not counted</span>
+                  ) : diff < 0 ? (
+                    <Tag>
+                      Short <span className="telemetry">{-diff}</span>
+                    </Tag>
+                  ) : diff > 0 ? (
+                    <Tag>
+                      Over <span className="telemetry">{diff}</span>
+                    </Tag>
+                  ) : (
+                    <Tag tone="green">
+                      <Check size={14} strokeWidth={3} aria-hidden="true" /> Complete
+                    </Tag>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {!outbound && (
@@ -676,14 +787,40 @@ function SignOffTab({
       )}
       {outbound && (
         <div className="mt-4">
-          <FieldLabel htmlFor="seal">Outbound seal number</FieldLabel>
-          <input
-            id="seal"
-            maxLength={64}
-            className="field telemetry text-lg uppercase"
-            value={seal}
-            onChange={(event) => setSeal(event.target.value)}
-          />
+          <FieldLabel htmlFor="seal" hint="Type it, or scan the seal's barcode">
+            Outbound seal number
+          </FieldLabel>
+          <div className="flex gap-2">
+            <input
+              id="seal"
+              maxLength={64}
+              className="field telemetry text-lg uppercase"
+              value={seal}
+              onChange={(event) => setSeal(event.target.value)}
+              autoComplete="off"
+            />
+            {hasBarcodeCamera() && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                aria-expanded={sealCamera}
+                onClick={() => setSealCamera((open) => !open)}
+              >
+                <Camera size={20} aria-hidden="true" /> Scan
+              </button>
+            )}
+          </div>
+          {sealCamera && (
+            <div className="mt-3">
+              <CameraScanner
+                onCode={(code) => {
+                  setSeal(code);
+                  setSealCamera(false);
+                }}
+                onClose={() => setSealCamera(false)}
+              />
+            </div>
+          )}
         </div>
       )}
       {blockers.length > 0 && (
@@ -756,8 +893,24 @@ function Work({
         { id: 'count', label: 'Scan & count' },
         { id: 'signoff', label: 'Sign-off' },
       ];
-  const [tab, setTab] = useState<Tab | null>(null);
-  const active = tab ?? tabs[0]?.id ?? 'count';
+  // The step lives in the URL, so Back from a report returns to it and a link can open sign-off.
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('tab');
+  const active: Tab = tabs.find((item) => item.id === requested)?.id ?? tabs[0]?.id ?? 'count';
+  const [direction, setDirection] = useState(1);
+  const setTab = (next: Tab) => {
+    const from = tabs.findIndex((item) => item.id === active);
+    const to = tabs.findIndex((item) => item.id === next);
+    setDirection(to >= from ? 1 : -1);
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        updated.set('tab', next);
+        return updated;
+      },
+      { replace: true },
+    );
+  };
 
   return (
     <QueryBoundary query={order} loading="Loading the order">
@@ -812,7 +965,14 @@ function Work({
             panelId={PANEL_ID}
             numbered
           />
-          <div role="tabpanel" id={PANEL_ID} aria-labelledby={`${PANEL_ID}-tab-${active}`}>
+          <div
+            key={active}
+            role="tabpanel"
+            id={PANEL_ID}
+            aria-labelledby={`${PANEL_ID}-tab-${active}`}
+            className="tab-swap"
+            style={{ '--dir': direction } as CSSProperties}
+          >
             {active === 'plan' && (
               <QueryBoundary query={plan} loading="Planning the load">
                 {(data) => (

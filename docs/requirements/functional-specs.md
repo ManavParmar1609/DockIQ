@@ -53,7 +53,7 @@ mirrors this list 1:1; no `fetch` call exists elsewhere in the frontend.
 | POST | `/api/auth/login` | public, rate-limited | OAuth2 password form: `username` = employee ID, `password`. Returns a bearer token (12 h — one shift) and the user |
 | GET | `/api/auth/me` | token | The signed-in user, with their supervisor's name |
 | GET | `/api/auth/demo-accounts` | public | Names, IDs and roles of the seeded accounts for the demo login screen. **Never passwords.** Disabled by `DEMO_ACCOUNTS_LISTED=false` |
-| GET | `/api/taxonomy` | token | Every closed list: 12 issue types with subtypes, weights, icons and severity floors; operator resolutions; supervisor decisions, with `accept_decisions` (need notes on a critical or temperature issue) and `pending_decisions` (put the issue `on_hold`); `decision_targets` (minutes an open issue may wait for its decision, by severity — business-rules §7.4); `pending_actions` (what each pending decision waits on) and `cold_chain_issue_types` (accepting product on these needs notes, as on a critical); request types; `receiving_checks` (`id`, `question`, and the `issue_type` / `issue_subtype` a "No" is reported as). **The frontend keeps no copies** |
+| GET | `/api/taxonomy` | token | Every closed list: 12 issue types with subtypes, weights, icons, severity floors and `resolutions` (the operator resolutions that fit the type, business-rules §7.6); operator resolutions; supervisor decisions, with `accept_decisions` (need notes on a critical or temperature issue), `noted_decisions` (Full Reject and Override: always need notes) and `pending_decisions` (put the issue `on_hold`); `decision_targets` (minutes an open issue may wait for its decision, by severity — business-rules §7.4); `pending_actions` (what each pending decision waits on) and `cold_chain_issue_types` (accepting product on these needs notes, as on a critical); request types; `receiving_checks` (`id`, `question`, and the `issue_type` / `issue_subtype` a "No" is reported as). **The frontend keeps no copies** |
 
 Every other route requires `Authorization: Bearer <token>`. **Actor identity always comes from the
 token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
@@ -96,14 +96,14 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 
 | Method | Path | Who | Purpose | Mutates |
 |---|---|---|---|---|
-| GET | `/api/issues` | scoped | Filters: `status` (or `active`; `on_hold` is open), `operator_id`, `severity`, `dock` (a door number), `carrier_id`, `from` / `to` (UTC days, inclusive; `from` after `to` **422**), `limit` | — |
-| GET | `/api/issues/export.csv` | scoped | The same list, the same filters and scope, as CSV (`text/csv`, an attachment), newest first; `limit` 1–5000 (default 1000). Text a spreadsheet would run as a formula is prefixed with `'` | — |
+| GET | `/api/issues` | scoped | Filters: `status` (or `active`; `on_hold` is open), `operator_id`, `severity`, `dock` (a door number), `carrier_id`, `issue_type`, `disposition` (`hold` \| `release` \| `destroy` \| `return_to_vendor`; other values **422**), `from` / `to` (UTC days, inclusive; `from` after `to` **422**), `limit`. Each issue carries `decided_by_name`: the worker who self-resolved it, or the supervisor who decided (or put it on hold); null while undecided | — |
+| GET | `/api/issues/export.csv` | scoped | The same list, the same filters and scope, as CSV (`text/csv`, an attachment), newest first; `limit` 1–5000 (default 1000). The audit columns: `resolution_type`, `decided_by_name`, `resolution_notes`, `supervisor_name`, `supervisor_notes`, `disposition`, `disposition_by_name`, `disposition_at`, `disposition_notes`. Text a spreadsheet would run as a formula is prefixed with `'` | — |
 | GET | `/api/issues/{id}` | scoped | Full issue with joined context, `issue_subtype`, `recurring_patterns`, `photo_count` — and the record as reported: `order_number`, `trailer_number`, `bol_number` (as when filed), `temp_reading`, `temp_limit`, `quantity_affected`, `lot`, `room`; `acknowledged_by(_name)`; `on_hold_at`, `pending_action`; `sim_minute`, `sim_time`, `sim_shift` (simulated issues); `held_pallets`, `disposition`, `disposition_notes`, `disposition_by(_name)`, `disposition_at`; `can_self_resolve` and `self_resolve_needs_note` (business-rules §7.5; also on the filing response). Printable as is | — |
-| POST | `/api/issues` | operator | **Create and classify** — see below. `issue_type` and `issue_subtype` must come from the taxonomy (422). A **product** issue names an order (**422** without); a people or systems issue may name neither order nor dock. An `order_id` must be one of the caller's orders (**404** otherwise) and at `dock_door_id` (**422** otherwise; omitted → the order's dock); naming a simulated order takes it over from the simulator. A Temperature Deviation or Product Quality Concern on an order with WMS stock puts that stock on quality hold (business-rules §7.3), recorded in `held_pallets` | `issues`, dock → `issue`, WMS hold; emits `new_issue` |
-| PUT | `/api/issues/{id}/self-resolve` | the reporter | Business-rules §7.5. `resolution_type` must be an operator resolution (422). Allowed on the reporter's own open issue that is not critical, `resolution_in_progress` or `escalated` (acknowledged or not); on an **escalated** one `resolution_notes` is required (**422** when blank). Critical, `on_hold` and resolved answer **409**; another worker's issue **404** | `status='self_resolved'`, `resolution_notes` (trimmed), dock → `active`; emits `issue_resolved` to the reporter, their supervisor, whoever acknowledged it, and Quality if quality-relevant |
+| POST | `/api/issues` | operator | **Create and classify** — see below. `issue_type` and `issue_subtype` must come from the taxonomy (422). A **product** issue names an order (**422** without); a people or systems issue may name neither order nor dock. An `order_id` must be one of the caller's orders (**404** otherwise) and at `dock_door_id` (**422** otherwise; omitted → the order's dock); naming a simulated order takes it over from the simulator. An optional `client_key` (8–64 letters, digits and dashes — the tablet's UUID for the report) makes the report idempotent: a second POST with the same key returns the report already filed (**200**, nothing filed, no event); another person's key is **409**. The offline queue relies on it. A Temperature Deviation or Product Quality Concern on an order with WMS stock puts that stock on quality hold (business-rules §7.3), recorded in `held_pallets` | `issues`, dock → `issue`, WMS hold; emits `new_issue` |
+| PUT | `/api/issues/{id}/self-resolve` | the reporter | Business-rules §7.5. `resolution_type` must be an operator resolution that fits the issue type (§7.6; **422** otherwise, naming the ones that fit). Allowed on the reporter's own open issue that is not critical, `resolution_in_progress` or `escalated` (acknowledged or not); on an **escalated** one `resolution_notes` is required (**422** when blank). Critical, `on_hold` and resolved answer **409**; another worker's issue **404** | `status='self_resolved'`, `resolution_notes` (trimmed), dock → `active`; emits `issue_resolved` to the reporter, their supervisor, whoever acknowledged it, and Quality if quality-relevant |
 | PUT | `/api/issues/{id}/acknowledge` | the team supervisor | "On my way": stamps `acknowledged_at` and `acknowledged_by` (the first to acknowledge; `supervisor_id` is left for whoever decides). 409 once resolved | emits `issue_acknowledged` (who is coming, to which door) |
 | PUT | `/api/issues/{id}/escalate` | the reporter or their supervisor | Hand to the supervisor. No body. Critical issues arrive already escalated (business-rules §7.1) | `status='escalated'`; dock → `critical` if severity is critical; emits `issue_escalated` |
-| PUT | `/api/issues/{id}/supervisor-resolve` | the reporter's supervisor | `resolution_type` must be a supervisor decision (422). Accept, Partial Accept and Override on a critical or temperature issue need `supervisor_notes` (**422** without). Contact Carrier and Request Re-inspection → `on_hold` (open). Full Reject blocks the order's sign-off and flags the dock (business-rules §7.2). Returns the new status | `status='supervisor_resolved'` or `'on_hold'`; dock → `active` (or `issue` on Full Reject; unchanged on hold); emits `issue_resolved` (`method` = the new status) |
+| PUT | `/api/issues/{id}/supervisor-resolve` | the reporter's supervisor | `resolution_type` must be a supervisor decision (422). Accept and Partial Accept on a critical or temperature issue need `supervisor_notes` (**422** without); Full Reject and Override — Accept Anyway need them on **every** issue. The issue's procedure may carry `suggested_decision` (business-rules §3.4) — advice shown to the supervisor, never applied. Contact Carrier and Request Re-inspection → `on_hold` (open). Full Reject blocks the order's sign-off and flags the dock (business-rules §7.2). Returns the new status | `status='supervisor_resolved'` or `'on_hold'`; dock → `active` (or `issue` on Full Reject; unchanged on hold); emits `issue_resolved` (`method` = the new status) |
 | PUT | `/api/issues/{id}/disposition` | **Quality** (supervisors 403: they read it) | `{disposition: hold \| release \| destroy \| return_to_vendor, notes}` (notes required, **422**). Hold applies the hold again; release returns held plates to storage; destroy / return take them out through ledger adjustments. Release, destroy and return are final (**409** after). **503** if the WMS is offline and stock would move. Returns the issue | `issues.disposition*`, `held_pallets`; the WMS ledger |
 | POST | `/api/issues/{id}/photos` | reporter or their supervisor | Multipart `file`. ≤ 600 kB, ≤ 4 per issue, JPEG/PNG/WebP by content | `issue_photos` |
 | GET | `/api/issues/{id}/photos` | scoped | Photo metadata (the image bytes are never read; `GET /api/photos/{id}` serves one) | — |
@@ -152,7 +152,7 @@ arguments), rolled back, and reported as a failed step; the conversation continu
 | `look_up` | all | One order, issue or product, row-scoped |
 | `draft_issue_report` | operator | A report for the active order with the formula's severity preview, built by the same `score_issue()` as filing; cases affected only when the person said so. **Not filed** |
 | `my_open_issues` | operator | The operator's own open issues, each with `can_self_resolve` and why not (critical or on hold: the supervisor decides), `note_required` on an escalated one, and the resolution options (`operator_resolutions`) |
-| `draft_self_resolve` | operator | Closing one of the operator's own issues: `self_resolve` action with the resolution (or none: the worker picks it on the card). An escalated issue is drafted with `note_required`: the worker writes the note on the card (the rules router never fills it in). For a critical or on-hold issue: why not, and **nothing to confirm**. **Not resolved** until the worker presses *Resolve issue #N*, which calls `PUT /api/issues/{id}/self-resolve` |
+| `draft_self_resolve` | operator | Closing one of the operator's own issues: `self_resolve` action with the resolution (or none: the worker picks it on the card; a resolution that does not fit the type is dropped, business-rules §7.6). An escalated issue is drafted with `note_required`: the worker writes the note on the card (the rules router never fills it in). For a critical or on-hold issue: why not, and **nothing to confirm**. **Not resolved** until the worker presses *Resolve issue #N*, which calls `PUT /api/issues/{id}/self-resolve` |
 | `shift_summary` | staff | Last 12 hours of issues: severity, status, types, carriers, still escalated |
 | `draft_broadcast` | supervisor | A team message. **Not sent** |
 | `draft_handoff` | supervisor | A handoff note, opened pre-filled on the Handoff screen. **Not saved** |
@@ -189,7 +189,8 @@ quality issues" → `my_work`) and falls back to the knowledge-base keyword answ
 | GET | `/api/requests` | scoped | Quick requests. Optional `?status=` |
 | GET | `/api/requests/mine` | any | The requests you made, newest first, with status. Optional `?status=` |
 | POST | `/api/requests` | operator | `request_type` from the taxonomy; emits `new_request` (`status: pending`) to the operator and supervisor |
-| PUT | `/api/requests/{id}/fulfill` | the requester's supervisor | Mark fulfilled. **409** if already fulfilled (the first `fulfilled_at` stands). Emits `new_request` with `status: fulfilled` to the operator who asked and the supervisor |
+| PUT | `/api/requests/{id}/fulfill` | the requester's supervisor | Mark fulfilled. **409** if already fulfilled or cancelled (the first `fulfilled_at` stands). Emits `new_request` with `status: fulfilled` to the operator who asked and the supervisor |
+| PUT | `/api/requests/{id}/cancel` | the operator who asked | Withdraw a pending request: `status: cancelled`, `cancelled_at`. Someone else's **404**, a supervisor **403**, not pending **409**. Emits `new_request` with `status: cancelled` to the operator and their supervisor, whose pending list drops it |
 | GET | `/api/broadcasts` | any | Operators see their supervisor's; supervisors their own; quality all |
 | POST | `/api/broadcasts` | supervisor | Announcement to **their team**; emits `broadcast` |
 | GET | `/api/shift-handoffs` | any | Handoffs for your zone (quality: all), with the read receipt (`read_by`, `read_by_name`, `read_at`) |
@@ -201,7 +202,7 @@ quality issues" → `my_work`) and falls back to the knowledge-base keyword answ
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/analytics/summary` | The issues you can open — supervisor: their team; Quality: quality issues and every critical issue — named in `scope` (`team` \| `quality`). Operators: 403. Optional `from` / `to` (UTC days) bound everything, trend and repeats included. Totals, open-now counts (open, open critical, cost at risk, cold-chain breaks), breakdowns by type (with cost), severity (open + average resolution), type × severity, door (open), operator, customer, carrier, the 30-day trend, and repeats (same type at one door / from one carrier, more than once in 30 days) |
+| GET | `/api/analytics/summary` | The issues you can open — supervisor: their team; Quality: quality issues and every critical issue — named in `scope` (`team` \| `quality`). Operators: 403. Optional `from` / `to` (UTC days) bound everything, trend and repeats included. Totals, open-now counts (open, open critical, cost at risk, cold-chain breaks), breakdowns by type (with cost), severity (open + average resolution), type × severity, door (open), operator, customer, carrier, the 30-day trend, and repeats (same type at one door / from one carrier, more than once in 30 days). Carrier rows carry `carrier_id` for the drill-down to the issue log. For Quality, `quality`: `avg_minutes_to_disposition` (report → disposition), `disposed`, `by_disposition` (hold / release / destroy / return to vendor), `pallets_on_hold` and `issues_on_hold` (plates held for issues not yet released or gone), `excursions_by_room` (cold-room alarms filed as issues); `null` for a supervisor |
 
 Returns: totals, self-resolution rate, cost impact, average resolution minutes, and breakdowns by
 type, severity, dock, operator, company and carrier, plus a 30-day time series.
@@ -258,7 +259,7 @@ Each event goes only to the users it concerns:
 | `issue_resolved` | self-resolve and supervisor-resolve → same audience; carries `resolution` so the operator sees the decision, and `method` = the new status: `self_resolved`, `supervisor_resolved`, or **`on_hold`** (a pending decision — the issue is still open) |
 | `issue_acknowledged` | `PUT /api/issues/{id}/acknowledge` → same audience; the operator is told who is coming |
 | `order_complete` | `POST /api/orders/{id}/complete` → operator and supervisor |
-| `new_request` | `POST /api/requests` (`status: pending`) and `PUT /api/requests/{id}/fulfill` (`status: fulfilled`) → the operator who asked and the supervisor |
+| `new_request` | `POST /api/requests` (`status: pending`), `PUT /api/requests/{id}/fulfill` (`status: fulfilled`) and `PUT /api/requests/{id}/cancel` (`status: cancelled`) → the operator who asked and the supervisor |
 | `broadcast` | `POST /api/broadcasts` → the supervisor's team |
 | `floor_update` | the simulator, whenever trailers move → **every** connected user. It carries no data; each client refetches docks, orders and the WMS through its own row scope |
 
@@ -293,17 +294,21 @@ idle ──▶ inspection ──▶ loading | unloading ──▶ complete
 Tracked in two columns — `lifecycle_phase` above, and `status` (`idle`/`active`/`issue`/`critical`)
 alongside it. Every change to either goes through one function, `app/domain/dock.py` → `transition()`:
 
+An issue event decides `status` from **everything open on the door after it** — the worst open
+severity (`queries.door_issues`, passed in as `open_severity`) and whether the door's current load was
+fully rejected — never from the one issue alone (business-rules §7.7):
+
 | Event | `status` | `lifecycle_phase` |
 |---|---|---|
-| issue reported | `issue` | unchanged |
-| issue escalated | `critical` if severity is critical, else `issue` | unchanged |
-| issue resolved (either path) | `active` | unchanged |
-| load rejected (Full Reject) | `issue` | unchanged |
+| issue reported · issue escalated | `critical` if any open issue on the door is critical (this one included), else `issue` | unchanged |
+| issue resolved (either path) | `critical` / `issue` while anything is still open; `issue` if the load was rejected; else `active` (or `idle` with no trailer being worked) | unchanged |
+| load rejected (Full Reject) | `critical` if a critical issue is still open, else `issue` | unchanged |
+| issues changed (simulator reset) | as issue resolved, for every door, after the simulated issues are removed | unchanged (doors left mid-visit first go `idle` / `complete`) |
 | inspection submitted | unchanged | `inspection` |
 | order completed | `idle` | `complete` |
 
-⚠️ Resolution sets the dock to `active` unconditionally, even if another issue remains open on it.
-That is preserved behaviour, now visible in one table instead of five handlers.
+So a second, lesser report never downgrades a critical door, and resolving one issue never clears a
+door another issue still flags.
 
 ---
 

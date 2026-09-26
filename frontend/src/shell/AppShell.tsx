@@ -6,6 +6,7 @@ import { useBroadcasts, useWmsStatus } from '../api/hooks';
 import type { Broadcast } from '../api/types';
 import { useRealtime, type Connection } from '../api/realtime';
 import { useAuth } from '../auth/AuthProvider';
+import { OfflineReports } from '../components/OfflineReports';
 import { ErrorBlock, SimulatedTag } from '../components/ui';
 import { initials } from '../lib/format';
 import { AlertButton, AlertInbox, AlertStack, BroadcastBanner, useAlerts, useTitleCount } from './Alerts';
@@ -196,6 +197,7 @@ function SignedInShell({
             ))}
           </nav>
           <div className="flex flex-col gap-3 px-5 pt-3 pb-5">
+            {role === 'operator' && <QuickRequest placement="rail" />}
             <div className="flex items-center justify-between gap-2">
               <LiveIndicator connection={connection} />
               <AlertButton unseen={unseen} onOpen={openInbox} />
@@ -238,6 +240,7 @@ function SignedInShell({
           <main className="flex-1 px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-10 lg:pb-16">
             <div className="mx-auto max-w-7xl">
               <WmsOfflineBanner />
+              <OfflineReports />
               <Outlet />
             </div>
             <div className="mt-10 flex justify-center lg:hidden">
@@ -265,8 +268,8 @@ function SignedInShell({
           </nav>
         </div>
 
-        {/* The assistant has its own input along the bottom; the floating button would cover it. */}
-        {role === 'operator' && !onAssistant && <QuickRequest />}
+        {/* Below lg the request button parks above the tab bar; the assistant's composer owns that corner. */}
+        {role === 'operator' && !onAssistant && <QuickRequest placement="dock" />}
         <AlertStack alerts={alerts} dismiss={dismiss} onOpenInbox={openInbox} />
         <AlertInbox open={inboxOpen} onClose={() => setInboxOpen(false)} inbox={inbox} role={role} />
       </div>

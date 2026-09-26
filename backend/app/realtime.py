@@ -123,8 +123,9 @@ def order_complete(order_id: int) -> dict[str, Any]:
 
 
 def new_request(request_id: int, request_type: str, status: str = "pending") -> dict[str, Any]:
-    """A quick request was made (`pending`, to the operator and their supervisor) or answered
-    (`fulfilled`, to the operator who asked and their supervisor)."""
+    """A quick request was made (`pending`, to the operator and their supervisor), answered
+    (`fulfilled`, to the operator who asked and their supervisor) or withdrawn by the operator
+    (`cancelled`, to the same two)."""
     return {"type": "new_request", "request_id": request_id, "request_type": request_type, "status": status}
 
 

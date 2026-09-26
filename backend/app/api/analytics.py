@@ -1,18 +1,19 @@
 from datetime import timedelta
 
 from fastapi import APIRouter
-from sqlalchemy import case, func, select
+from sqlalchemy import ColumnElement, case, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import issue_scope
 from app.api.deps import SessionDep, Staff
 from app.api.issues import FromFilter, ToFilter, day_range
 from app.db import utcnow
-from app.domain.enums import IssueStatus, Role, Severity
+from app.domain.enums import Disposition, IssueStatus, Role, Severity
 from app.domain.lifecycle import OPEN_STATUSES
 from app.domain.taxonomy import COLD_CHAIN_ISSUE_TYPES
 from app.models import Carrier, Company, DockDoor, Issue, User
 from app.queries import elapsed_minutes
-from app.schemas import AnalyticsSummary
+from app.schemas import AnalyticsSummary, QualityAnalytics
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -132,7 +133,7 @@ async def analytics_summary(
         .where(scope)
     )
     by_carrier = await session.execute(
-        select(Carrier.name, func.count(Issue.id).label("count"))
+        select(Carrier.name, Carrier.id.label("carrier_id"), func.count(Issue.id).label("count"))
         .join(Carrier, Issue.carrier_id == Carrier.id)
         .group_by(Carrier.id, Carrier.name)
         .order_by(func.count(Issue.id).desc(), Carrier.name)
@@ -157,7 +158,12 @@ async def analytics_summary(
         .limit(REPEAT_LIMIT)
     )
     repeat_with_carriers = await session.execute(
-        select(Issue.issue_type, Carrier.name, func.count(Issue.id).label("count"))
+        select(
+            Issue.issue_type,
+            Carrier.name,
+            Carrier.id.label("carrier_id"),
+            func.count(Issue.id).label("count"),
+        )
         .join(Carrier, Issue.carrier_id == Carrier.id)
         .where(scope, Issue.created_at >= window_start)
         .group_by(Issue.issue_type, Carrier.id, Carrier.name)
@@ -204,4 +210,48 @@ async def analytics_summary(
         over_time=[{"date": str(row.date), "count": row.count} for row in over_time],
         repeat_at_doors=[dict(row._mapping) for row in repeat_at_doors],
         repeat_with_carriers=[dict(row._mapping) for row in repeat_with_carriers],
+        quality=await _quality(session, scope) if user.role is Role.QUALITY else None,
+    )
+
+
+async def _quality(session: AsyncSession, scope: ColumnElement[bool]) -> QualityAnalytics:
+    """Disposition timing and split, what is still held, and cold-room excursions (§7.3, §12.12)."""
+    disposed = Issue.disposition.is_not(None)
+    timing = (
+        await session.execute(
+            select(
+                func.count(Issue.id).filter(disposed),
+                func.avg(elapsed_minutes(Issue.created_at, Issue.disposition_at)).filter(
+                    disposed, Issue.disposition_at.is_not(None)
+                ),
+            ).where(scope)
+        )
+    ).one()
+    by_disposition = await session.execute(
+        select(Issue.disposition, func.count(Issue.id).label("count"))
+        .where(scope, disposed)
+        .group_by(Issue.disposition)
+        .order_by(Issue.disposition)
+    )
+    # Plates still held: the issue's product is on hold, or awaits Quality's first call. The plate
+    # lists are JSON, counted here rather than in SQL (portable across SQLite and Postgres).
+    held_lists = await session.scalars(
+        select(Issue.held_pallets).where(
+            scope, or_(Issue.disposition.is_(None), Issue.disposition == Disposition.HOLD)
+        )
+    )
+    held = [plates for plates in held_lists if plates]
+    by_room = await session.execute(
+        select(Issue.room, func.count(Issue.id).label("count"))
+        .where(scope, Issue.room.is_not(None))
+        .group_by(Issue.room)
+        .order_by(Issue.room)
+    )
+    return QualityAnalytics(
+        avg_minutes_to_disposition=_minutes(timing[1]),
+        disposed=timing[0],
+        by_disposition=[{"disposition": row.disposition, "count": row.count} for row in by_disposition],
+        pallets_on_hold=sum(len(plates) for plates in held),
+        issues_on_hold=len(held),
+        excursions_by_room=[{"room": row.room, "count": row.count} for row in by_room],
     )

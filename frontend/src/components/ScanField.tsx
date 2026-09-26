@@ -6,20 +6,9 @@
 import { Camera, ScanLine, X } from 'lucide-react';
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 
-interface DetectedBarcode {
-  rawValue: string;
-}
-interface BarcodeDetectorLike {
-  detect(source: HTMLVideoElement): Promise<DetectedBarcode[]>;
-}
-type BarcodeDetectorCtor = new (options: { formats: string[] }) => BarcodeDetectorLike;
+import { detectorCtor, hasBarcodeCamera } from '../lib/camera';
 
-function detectorCtor(): BarcodeDetectorCtor | null {
-  const ctor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
-  return ctor ?? null;
-}
-
-function CameraScanner({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
+export function CameraScanner({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
   // Held in a ref so a new callback from the parent does not restart the camera.
@@ -125,7 +114,7 @@ export function ScanField({
   useEffect(() => {
     handler.current = onScan;
   }, [onScan]);
-  const hasCamera = detectorCtor() !== null && 'mediaDevices' in navigator;
+  const hasCamera = hasBarcodeCamera();
 
   // Ready on open, and again after every result: a keyboard-wedge scanner types into the focus.
   useEffect(() => {

@@ -5,6 +5,7 @@ import {
   PackageX,
   Pause,
   Play,
+  Plus,
   RotateCcw,
   SkipForward,
   Siren,
@@ -12,7 +13,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { useEffect, useId, useRef, useState, type SyntheticEvent } from 'react';
 import { Link } from 'react-router';
 
 import { ApiError } from '../../api/client';
@@ -153,20 +154,9 @@ function ConfirmReset({
   );
 }
 
-function Controls({ status, canReset }: { status: SimStatus; canReset: boolean }) {
+function Controls({ status }: { status: SimStatus }) {
   const control = useSimControl();
-  const [seed, setSeed] = useState('');
-  const [confirming, setConfirming] = useState(false);
   const busy = control.isPending;
-
-  const askReset = (event: SyntheticEvent) => {
-    event.preventDefault();
-    setConfirming(true);
-  };
-  const reset = () => {
-    const value = seed.trim() === '' ? null : Number(seed);
-    control.mutate({ action: 'reset', seed: value }, { onSettled: () => setConfirming(false) });
-  };
 
   return (
     <Panel title="Clock" index={1}>
@@ -235,53 +225,82 @@ function Controls({ status, canReset }: { status: SimStatus; canReset: boolean }
             ))}
           </div>
         </fieldset>
-
-        {canReset && (
-          <form onSubmit={askReset} className="flex flex-wrap items-end gap-2 border-t border-hairline pt-4">
-            <div className="flex-1">
-              <label htmlFor="seed" className="heading mb-2 block text-base">
-                Reset to 06:00
-              </label>
-              <input
-                id="seed"
-                className="field telemetry w-full"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder={`Seed ${status.seed} (same seed, same shift)`}
-                value={seed}
-                onChange={(event) => setSeed(event.target.value.replace(/\D/g, '').slice(0, 6))}
-              />
-            </div>
-            <button type="submit" className="btn btn-secondary" disabled={busy}>
-              <RotateCcw size={20} aria-hidden="true" /> Reset…
-            </button>
-          </form>
-        )}
         <MutationError error={control.error} />
-        <ConfirmReset
-          open={confirming}
-          seed={seed}
-          busy={busy}
-          onConfirm={reset}
-          onCancel={() => setConfirming(false)}
-        />
       </div>
     </Panel>
   );
 }
 
+/** Reset to 06:00, behind its "are you sure?" dialog. Supervisors only. */
+function ResetShift({ status }: { status: SimStatus }) {
+  const control = useSimControl();
+  const [seed, setSeed] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const busy = control.isPending;
+
+  const askReset = (event: SyntheticEvent) => {
+    event.preventDefault();
+    setConfirming(true);
+  };
+  const reset = () => {
+    const value = seed.trim() === '' ? null : Number(seed);
+    control.mutate({ action: 'reset', seed: value }, { onSettled: () => setConfirming(false) });
+  };
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-hairline pt-4">
+      <form onSubmit={askReset} className="flex flex-wrap items-end gap-2">
+        <div className="flex-1">
+          <label htmlFor="seed" className="heading mb-2 block text-base">
+            Reset to 06:00
+          </label>
+          <input
+            id="seed"
+            className="field telemetry w-full"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder={`Seed ${status.seed} (same seed, same shift)`}
+            value={seed}
+            onChange={(event) => setSeed(event.target.value.replace(/\D/g, '').slice(0, 6))}
+          />
+        </div>
+        <button type="submit" className="btn btn-secondary" disabled={busy}>
+          <RotateCcw size={20} aria-hidden="true" /> Reset…
+        </button>
+      </form>
+      <MutationError error={control.error} />
+      <ConfirmReset
+        open={confirming}
+        seed={seed}
+        busy={busy}
+        onConfirm={reset}
+        onCancel={() => setConfirming(false)}
+      />
+    </div>
+  );
+}
+
+/** A scenario puts a real-looking alert on screens across the floor, so it takes a second, deliberate tap. */
 function Scenarios() {
   const inject = useInjectScenario();
+  const [armed, setArmed] = useState<SimScenario | null>(null);
+  const chosen = SCENARIOS.find((scenario) => scenario.value === armed);
+  const fire = () => {
+    if (!armed) return;
+    inject.mutate(armed, { onSettled: () => setArmed(null) });
+  };
   return (
-    <Panel title="Trigger a scenario" aside={<span className="label">On cue, for a demo</span>} index={2}>
+    <div className="flex flex-col gap-3">
+      <p className="heading text-base">Trigger a scenario</p>
       <ul className="flex flex-col gap-2">
         {SCENARIOS.map((scenario) => (
           <li key={scenario.value}>
             <button
               type="button"
               className="choice w-full items-start gap-3 text-left"
+              aria-pressed={armed === scenario.value}
               disabled={inject.isPending}
-              onClick={() => inject.mutate(scenario.value)}
+              onClick={() => setArmed((current) => (current === scenario.value ? null : scenario.value))}
             >
               <scenario.icon size={22} className="mt-0.5 shrink-0" aria-hidden="true" />
               <span className="flex flex-col gap-0.5">
@@ -292,9 +311,62 @@ function Scenarios() {
           </li>
         ))}
       </ul>
-      <div className="mt-3" aria-live="polite">
+      {chosen && (
+        <div
+          className="flex flex-col gap-3 rounded-lg bg-paper-sunk p-3"
+          role="group"
+          aria-label="Confirm the scenario"
+        >
+          <p className="text-base">
+            Trigger <strong>{chosen.label}</strong> now? It reaches the floor as a simulated issue, with its
+            alerts.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-primary" disabled={inject.isPending} onClick={fire}>
+              <chosen.icon size={20} aria-hidden="true" /> Trigger it
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => setArmed(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      <div aria-live="polite">
         {inject.isSuccess && <p className="rounded-lg bg-paper-sunk p-3 text-base">{inject.data.message}</p>}
         <MutationError error={inject.error} />
+      </div>
+    </div>
+  );
+}
+
+/** Scenario triggers and the reset, tucked away: a live floor is not changed by a stray tap. */
+function DemoControls({ status, canReset }: { status: SimStatus; canReset: boolean }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <Panel index={2}>
+      <button
+        type="button"
+        className="accordion-row flex w-full items-center gap-3 text-left"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="serif-title block text-xl">Demo controls</span>
+          <span className="label block">
+            Scenarios on cue{canReset ? ' and the reset' : ''}, each with a confirm
+          </span>
+        </span>
+        <Plus size={22} aria-hidden="true" className="accordion-icon shrink-0 text-ink-mute" />
+      </button>
+      <div id={id} hidden={!open}>
+        {open && (
+          <div className="accordion-body flex flex-col gap-5 pt-4">
+            <Scenarios />
+            {canReset && <ResetShift status={status} />}
+          </div>
+        )}
       </div>
     </Panel>
   );
@@ -514,10 +586,10 @@ export default function Simulator() {
 
             <div className="grid items-start gap-6 xl:grid-cols-5">
               <div className="xl:col-span-3">
-                <Controls status={sim} canReset={user.role === 'supervisor'} />
+                <Controls status={sim} />
               </div>
               <div className="xl:col-span-2">
-                <Scenarios />
+                <DemoControls status={sim} canReset={user.role === 'supervisor'} />
               </div>
             </div>
             <WarehouseTabs online={sim.wms_online} yard={<YardBoard online={sim.wms_online} />} />

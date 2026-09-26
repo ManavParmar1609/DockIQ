@@ -9,7 +9,12 @@ from sqlalchemy import or_, select
 from app.api.deps import CurrentUser, PathId, SessionDep, get_or_404
 from app.db import MAX_ID
 from app.domain.enums import Role
-from app.domain.lifecycle import ACCEPT_DECISIONS, DECISION_TARGET_MINUTES, PENDING_DECISIONS
+from app.domain.lifecycle import (
+    ACCEPT_DECISIONS,
+    ALWAYS_NOTED_DECISIONS,
+    DECISION_TARGET_MINUTES,
+    PENDING_DECISIONS,
+)
 from app.domain.severity import ISSUE_TYPE_WEIGHTS
 from app.domain.taxonomy import (
     COLD_CHAIN_ISSUE_TYPES,
@@ -20,6 +25,7 @@ from app.domain.taxonomy import (
     REQUEST_TYPES,
     SEVERITY_FLOORS,
     SUPERVISOR_DECISIONS,
+    allowed_resolutions,
 )
 from app.models import Carrier, Company, DockDoor, Product, User
 from app.queries import dock_select
@@ -50,6 +56,7 @@ async def taxonomy(_: CurrentUser) -> TaxonomyOut:
                 subtypes=list(spec.subtypes),
                 quality_relevant=spec.name in QUALITY_ISSUE_TYPES,
                 floor={key or "*": value for key, value in SEVERITY_FLOORS.get(spec.name, {}).items()},
+                resolutions=list(allowed_resolutions(spec.name)),
             )
             for spec in ISSUE_TAXONOMY
         ],
@@ -58,6 +65,7 @@ async def taxonomy(_: CurrentUser) -> TaxonomyOut:
         request_types=list(REQUEST_TYPES),
         accept_decisions=[d for d in SUPERVISOR_DECISIONS if d in ACCEPT_DECISIONS],
         pending_decisions=[d for d in SUPERVISOR_DECISIONS if d in PENDING_DECISIONS],
+        noted_decisions=[d for d in SUPERVISOR_DECISIONS if d in ALWAYS_NOTED_DECISIONS],
         decision_targets={severity.value: minutes for severity, minutes in DECISION_TARGET_MINUTES.items()},
         pending_actions={d: PENDING_DECISIONS[d] for d in SUPERVISOR_DECISIONS if d in PENDING_DECISIONS},
         cold_chain_issue_types=sorted(COLD_CHAIN_ISSUE_TYPES),

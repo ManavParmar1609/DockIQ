@@ -1,15 +1,38 @@
-import { Check, Clock, Wrench, X } from 'lucide-react';
+import { Check, Clock, Undo2, Wrench, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { useActiveOrder, useCreateRequest, useMyRequests, useTaxonomy } from '../api/hooks';
+import { useActiveOrder, useCancelRequest, useCreateRequest, useMyRequests, useTaxonomy } from '../api/hooks';
 import type { QuickRequest as Request } from '../api/types';
 import { FieldLabel, MutationError, QueryBoundary, Tag } from '../components/ui';
 import { timeAgo } from '../lib/format';
 
 const SHOWN = 5;
+const UNDO_SECONDS = 5;
 
-/** The operator's own requests, newest first; `new_request` events keep the statuses live. */
+function RequestStatus({ request }: { request: Request }) {
+  if (request.status === 'fulfilled')
+    return (
+      <Tag tone="green">
+        <Check size={14} strokeWidth={3} aria-hidden="true" /> Done
+      </Tag>
+    );
+  if (request.status === 'cancelled')
+    return (
+      <Tag>
+        <X size={14} aria-hidden="true" /> Withdrawn
+      </Tag>
+    );
+  return (
+    <Tag>
+      <Clock size={14} aria-hidden="true" /> Waiting
+    </Tag>
+  );
+}
+
+/** The operator's own requests, newest first; `new_request` events keep the statuses live. A pending
+ * one can be withdrawn: the supervisor's list drops it. */
 function MyRequests({ requests }: { requests: Request[] }) {
+  const cancel = useCancelRequest();
   if (requests.length === 0) return null;
   return (
     <section aria-labelledby="my-requests-title" className="mt-5 border-t border-hairline pt-4">
@@ -26,27 +49,84 @@ function MyRequests({ requests }: { requests: Request[] }) {
               <span className="block truncate font-semibold">{request.request_type}</span>
               <span className="telemetry text-sm text-ink-mute">
                 {request.door_number == null ? 'No dock' : `Dock ${String(request.door_number)}`} ·{' '}
-                {timeAgo(request.fulfilled_at ?? request.created_at)}
+                {timeAgo(request.fulfilled_at ?? request.cancelled_at ?? request.created_at)}
               </span>
             </span>
-            {request.status === 'fulfilled' ? (
-              <Tag tone="green">
-                <Check size={14} strokeWidth={3} aria-hidden="true" /> Done
-              </Tag>
-            ) : (
-              <Tag>
-                <Clock size={14} aria-hidden="true" /> Waiting
-              </Tag>
-            )}
+            <span className="flex shrink-0 items-center gap-2">
+              <RequestStatus request={request} />
+              {request.status === 'pending' && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={cancel.isPending}
+                  aria-label={`Cancel the ${request.request_type} request`}
+                  onClick={() => cancel.mutate(request.id)}
+                >
+                  Cancel
+                </button>
+              )}
+            </span>
           </li>
         ))}
       </ul>
+      <MutationError error={cancel.error} />
     </section>
   );
 }
 
-/** An operator's one-tap request for equipment or supplies, sent to their supervisor. */
-export function QuickRequest() {
+/** The request went: a tick, and five seconds to take it back. */
+function Sent({ id, type, onDone }: { id: number; type: string; onDone: () => void }) {
+  const cancel = useCancelRequest();
+  const [left, setLeft] = useState(UNDO_SECONDS);
+  useEffect(() => {
+    if (left <= 0) return;
+    const timer = window.setTimeout(() => setLeft((seconds) => seconds - 1), 1_000);
+    return () => window.clearTimeout(timer);
+  }, [left]);
+  const undone = cancel.isSuccess;
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-6 text-center">
+      <span className="pop grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
+        {undone ? (
+          <Undo2 size={30} aria-hidden="true" />
+        ) : (
+          <Check size={34} strokeWidth={2.5} aria-hidden="true" />
+        )}
+      </span>
+      <p className="heading text-2xl" role="status">
+        {undone ? 'Withdrawn' : 'Sent'}
+      </p>
+      <p className="text-ink-soft">
+        {undone
+          ? `${type} — taken back. Your supervisor's list no longer shows it.`
+          : `${type} — your supervisor has it. You will see here when it is done.`}
+      </p>
+      <MutationError error={cancel.error} />
+      <div className="mt-2 flex flex-wrap justify-center gap-2">
+        {!undone && left > 0 && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={cancel.isPending}
+            onClick={() => cancel.mutate(id)}
+          >
+            <Undo2 size={18} aria-hidden="true" /> Undo <span className="telemetry">· {left}</span>
+          </button>
+        )}
+        <button type="button" className="btn btn-primary" onClick={onDone}>
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * An operator's one-tap request for equipment or supplies, sent to their supervisor. `rail` sits in
+ * the desktop rail; `dock` is a round button parked just above the tab bar, clear of the content.
+ */
+export function QuickRequest({ placement }: { placement: 'rail' | 'dock' }) {
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
@@ -74,13 +154,20 @@ export function QuickRequest() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="btn btn-primary fixed right-4 bottom-24 z-30 px-4 shadow-float sm:px-5 lg:right-6 lg:bottom-6"
+        className={placement === 'rail' ? 'btn btn-primary w-full' : 'qr-dock lg:hidden'}
         aria-haspopup="dialog"
         aria-label={waiting > 0 ? `Quick request, ${String(waiting)} waiting` : 'Quick request'}
       >
-        <Wrench size={20} aria-hidden="true" />
-        <span className="hidden sm:inline">Request</span>
-        {waiting > 0 && <span className="telemetry">· {waiting}</span>}
+        <Wrench size={placement === 'rail' ? 18 : 22} aria-hidden="true" />
+        {placement === 'rail' && <span>Request</span>}
+        {waiting > 0 &&
+          (placement === 'rail' ? (
+            <span className="telemetry">· {waiting}</span>
+          ) : (
+            <span className="qr-count telemetry" aria-hidden="true">
+              {waiting}
+            </span>
+          ))}
       </button>
 
       <dialog
@@ -104,18 +191,12 @@ export function QuickRequest() {
         </div>
         <div className="p-5">
           {request.isSuccess ? (
-            <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <span className="grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
-                <Check size={34} strokeWidth={2.5} aria-hidden="true" />
-              </span>
-              <p className="heading text-2xl">Request sent</p>
-              <p className="text-ink-soft">
-                {request.variables.request_type} — your supervisor has it. You will see here when it is done.
-              </p>
-              <button type="button" className="btn btn-secondary mt-2" onClick={close}>
-                Done
-              </button>
-            </div>
+            <Sent
+              key={request.data.id}
+              id={request.data.id}
+              type={request.variables.request_type}
+              onDone={close}
+            />
           ) : (
             <>
               <p className="mb-4 text-ink-soft">Tap what you need. Your supervisor is notified at once.</p>

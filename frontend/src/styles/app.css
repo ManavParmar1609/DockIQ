@@ -135,7 +135,12 @@
 
   --ease-organic: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-snap: cubic-bezier(0.65, 0, 0.35, 1);
-  --animate-rise: rise 0.7s var(--ease-organic) both;
+  /* gsap.com's own ease tokens (measured from its :root, 2026-09-26). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+  --ease-in-out: cubic-bezier(0.86, 0, 0.07, 1);
+  --ease-colour: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --animate-rise: rise 0.7s var(--ease-organic) backwards;
 }
 
 @keyframes rise {
@@ -286,22 +291,28 @@
   .bracket {
     display: inline-flex;
     align-items: center;
-    gap: 0.45em;
+    gap: 0.5em;
   }
   .bracket::before,
-  .bracket::after {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: 2.1em;
-    line-height: 0.7;
-    color: var(--color-ink-soft);
-    translate: 0 -0.06em;
+  .bracket::after,
+  .answer-note::before,
+  .answer-note::after {
+    content: '';
+    flex-shrink: 0;
+    align-self: stretch;
+    width: 0.5em;
+    min-height: 1.7em;
+    margin-block: -0.2em;
+    background: var(--color-ink-soft);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 40' preserveAspectRatio='none'%3E%3Cpath d='M10 1.5C5 1.5 6 7 6 13s-1 7-4.5 7C5 20 6 22 6 27s-1 11.5 4 11.5' fill='none' stroke='black' stroke-width='1.5' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")
+      center / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 40' preserveAspectRatio='none'%3E%3Cpath d='M10 1.5C5 1.5 6 7 6 13s-1 7-4.5 7C5 20 6 22 6 27s-1 11.5 4 11.5' fill='none' stroke='black' stroke-width='1.5' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")
+      center / 100% 100% no-repeat;
   }
-  .bracket::before {
-    content: '{';
-  }
-  .bracket::after {
-    content: '}';
+  .bracket::after,
+  .answer-note::after {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 40' preserveAspectRatio='none'%3E%3Cpath d='M2 1.5C7 1.5 6 7 6 13s1 7 4.5 7C7 20 6 22 6 27s1 11.5-4 11.5' fill='none' stroke='black' stroke-width='1.5' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 40' preserveAspectRatio='none'%3E%3Cpath d='M2 1.5C7 1.5 6 7 6 13s1 7 4.5 7C7 20 6 22 6 27s1 11.5-4 11.5' fill='none' stroke='black' stroke-width='1.5' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
   }
 
   /* Highlighter blocks: a word laid on a bar of colour, dark ink on top. */
@@ -429,32 +440,61 @@
       var(--gradient-green) border-box;
     color: var(--color-ink);
   }
-  .btn-primary::before {
+  /* The flair (gsap.com's button): a disc grows from the exact point the pointer or glove came in
+     (--fx/--fy, set by lib/flair.ts) and the label inverts; it shrinks back toward where it left.
+     Press is instant-feeling: <= 150ms. */
+  .btn-primary::before,
+  .btn-secondary::before,
+  .btn-pill::before {
     content: '';
     position: absolute;
-    inset: 0;
+    left: var(--fx, 50%);
+    top: var(--fy, 50%);
     z-index: -1;
-    border-radius: inherit;
+    width: 260%;
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 420ms var(--ease-out);
+    pointer-events: none;
+  }
+  .btn-primary::before {
     background: var(--gradient-green);
-    transform: translateY(102%);
-    transition: transform 480ms var(--ease-organic);
   }
-  .btn-primary:not(:disabled):active::before {
-    transform: translateY(0);
-    transition-duration: 90ms;
+  .btn-secondary::before,
+  .btn-pill::before {
+    background: var(--color-ink);
   }
-  .btn-primary:not(:disabled):active {
+  .btn-primary:not(:disabled):active::before,
+  .btn-secondary:not(:disabled):active::before,
+  .btn-pill:not(:disabled):active::before {
+    transform: translate(-50%, -50%) scale(1);
+    transition-duration: 150ms;
+  }
+  .btn-primary:not(:disabled):active,
+  .btn-secondary:not(:disabled):active,
+  .btn-pill:not(:disabled):active {
     color: var(--color-on-accent);
+    transition: color 150ms var(--ease-colour);
   }
   @media (hover: hover) {
-    .btn-primary:not(:disabled):hover::before {
-      transform: translateY(0);
+    .btn-primary:not(:disabled):hover::before,
+    .btn-secondary:not(:disabled):hover::before,
+    .btn-pill:not(:disabled):hover::before {
+      transform: translate(-50%, -50%) scale(1);
     }
-    .btn-primary:not(:disabled):hover {
+    .btn-primary:not(:disabled):hover,
+    .btn-secondary:not(:disabled):hover,
+    .btn-pill:not(:disabled):hover {
       color: var(--color-on-accent);
+      transition: color 150ms var(--ease-colour);
+    }
+    .btn-secondary:not(:disabled):hover,
+    .btn-pill:not(:disabled):hover {
+      border-color: var(--color-ink);
     }
   }
-  .btn-primary:disabled::before {
+  .btn:disabled::before {
     display: none;
   }
   .btn-secondary,
@@ -462,17 +502,6 @@
     background: transparent;
     border-color: color-mix(in srgb, var(--color-ink) 55%, transparent);
     color: var(--color-ink);
-  }
-  @media (hover: hover) {
-    .btn-secondary:not(:disabled):hover,
-    .btn-pill:not(:disabled):hover {
-      border-color: var(--color-ink);
-      background: color-mix(in srgb, var(--color-ink) 7%, transparent);
-    }
-  }
-  .btn-secondary:not(:disabled):active,
-  .btn-pill:not(:disabled):active {
-    background: color-mix(in srgb, var(--color-ink) 12%, transparent);
   }
   .btn-hazard {
     background: var(--color-hazard);
@@ -548,7 +577,9 @@
     }
   }
   .choice[aria-pressed='true'],
-  .choice[aria-checked='true'] {
+  .choice[aria-checked='true'],
+  .choice[aria-pressed='true']:not(:disabled):hover,
+  .choice[aria-checked='true']:not(:disabled):hover {
     background: var(--color-accent-soft);
     box-shadow: inset 0 0 0 2px var(--color-accent);
     color: var(--color-ink);
@@ -748,6 +779,40 @@
     background: var(--gradient-green);
     color: var(--color-on-accent);
   }
+  /* The quick-request button below lg: a 56px green disc parked just above the tab bar. */
+  .qr-dock {
+    position: fixed;
+    right: 1rem;
+    bottom: calc(max(0.25rem, env(safe-area-inset-bottom)) + 4.25rem);
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 9999px;
+    background: var(--gradient-green);
+    color: var(--color-on-accent);
+    box-shadow: var(--shadow-float);
+    transition: transform 150ms var(--ease-out);
+  }
+  .qr-dock:active {
+    transform: scale(0.94);
+  }
+  .qr-count {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    display: grid;
+    place-items: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.35rem;
+    border-radius: 9999px;
+    background: var(--color-ink);
+    color: var(--color-paper);
+    font-size: var(--text-xs);
+    box-shadow: 0 0 0 2px var(--color-paper);
+  }
   .rail {
     background: var(--color-night);
     border-right: 1px solid var(--color-hairline);
@@ -929,9 +994,9 @@
 
 /* ── Charts: four categorical slots, in fixed order, never cycled ──
  * The reference's highlighters stepped down into the dark chart band (OKLCH L 0.60–0.66) so marks
- * sit on the card without glowing. Validated with the dataviz checks (2026-09-26, dark, #171917):
- * all pass; worst adjacent CVD ΔE 19.8, normal-vision floor 28.0, every slot >= 3:1. Status colours
- * are never chart hues: red stays critical severity only. */
+ * sit on the card without glowing; slot 3 is a deep gold, since orange marks simulated data. Validated
+ * with the dataviz checks (2026-09-26, dark, #171917): all pass. Status colours are never chart hues:
+ * red stays critical severity only. */
 :root {
   /* Gradient stops for the landing page's soft 3D shapes: the highlighters' lit and shaded ends. */
   --shape-pink-hi: #fff0fe;
@@ -950,7 +1015,7 @@
   --lp-tint-cream: color-mix(in oklab, var(--color-ink) 26%, var(--color-surface));
   --chart-1: #00b320; /* green */
   --chart-2: #7a71cf; /* lilac */
-  --chart-3: #dc7100; /* orange */
+  --chart-3: #b28500; /* deep gold — off orange, which marks simulated data */
   --chart-4: #0096b9; /* blue */
   /* The heatmap: one hue (blue), four steps up from the card. */
   --heat-1: color-mix(in oklab, var(--chart-4) 28%, var(--color-surface));
@@ -1461,21 +1526,6 @@
     font-size: var(--text-base);
     color: var(--color-ink-soft);
   }
-  .answer-note::before,
-  .answer-note::after {
-    flex-shrink: 0;
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: 2.1em;
-    line-height: 0.7;
-    color: var(--color-ink-mute);
-  }
-  .answer-note::before {
-    content: '{';
-  }
-  .answer-note::after {
-    content: '}';
-  }
   /* A code a person reads off (order, SKU, bin, issue, temperature): the mono on a faint wash. */
   .answer-token {
     font-family: var(--font-mono);
@@ -1600,14 +1650,239 @@
   }
 }
 
+/* ── The worker's interactions: scans, taps, steps ──
+   Each answers an action the moment it happens and then gets out of the way. None touches a
+   severity mark, an alert, a temperature or a count. */
+@layer components {
+  /* A scan matched this line: a green ring breathes once around the card. */
+  .scan-ring {
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    box-shadow:
+      0 0 0 2px var(--color-accent),
+      0 0 0 6px color-mix(in srgb, var(--color-accent) 22%, transparent);
+    pointer-events: none;
+    animation: scan-ring 900ms var(--ease-out) both;
+  }
+  /* The tick on the button just pressed. */
+  .tap-tick {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.55rem;
+    display: grid;
+    place-items: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 9999px;
+    background: var(--color-ink);
+    color: var(--color-paper);
+    pointer-events: none;
+    animation: tap-tick 1000ms var(--ease-out) both;
+  }
+  /* A fresh result rises into place. */
+  .slide-up {
+    animation: slide-up 260ms var(--ease-out) backwards;
+  }
+  /* A step's panel arrives from the side it lies on. */
+  .tab-swap {
+    animation: tab-swap 320ms var(--ease-out) backwards;
+  }
+  .undo-chip {
+    animation: slide-up 220ms var(--ease-out) backwards;
+  }
+  /* On a phone the load guide's actions ride above the tab bar, so "Loaded, next pallet" is always
+     under the thumb; the right end leaves room for the request button. */
+  .shell-grid .lp-actions {
+    @media (width < 40rem) {
+      position: fixed;
+      inset-inline: 0;
+      bottom: calc(max(0.25rem, env(safe-area-inset-bottom)) + 3.6rem);
+      z-index: 20;
+      padding: 0.75rem 5rem 0.75rem 1rem;
+      border-top: 1px solid var(--color-hairline);
+      background: color-mix(in srgb, var(--color-paper) 92%, transparent);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+  }
+  /* The procedure as a checklist (gsap.com's feature list: the active item bright, the rest dim). */
+  .proc-step {
+    display: flex;
+    width: 100%;
+    min-height: 3rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border-radius: var(--radius-lg);
+    padding: 0.5rem 0.5rem 0.5rem 0.25rem;
+    font-size: var(--text-lg);
+    line-height: 1.4;
+    transition:
+      color 300ms var(--ease-colour),
+      background-color 250ms ease,
+      opacity 300ms ease;
+  }
+  .proc-num {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    font-size: var(--text-base);
+    transition:
+      background-color 300ms var(--ease-colour),
+      color 300ms var(--ease-colour),
+      transform 450ms var(--ease-out);
+  }
+  .proc-now {
+    color: var(--color-ink);
+    background: var(--color-accent-soft);
+  }
+  .proc-now .proc-num {
+    background: var(--gradient-green);
+    color: var(--color-on-accent);
+    transform: scale(1.08);
+  }
+  .proc-next {
+    color: var(--color-ink-soft);
+  }
+  .proc-next .proc-num {
+    box-shadow: inset 0 0 0 1px var(--color-rule-strong);
+    color: var(--color-ink-soft);
+  }
+  .proc-done {
+    color: var(--color-ink-mute);
+  }
+  .proc-done .proc-num {
+    background: var(--color-paper-deep);
+    color: var(--color-accent-ink);
+  }
+  @media (hover: hover) {
+    .proc-step:hover {
+      background: var(--color-paper-sunk);
+    }
+    .proc-now:hover {
+      background: var(--color-accent-soft);
+    }
+  }
+  /* The evidence carousel: snapping cards with the neighbours peeking in. */
+  .photo-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 78%;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    @media (width >= 40rem) {
+      grid-auto-columns: 44%;
+    }
+  }
+  .photo-track > * {
+    scroll-snap-align: start;
+  }
+  /* A short range picker: pills, the chosen one a green highlighter block. */
+  .choice-pill {
+    min-height: 48px;
+    padding-inline: 1.25rem;
+    border-radius: 9999px;
+  }
+  .choice-pill[aria-checked='true'],
+  .choice-pill[aria-checked='true']:not(:disabled):hover {
+    background: var(--color-accent);
+    box-shadow: none;
+    color: var(--color-on-accent);
+  }
+  /* The Issue log's title column keeps a readable measure while other columns stay narrow. */
+  .log-issue {
+    min-width: 15rem;
+  }
+  /* A panel that opens downward, revealed from its top edge. */
+  .unroll {
+    animation: unroll 320ms var(--ease-out) backwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .scan-ring,
+    .tap-tick {
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes scan-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  25% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes tap-tick {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  30% {
+    transform: scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes tab-swap {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--dir, 1) * 14px));
+  }
+}
+@keyframes unroll {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 -1rem 0);
+  }
+}
+
 /* ── The landing page: the stage, the display type, the shapes ── */
 @layer components {
   .hero-display {
     font-family: var(--font-display);
     font-weight: 600;
-    font-size: clamp(3.5rem, 12.5vw, 11.5rem);
+    font-size: clamp(3.5rem, 12vw, 10.75rem);
     line-height: 0.9;
     letter-spacing: -0.045em;
+  }
+  /* GSAP builds the hero letter by letter; the CSS line reveal is the no-JS fallback. */
+  .hero-display[data-split] .hero-line {
+    animation: none;
+  }
+  /* Each letter's mask keeps room for descenders (the g of "triaged") without moving the line. */
+  .hero-display[data-split] .hero-char-mask {
+    padding-bottom: 0.14em;
+    margin-bottom: -0.14em;
   }
   .hero-line {
     display: block;
@@ -1663,7 +1938,7 @@
 @layer components {
   .hero-indent {
     @media (width >= 40rem) {
-      padding-left: 18%;
+      padding-left: 14%;
     }
   }
   .hero-clover {
@@ -1807,5 +2082,159 @@
   }
   to {
     color: var(--color-accent-ink);
+  }
+}
+/* ── Supervisor & Quality: interactions (agent) ── */
+/* Motion here is transform, opacity and clip-path only; never on a severity badge, a critical alert,
+   a temperature or a count. Everything stops under reduced motion. */
+@layer components {
+  /* The alert stack: bottom right on wide screens, clear of every page header's actions; below lg it
+     parks above the tab bar and the request button. Lifted over the assistant's composer. */
+  .alert-stack {
+    position: fixed;
+    z-index: 50;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(max(0.25rem, env(safe-area-inset-bottom)) + 8.25rem);
+    @media (width >= 40rem) {
+      left: auto;
+      width: 24rem;
+    }
+    @media (width >= 64rem) {
+      right: 1.5rem;
+      bottom: 1.5rem;
+    }
+  }
+  .alert-stack[data-lifted] {
+    bottom: calc(max(0.25rem, env(safe-area-inset-bottom)) + 19rem);
+    @media (width >= 64rem) {
+      bottom: 17rem;
+    }
+  }
+  /* A card slides in from the right and lifts away; critical cards do neither. */
+  .alert-enter {
+    animation: sq-alert-in 180ms var(--ease-out) both;
+  }
+  .alert-leave {
+    animation: sq-alert-out 160ms var(--ease-in) both;
+  }
+  /* How long a card stays: a hairline along its foot that runs down over its life. */
+  .alert-timer {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--color-rule-strong);
+    transform-origin: left center;
+    animation: sq-alert-life var(--life, 12s) linear both;
+    pointer-events: none;
+  }
+
+  /* A queue row's state word ("Waiting" → "Taken") fades in when it changes. */
+  .state-fade {
+    animation: sq-fade 150ms var(--ease-out) both;
+  }
+
+  /* The dock sheet: its sections arrive one after another; the backdrop fades. A section holding a
+     critical issue arrives with the sheet itself. */
+  .sheet-stagger > * {
+    animation: sq-section 260ms var(--ease-out) both;
+  }
+  .sheet-stagger > :nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .sheet-stagger > :nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .sheet-stagger > :nth-child(n + 4) {
+    animation-delay: 120ms;
+  }
+  .sheet-stagger > [data-still] {
+    animation: none;
+  }
+  .dock-sheet::backdrop {
+    animation: sq-fade 200ms var(--ease-out) both;
+  }
+
+  /* The assistant, reopened: the latest turn comes up from 60% so the eye lands on it. */
+  .turn-arrive {
+    animation: sq-arrive 200ms var(--ease-out) both;
+  }
+
+  /* Hairline accordion rows (past handoffs, demo controls): the plus turns to a cross, the body
+     unmasks from the top. */
+  .accordion-icon {
+    transition: transform 200ms var(--ease-out);
+  }
+  .accordion-row[aria-expanded='true'] .accordion-icon {
+    transform: rotate(45deg);
+  }
+  .accordion-body {
+    animation: sq-reveal 220ms var(--ease-out) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .alert-enter,
+    .alert-leave,
+    .state-fade,
+    .sheet-stagger > *,
+    .dock-sheet::backdrop,
+    .turn-arrive,
+    .accordion-body {
+      animation: none;
+    }
+    .alert-timer {
+      display: none;
+    }
+    .accordion-icon {
+      transition: none;
+    }
+  }
+}
+@keyframes sq-alert-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes sq-alert-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes sq-alert-life {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes sq-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sq-section {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes sq-arrive {
+  from {
+    opacity: 0.6;
+  }
+}
+@keyframes sq-reveal {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
   }
 }

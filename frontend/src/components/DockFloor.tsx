@@ -1,8 +1,9 @@
 import { CircleAlert, TriangleAlert } from 'lucide-react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 
-import type { Dock } from '../api/types';
+import type { Dock, Issue, Role } from '../api/types';
 import { elapsed, initials, percent } from '../lib/format';
+import { doorStatus } from '../lib/triage';
 import { useNow } from '../lib/useNow';
 import { DOCK_STATUS, LIFECYCLE } from '../lib/vocab';
 import { DockSheet } from './DockSheet';
@@ -249,19 +250,34 @@ function DoorTile({
 }
 
 export function DockFloor({
-  docks,
+  docks: stored,
+  openIssues,
   highlightZone,
+  viewerRole = null,
   selectedDoor = null,
   onOpen,
   onClose,
 }: {
   docks: Dock[];
+  /** The viewer's open issues: a door with an open critical reads Critical whatever its stored status. */
+  openIssues?: Issue[];
   highlightZone?: string | null;
+  viewerRole?: Role | null;
   selectedDoor?: number | null;
   onOpen: (door: number) => void;
   onClose: () => void;
 }) {
   const now = useNow();
+  const docks = useMemo(
+    () =>
+      openIssues === undefined
+        ? stored
+        : stored.map((dock) => {
+            const status = doorStatus(dock, openIssues);
+            return status === dock.status ? dock : { ...dock, status };
+          }),
+    [stored, openIssues],
+  );
   const tiles = useRef(new Map<number, HTMLButtonElement>());
   const register = useCallback((door: number, element: HTMLButtonElement | null) => {
     if (element) tiles.current.set(door, element);
@@ -314,7 +330,13 @@ export function DockFloor({
           );
         })}
       </div>
-      <DockSheet dock={selected} onClose={onClose} returnFocus={returnFocus} viewerZone={highlightZone} />
+      <DockSheet
+        dock={selected}
+        onClose={onClose}
+        returnFocus={returnFocus}
+        viewerZone={highlightZone}
+        viewerRole={viewerRole}
+      />
     </>
   );
 }

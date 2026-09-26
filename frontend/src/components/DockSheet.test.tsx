@@ -143,19 +143,27 @@ const ISSUE: Issue = {
   photo_count: 0,
 };
 
-function Floor({ docks }: { docks: Dock[] }) {
+function Floor({ docks, supervisor }: { docks: Dock[]; supervisor: boolean }) {
   const [door, setDoor] = useState<number | null>(null);
-  return <DockFloor docks={docks} selectedDoor={door} onOpen={setDoor} onClose={() => setDoor(null)} />;
+  return (
+    <DockFloor
+      docks={docks}
+      viewerRole={supervisor ? 'supervisor' : null}
+      selectedDoor={door}
+      onOpen={setDoor}
+      onClose={() => setDoor(null)}
+    />
+  );
 }
 
-function renderFloor(docks: Dock[]) {
+function renderFloor(docks: Dock[], { supervisor = false, order = ORDER } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
-  client.setQueryData(keys.order(ORDER.id), ORDER);
+  client.setQueryData(keys.order(ORDER.id), order);
   client.setQueryData(keys.issueList({ status: 'active' }), [ISSUE]);
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <Floor docks={docks} />
+        <Floor docks={docks} supervisor={supervisor} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -193,5 +201,38 @@ describe('DockSheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('heading', { name: 'Dock 5' })).not.toBeInTheDocument();
+  });
+
+  it("opens a door with an open issue on its issues, with On my way and the supervisor's wording", async () => {
+    const user = userEvent.setup();
+    renderFloor([{ ...ACTIVE, open_issues: 1 }, IDLE], {
+      supervisor: true,
+      order: {
+        ...ORDER,
+        completion_blockers: ['1 critical issue still open: your supervisor decides first.'],
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: /^Dock 4, issue.*open details$/ }));
+    const issues = screen.getByRole('heading', { name: 'Open issues' });
+    const order = screen.getByRole('heading', { name: 'Current order' });
+    expect(issues.compareDocumentPosition(order) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'On my way to issue 7' })).toBeInTheDocument();
+    expect(
+      screen.getByText('1 critical issue still open: yours to decide before the load is signed off.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/your supervisor decides first/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the order first on a door with nothing open, and no On my way for anyone else', async () => {
+    const user = userEvent.setup();
+    const quiet: Dock = { ...ACTIVE, status: 'active', open_issues: 0 };
+    renderFloor([quiet, IDLE]);
+
+    await user.click(screen.getByRole('button', { name: /^Dock 4, active.*open details$/ }));
+    const order = screen.getByRole('heading', { name: 'Current order' });
+    const issues = screen.getByRole('heading', { name: 'Open issues' });
+    expect(order.compareDocumentPosition(issues) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /On my way/ })).not.toBeInTheDocument();
   });
 });

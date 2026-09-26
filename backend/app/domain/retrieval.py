@@ -76,6 +76,7 @@ class KbEntry:
     source_reference: str
     applicable_categories: Sequence[str] = ()
     applicable_companies: Sequence[str] = ()
+    suggested_decision: str | None = None
 
 
 def keyword_hits(keywords: Sequence[str], text: str) -> int:
@@ -144,4 +145,6 @@ def find_resolution(
         "steps": list(best.resolution_steps),
         "source": best.source_reference,
         "issue_type": best.issue_type,
+        # Advice for the supervisor's decision panel, never a decision (business-rules §3.4).
+        "suggested_decision": best.suggested_decision,
     }

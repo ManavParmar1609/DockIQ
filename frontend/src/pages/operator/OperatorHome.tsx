@@ -112,9 +112,9 @@ export default function OperatorHome() {
   const blockers = detail?.completion_blockers ?? [];
   const inspection = inspectionState(detail?.inspection);
   const inspectionFailed = detail?.inspection?.overall_pass === false;
-  const criticalHere = open.some(
-    (issue) => issue.order_id === assignment?.id && issue.severity === 'critical',
-  );
+  // The critical issues on this order are the ones that stop sign-off: named and linked, one by one.
+  const blocking = open.filter((issue) => issue.order_id === assignment?.id && issue.severity === 'critical');
+  const criticalHere = blocking.length > 0;
 
   const criticalOpen = open.filter((issue) => issue.severity === 'critical').length;
   return (
@@ -159,7 +159,10 @@ export default function OperatorHome() {
             <dd className="mt-1">
               {/* `undefined`: an API that does not report inspections. Say nothing rather than guess. */}
               {detail?.inspection !== undefined ? (
-                <Link to="/app/inspection" className="font-semibold text-accent-ink underline">
+                <Link
+                  to="/app/inspection"
+                  className="link-draw inline-flex min-h-11 items-center font-semibold text-accent-ink"
+                >
                   {inspection.meta}
                 </Link>
               ) : (
@@ -183,8 +186,8 @@ export default function OperatorHome() {
                   Inspection
                 </Link>
               )}
-              <Link to="/app/order" className="btn btn-primary">
-                Open the order
+              <Link to="/app/order?tab=signoff" className="btn btn-primary">
+                Open sign-off
               </Link>
             </span>
           }
@@ -194,6 +197,27 @@ export default function OperatorHome() {
               <li key={blocker}>{blocker}</li>
             ))}
           </ul>
+          {blocking.length > 0 && (
+            <ul className="mt-3 flex flex-col" aria-label="Critical issues on this order">
+              {blocking.map((issue) => (
+                <li key={issue.id} className="border-t border-hazard-line first:border-t-0">
+                  <Link
+                    to={`/app/issues/${issue.id}`}
+                    className="group flex min-h-11 items-center gap-3 py-1.5 font-semibold"
+                  >
+                    <SeverityBadge severity={issue.severity} size="sm" />
+                    <span className="min-w-0 flex-1 truncate">{issue.issue_subtype ?? issue.issue_type}</span>
+                    <span className="telemetry text-sm text-ink-mute">#{issue.id}</span>
+                    <ChevronRight
+                      size={18}
+                      aria-hidden="true"
+                      className="shrink-0 text-ink-mute transition-transform group-hover:translate-x-0.5"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </Notice>
       )}
 
@@ -248,7 +272,9 @@ export default function OperatorHome() {
           sub={
             loaded
               ? criticalOpen > 0
-                ? `${String(criticalOpen)} critical`
+                ? blocking.length > 0
+                  ? `${String(criticalOpen)} critical · ${String(blocking.length)} on this order`
+                  : `${String(criticalOpen)} critical`
                 : open.length
                   ? 'Needs attention'
                   : 'All clear'
@@ -275,8 +301,8 @@ export default function OperatorHome() {
       <Panel
         title="Recent issues"
         aside={
-          <Link to="/app/issues" className="label flex items-center text-ink underline">
-            All
+          <Link to="/app/issues" className="btn btn-pill min-h-11 px-4 text-sm">
+            All issues
           </Link>
         }
         flush

@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
 from fastapi import status as http
 from sqlalchemy import Select, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import realtime
@@ -22,10 +23,11 @@ from app.api.deps import (
     get_or_404,
 )
 from app.db import MAX_ID, utcnow
-from app.domain.dock import DockEvent, transition
+from app.domain.dock import DockEvent
 from app.domain.enums import Disposition, IssueStatus, Role, Severity
 from app.domain.evidence import MAX_PHOTO_BYTES, MAX_PHOTOS_PER_ISSUE, sniff_image_type
 from app.domain.lifecycle import (
+    ALWAYS_NOTED_DECISIONS,
     FULL_REJECT,
     OPEN_STATUSES,
     can_transition,
@@ -35,7 +37,7 @@ from app.domain.lifecycle import (
     self_resolve_needs_note,
 )
 from app.domain.quality_hold import LEAVES_THE_BUILDING, can_dispose, holds_stock
-from app.domain.taxonomy import OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS, needs_order
+from app.domain.taxonomy import OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS, allowed_resolutions, needs_order
 from app.models import DockDoor, Issue, IssuePhoto, Order, Product, User
 from app.queries import issue_select
 from app.schemas import (
@@ -48,6 +50,7 @@ from app.schemas import (
     PhotoOut,
     StatusOut,
 )
+from app.services.dock_status import apply_issue_event
 from app.services.holds import hold_for_issue
 from app.services.issue_filing import file_issue
 from app.wms.client import WmsUnavailable
@@ -83,6 +86,8 @@ DockFilter = Annotated[int | None, Query(ge=1, le=999, description="A door numbe
 IdFilter = Annotated[int | None, Query(ge=1, le=MAX_ID)]
 FromFilter = Annotated[date | None, Query(alias="from", description="Filed on or after this day (UTC)")]
 ToFilter = Annotated[date | None, Query(alias="to", description="Filed on or before this day (UTC)")]
+TypeFilter = Annotated[str | None, Query(max_length=64, description="An issue type from the taxonomy")]
+DispositionFilter = Annotated[Disposition | None, Query(description="Quality's disposition")]
 
 
 def day_range(date_from: date | None, date_to: date | None) -> tuple[datetime | None, datetime | None]:
@@ -103,6 +108,8 @@ def _filtered(
     carrier_id: int | None,
     date_from: date | None,
     date_to: date | None,
+    issue_type: str | None = None,
+    disposition: Disposition | None = None,
 ) -> Select[Any]:
     stmt = issue_select().where(issue_scope(user)).order_by(Issue.created_at.desc(), Issue.id.desc())
     if status == "active":
@@ -120,6 +127,10 @@ def _filtered(
         stmt = stmt.where(DockDoor.door_number == dock)
     if carrier_id is not None:
         stmt = stmt.where(Issue.carrier_id == carrier_id)
+    if issue_type is not None:
+        stmt = stmt.where(Issue.issue_type == issue_type)
+    if disposition is not None:
+        stmt = stmt.where(Issue.disposition == disposition)
     start, end = day_range(date_from, date_to)
     if start is not None:
         stmt = stmt.where(Issue.created_at >= start)
@@ -139,9 +150,13 @@ async def list_issues(
     carrier_id: IdFilter = None,
     date_from: FromFilter = None,
     date_to: ToFilter = None,
+    issue_type: TypeFilter = None,
+    disposition: DispositionFilter = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> list[IssueOut]:
-    stmt = _filtered(user, status, operator_id, severity, dock, carrier_id, date_from, date_to).limit(limit)
+    stmt = _filtered(
+        user, status, operator_id, severity, dock, carrier_id, date_from, date_to, issue_type, disposition
+    ).limit(limit)
     return [IssueOut.model_validate(dict(row._mapping)) for row in await session.execute(stmt)]
 
 
@@ -171,13 +186,17 @@ EXPORT_COLUMNS: tuple[str, ...] = (
     "acknowledged_by_name",
     "acknowledged_at",
     "resolution_type",
+    "decided_by_name",
+    "resolution_notes",
     "supervisor_name",
+    "supervisor_notes",
     "resolved_at",
     "estimated_cost_impact",
     "held_pallets",
     "disposition",
     "disposition_by_name",
     "disposition_at",
+    "disposition_notes",
     "simulated",
     "sim_time",
     "description",
@@ -211,10 +230,14 @@ async def export_issues(
     carrier_id: IdFilter = None,
     date_from: FromFilter = None,
     date_to: ToFilter = None,
+    issue_type: TypeFilter = None,
+    disposition: DispositionFilter = None,
     limit: Annotated[int, Query(ge=1, le=EXPORT_LIMIT)] = 1000,
 ) -> Response:
     """The issue list as CSV: the same filters and the same scope, newest first, bounded."""
-    stmt = _filtered(user, status, operator_id, severity, dock, carrier_id, date_from, date_to).limit(limit)
+    stmt = _filtered(
+        user, status, operator_id, severity, dock, carrier_id, date_from, date_to, issue_type, disposition
+    ).limit(limit)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(EXPORT_COLUMNS)
@@ -240,33 +263,7 @@ async def get_issue(issue_id: PathId, user: CurrentUser, session: SessionDep) ->
 # ── Reporting ──
 
 
-@router.post("/issues")
-async def create_issue(
-    body: IssueCreate, user: Operator, session: SessionDep, events: RealtimeDep, wms: WmsDep
-) -> IssueCreated:
-    # The order must be one the operator may see (404 otherwise), and the report must be at its dock.
-    order = await visible_order(session, user, body.order_id) if body.order_id is not None else None
-    if order is None and needs_order(body.issue_type):
-        raise unprocessable("A product issue is reported against its order: choose the order first")
-    if order is not None:
-        if body.dock_door_id is None:
-            body = body.model_copy(update={"dock_door_id": order.dock_door_id})
-        elif order.dock_door_id != body.dock_door_id:
-            raise unprocessable("That order is not at this dock")
-    issue = await file_issue(session, user.id, body)
-    product = await session.get(Product, issue.product_id) if issue.product_id is not None else None
-    if order is not None:
-        order.sim_managed = False  # a person reporting on a simulated trailer takes it over (§12)
-    await session.commit()
-    if holds_stock(issue.issue_type) and order is not None:
-        # The WMS is a system of its own: the hold is asked for once the report is on record, and
-        # what it held is recorded on the report (business-rules §7.3).
-        held = await hold_for_issue(wms, issue, order, product, user.employee_id)
-        if held:
-            issue.held_pallets = held
-            await session.commit()
-    created = await _issue_out(session, issue.id)
-    await events.send(await issue_audience(session, issue), realtime.new_issue(created.model_dump()))
+def _created(issue: Issue) -> IssueCreated:
     return IssueCreated(
         id=issue.id,
         status=issue.status,
@@ -279,11 +276,63 @@ async def create_issue(
     )
 
 
+async def _already_filed(session: AsyncSession, user: User, client_key: str | None) -> Issue | None:
+    """The report this key already filed, if any. A key is the reporter's own: someone else's is 409,
+    and says nothing about their report."""
+    if client_key is None:
+        return None
+    issue = await session.scalar(select(Issue).where(Issue.client_key == client_key))
+    if issue is not None and issue.operator_id != user.id:
+        raise HTTPException(http.HTTP_409_CONFLICT, "That report key is already in use")
+    return issue
+
+
+@router.post("/issues")
+async def create_issue(
+    body: IssueCreate, user: Operator, session: SessionDep, events: RealtimeDep, wms: WmsDep
+) -> IssueCreated:
+    # A retried report (the same `client_key`) is answered with the one already filed: filed once.
+    if (filed := await _already_filed(session, user, body.client_key)) is not None:
+        return _created(filed)
+    # The order must be one the operator may see (404 otherwise), and the report must be at its dock.
+    order = await visible_order(session, user, body.order_id) if body.order_id is not None else None
+    if order is None and needs_order(body.issue_type):
+        raise unprocessable("A product issue is reported against its order: choose the order first")
+    if order is not None:
+        if body.dock_door_id is None:
+            body = body.model_copy(update={"dock_door_id": order.dock_door_id})
+        elif order.dock_door_id != body.dock_door_id:
+            raise unprocessable("That order is not at this dock")
+    try:
+        issue = await file_issue(session, user.id, body)
+        product = await session.get(Product, issue.product_id) if issue.product_id is not None else None
+        if order is not None:
+            order.sim_managed = False  # a person reporting on a simulated trailer takes it over (§12)
+        await session.commit()
+    except IntegrityError:
+        # The same key raced in twice: the other request filed it first.
+        await session.rollback()
+        if (filed := await _already_filed(session, user, body.client_key)) is not None:
+            return _created(filed)
+        raise
+    if holds_stock(issue.issue_type) and order is not None:
+        # The WMS is a system of its own: the hold is asked for once the report is on record, and
+        # what it held is recorded on the report (business-rules §7.3).
+        held = await hold_for_issue(wms, issue, order, product, user.employee_id)
+        if held:
+            issue.held_pallets = held
+            await session.commit()
+    created = await _issue_out(session, issue.id)
+    await events.send(await issue_audience(session, issue), realtime.new_issue(created.model_dump()))
+    return _created(issue)
+
+
 async def _dock_event(session: AsyncSession, issue: Issue, event: DockEvent) -> None:
+    """Move the issue's door, from everything still open on it (business-rules §7.7)."""
     if issue.dock_door_id is None:
         return
     dock = await get_or_404(session, DockDoor, issue.dock_door_id, "Dock")
-    dock.status, dock.lifecycle_phase = transition(dock.status, dock.lifecycle_phase, event)
+    await apply_issue_event(session, dock, event, issue.severity)
 
 
 # ── Resolving ──
@@ -299,6 +348,11 @@ async def self_resolve_issue(
     issue = await visible_issue(session, user, issue_id)  # scoped: only the reporter's own
     if body.resolution_type not in OPERATOR_RESOLUTIONS:
         raise unprocessable(f"Unknown resolution '{body.resolution_type}'")
+    if body.resolution_type not in allowed_resolutions(issue.issue_type):
+        raise unprocessable(
+            f"'{body.resolution_type}' does not close a {issue.issue_type}: choose "
+            + ", ".join(allowed_resolutions(issue.issue_type))
+        )
     if requires_supervisor(issue.severity):
         raise HTTPException(http.HTTP_409_CONFLICT, "A critical issue needs your supervisor's decision")
     if issue.status is IssueStatus.ON_HOLD:
@@ -331,11 +385,7 @@ async def escalate_issue(
     issue = await visible_issue(session, user, issue_id)
     _move(issue, IssueStatus.ESCALATED)
     issue.escalated_at = utcnow()
-    if issue.dock_door_id is not None:
-        dock = await get_or_404(session, DockDoor, issue.dock_door_id, "Dock")
-        dock.status, dock.lifecycle_phase = transition(
-            dock.status, dock.lifecycle_phase, DockEvent.ISSUE_ESCALATED, severity=issue.severity
-        )
+    await _dock_event(session, issue, DockEvent.ISSUE_ESCALATED)
     await session.commit()
     escalated = await _issue_out(session, issue_id)
     await events.send(await issue_audience(session, issue), realtime.issue_escalated(escalated.model_dump()))
@@ -380,6 +430,8 @@ async def supervisor_resolve_issue(
         decision_needs_notes(decision, issue.severity, issue.issue_type)
         and not (body.supervisor_notes or "").strip()
     ):
+        if decision in ALWAYS_NOTED_DECISIONS:
+            raise unprocessable(f"'{decision}' is always recorded with your reason: add it to the notes")
         raise unprocessable(f"'{decision}' on a critical or temperature issue needs your reason in the notes")
     target = decision_status(decision)
     _move(issue, target)

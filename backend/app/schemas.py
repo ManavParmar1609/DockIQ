@@ -62,6 +62,9 @@ class IssueCreate(BaseModel):
     count_expected: int | None = Field(default=None, ge=0)
     count_actual: int | None = Field(default=None, ge=0)
     lot: str | None = Field(default=None, max_length=16)
+    # The reporting tablet's key for this report (a UUID). A second POST with the same key returns the
+    # report already filed instead of filing it twice: a retry from the offline queue is safe.
+    client_key: str | None = Field(default=None, min_length=8, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
 
 
 class IssueSelfResolve(BaseModel):
@@ -366,9 +369,16 @@ class IssueOut(Schema):
     # Whether the reporting worker may close it themselves, and whether that needs their note (§7.5).
     can_self_resolve: bool = False
     self_resolve_needs_note: bool = False
+    # Who made the call on record: the worker who closed it, or the supervisor who decided (or put it
+    # on hold). None while nobody has.
+    decided_by_name: str | None = None
 
     @model_validator(mode="after")
     def _derived(self) -> "IssueOut":
+        if self.status is IssueStatus.SELF_RESOLVED:
+            self.decided_by_name = self.operator_name
+        elif self.status in (IssueStatus.SUPERVISOR_RESOLVED, IssueStatus.ON_HOLD):
+            self.decided_by_name = self.supervisor_name
         if self.sim_minute is not None:
             self.sim_time, self.sim_shift = time_of(self.sim_minute), shift_of(self.sim_minute) + 1
         if self.status is IssueStatus.ON_HOLD and self.resolution_type in PENDING_DECISIONS:
@@ -528,6 +538,8 @@ class IssueTypeOut(BaseModel):
     subtypes: list[str]
     quality_relevant: bool
     floor: dict[str, Severity]
+    # The operator resolutions a worker may close this type with (business-rules §7.6).
+    resolutions: list[str] = []
 
 
 class ReceivingCheckSpecOut(BaseModel):
@@ -546,6 +558,8 @@ class TaxonomyOut(BaseModel):
     # wait on someone else (the issue goes `on_hold`), business-rules §7.2.
     accept_decisions: list[str] = []
     pending_decisions: list[str] = []
+    # Decisions that always need the supervisor's reason in the notes, on any issue (§7.2).
+    noted_decisions: list[str] = []
     # Minutes an open issue may wait for its decision, by severity (business-rules §7.4).
     decision_targets: dict[str, int] = {}
     # What each pending decision waits on ("Awaiting the carrier"), and the issue types on which accepting
@@ -748,6 +762,7 @@ class QuickRequestOut(Schema):
     status: RequestStatus
     created_at: datetime
     fulfilled_at: datetime | None
+    cancelled_at: datetime | None = None
     operator_name: str | None
     door_number: int | None
 
@@ -873,10 +888,35 @@ class CarrierRepeat(CountByLabel):
 
     issue_type: str
     name: str
+    carrier_id: int | None = None  # for the drill-down to the issue log
 
 
 class NameCount(CountByLabel):
     name: str
+
+
+class CarrierCount(NameCount):
+    carrier_id: int  # for the drill-down to the issue log
+
+
+class DispositionCount(CountByLabel):
+    disposition: Disposition
+
+
+class RoomCount(CountByLabel):
+    room: str  # F, C, P or D
+
+
+class QualityAnalytics(BaseModel):
+    """Quality's own figures (business-rules §7.3), over the same issues and dates as the summary."""
+
+    # Minutes from the report to Quality's disposition, averaged over the issues Quality has disposed.
+    avg_minutes_to_disposition: float | None
+    disposed: int  # issues with any disposition
+    by_disposition: list[DispositionCount]  # hold · release · destroy · return to vendor
+    pallets_on_hold: int  # licence plates held for issues whose product is not yet released or gone
+    issues_on_hold: int
+    excursions_by_room: list[RoomCount]  # cold-room alarms filed as issues, by room
 
 
 class OperatorCount(BaseModel):
@@ -911,10 +951,11 @@ class AnalyticsSummary(BaseModel):
     by_dock: list[DockCount]
     by_operator: list[OperatorCount]
     by_company: list[NameCount]
-    by_carrier: list[NameCount]
+    by_carrier: list[CarrierCount]
     over_time: list[DateCount]
     repeat_at_doors: list[DockRepeat]
     repeat_with_carriers: list[CarrierRepeat]
+    quality: QualityAnalytics | None = None  # Quality's scope only
 
 
 # ── Simulation and WMS (business-rules §12) ──

@@ -10,7 +10,8 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.expression import ColumnElement, FunctionElement
 
-from app.domain.lifecycle import OPEN_STATUSES
+from app.domain.enums import Severity
+from app.domain.lifecycle import FULL_REJECT, OPEN_STATUSES
 from app.domain.retrieval import KbEntry
 from app.models import (
     Carrier,
@@ -162,6 +163,7 @@ async def load_kb_entries(session: AsyncSession) -> list[KbEntry]:
             source_reference=row.source_reference,
             applicable_categories=row.applicable_categories or (),
             applicable_companies=row.applicable_companies or (),
+            suggested_decision=row.suggested_decision,
         )
         for row in rows
     ]
@@ -185,6 +187,29 @@ async def count_recent_issues(
     if carrier_id is not None:
         stmt = stmt.where(Issue.carrier_id == carrier_id)
     return (await session.scalar(stmt)) or 0
+
+
+async def door_issues(session: AsyncSession, dock: DockDoor) -> tuple[list[Severity], bool]:
+    """The severities open on a door, and whether the load at it (its current order) was fully
+    rejected — what `domain.dock.transition` decides the door's status from."""
+    severities = list(
+        await session.scalars(
+            select(Issue.severity)
+            .where(Issue.dock_door_id == dock.id, Issue.status.in_(list(OPEN_STATUSES)))
+            .distinct()
+        )
+    )
+    rejected = False
+    if dock.current_order_id is not None:
+        rejections = await session.scalar(
+            select(func.count(Issue.id)).where(
+                Issue.dock_door_id == dock.id,
+                Issue.order_id == dock.current_order_id,
+                Issue.resolution_type == FULL_REJECT,
+            )
+        )
+        rejected = (rejections or 0) > 0
+    return severities, rejected
 
 
 # ── Portable SQL: elapsed minutes between two timestamp columns ──

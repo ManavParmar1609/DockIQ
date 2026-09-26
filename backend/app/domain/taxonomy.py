@@ -237,6 +237,44 @@ OPERATOR_RESOLUTIONS: tuple[str, ...] = (
     "Other",
 )
 
+OTHER_RESOLUTION = "Other"
+
+# What a worker may say they did, by issue type (business-rules §7.6). Listed in OPERATOR_RESOLUTIONS
+# order; "Other" is always offered. A reefer re-check never closes a forklift fault, and a swapped
+# scanner never closes a temperature deviation.
+RESOLUTIONS_BY_TYPE: dict[str, tuple[str, ...]] = {
+    "Temperature Deviation": ("Full Reject", "Temp Re-check OK", "Product Segregated", "Other"),
+    "Product Quality Concern": ("Partial Accept", "Full Reject", "Product Segregated", "Other"),
+    "Damaged Pallet": (
+        "Partial Accept",
+        "Full Reject",
+        "Product Segregated",
+        "Corrected and Continued",
+        "Other",
+    ),
+    "SKU Mismatch": ("Full Reject", "Product Segregated", "Corrected and Continued", "Other"),
+    "Count Discrepancy": ("Partial Accept", "Full Reject", "Corrected and Continued", "Other"),
+    "Lot/Expiry Issue": (
+        "Partial Accept",
+        "Full Reject",
+        "Product Segregated",
+        "Corrected and Continued",
+        "Other",
+    ),
+    "Seal/Trailer Condition": ("Full Reject", "Corrected and Continued", "Other"),
+    "Safety Incident": ("Corrected and Continued", "Other"),
+    "Equipment Failure": ("Equipment Swapped", "Corrected and Continued", "Other"),
+    "WMS/System Issue": ("Manual Entry", "Corrected and Continued", "Other"),
+    "Barcode Issue": ("Manual Entry", "Corrected and Continued", "Other"),
+    "Paperwork Mismatch": ("Manual Entry", "Corrected and Continued", "Other"),
+}
+
+
+def allowed_resolutions(issue_type: str) -> tuple[str, ...]:
+    """The operator resolutions that fit this issue type; every one for a type the map does not name."""
+    return RESOLUTIONS_BY_TYPE.get(issue_type, OPERATOR_RESOLUTIONS)
+
+
 SUPERVISOR_DECISIONS: tuple[str, ...] = (
     "Accept",
     "Partial Accept",

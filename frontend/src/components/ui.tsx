@@ -10,6 +10,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { errorMessage } from '../api/client';
 import type { IssueStatus } from '../api/types';
 import { rovingKeyDown, rovingTabIndex } from '../lib/roving';
+import { SeverityMark } from './Severity';
 import { ISSUE_STATUS } from '../lib/vocab';
 
 // ── Layout ──
@@ -100,7 +101,12 @@ export function Stat({
       className={`flex flex-col justify-between gap-2 ${surface} ${index === undefined ? '' : 'reveal'}`}
       style={style}
     >
-      <p className={`text-sm font-semibold ${alert ? 'text-hazard-deep' : 'text-ink-mute'}`}>{label}</p>
+      <p
+        className={`flex items-center gap-1.5 text-sm font-semibold ${alert ? 'text-hazard-deep' : 'text-ink-mute'}`}
+      >
+        {alert && <SeverityMark severity="critical" size={13} />}
+        {label}
+      </p>
       <p className={`num text-4xl leading-none ${alert ? 'text-hazard-deep' : ''}`}>{value}</p>
       {sub && (
         <p className={`text-sm ${alert ? 'font-semibold text-hazard-deep' : 'text-ink-mute'}`}>{sub}</p>
@@ -187,10 +193,10 @@ export function Notice({
   if (tone === 'alert') {
     return (
       <div role="alert" className="flex overflow-hidden rounded-xl border border-hazard-line bg-hazard-soft">
-        <div className="flex flex-1 flex-wrap items-start justify-between gap-3 p-4">
-          <div className="flex gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3 p-4">
+          <div className="flex min-w-0 flex-1 basis-64 gap-3">
             <AlertTriangle size={22} aria-hidden="true" className="mt-0.5 shrink-0 text-hazard-deep" />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="heading text-base text-hazard-deep">{title}</p>
               {children && <div className="mt-1 text-base text-ink">{children}</div>}
             </div>
@@ -337,12 +343,15 @@ export function ChoiceGroup<T extends string>({
   value,
   onChange,
   columns = 2,
+  pills = false,
 }: {
   label: string;
   options: readonly { value: T; label: string }[];
   value: T | null;
   onChange: (value: T) => void;
   columns?: 2 | 3 | 4;
+  /** Short, mutually exclusive ranges: a row of pills, the selected one a green highlighter. */
+  pills?: boolean;
 }) {
   const grid = { 2: 'grid-cols-2', 3: 'grid-cols-2 sm:grid-cols-3', 4: 'grid-cols-2 sm:grid-cols-4' }[
     columns
@@ -356,7 +365,7 @@ export function ChoiceGroup<T extends string>({
     <fieldset>
       <legend className="mb-2 text-base font-semibold">{label}</legend>
       <div
-        className={`grid gap-2 ${grid}`}
+        className={pills ? 'flex flex-wrap gap-2' : `grid gap-2 ${grid}`}
         role="radiogroup"
         aria-label={label}
         onKeyDown={rovingKeyDown('radio', selected, options.length, select)}
@@ -368,7 +377,7 @@ export function ChoiceGroup<T extends string>({
             role="radio"
             aria-checked={value === option.value}
             tabIndex={rovingTabIndex(index, selected)}
-            className="choice justify-center"
+            className={`choice justify-center text-center text-balance ${pills ? 'choice-pill' : ''}`}
             onClick={() => onChange(option.value)}
           >
             {option.label}

@@ -33,7 +33,7 @@ from app.domain.enums import (
 )
 from app.domain.lifecycle import PENDING_DECISIONS, requires_supervisor
 from app.domain.severity import classify_severity
-from app.domain.taxonomy import ISSUE_TAXONOMY, OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS
+from app.domain.taxonomy import ISSUE_TAXONOMY, OTHER_RESOLUTION, SUPERVISOR_DECISIONS, allowed_resolutions
 from app.models import (
     Carrier,
     Company,
@@ -262,7 +262,7 @@ def _seed_history(
         escalated = status in (IssueStatus.ESCALATED, IssueStatus.SUPERVISOR_RESOLVED)
         escalated_at = created + timedelta(minutes=rng.randint(1, 5)) if escalated else None
         resolution = (
-            rng.choice(OPERATOR_RESOLUTIONS[:-1])
+            rng.choice([r for r in allowed_resolutions(spec.name) if r != OTHER_RESOLUTION])
             if status is IssueStatus.SELF_RESOLVED
             else rng.choice(FINAL_DECISIONS)
             if status is IssueStatus.SUPERVISOR_RESOLVED

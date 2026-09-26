@@ -7,8 +7,8 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { Bell, Footprints, Gavel, Megaphone, Thermometer, Wrench, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Link, useLocation } from 'react-router';
 
 import { requestsQuery, useIssues } from '../api/hooks';
 import type { RealtimeEvent } from '../api/realtime';
@@ -16,6 +16,8 @@ import type { Issue, QuickRequest, Role, Severity } from '../api/types';
 import { SeverityBadge } from '../components/Severity';
 import { EmptyState } from '../components/ui';
 import { formatDateTime, formatTemp } from '../lib/format';
+import { prefersStill } from '../lib/motion';
+import { awaitsDisposition } from '../lib/triage';
 
 type AlertIcon = 'footprints' | 'gavel' | 'request' | 'room';
 
@@ -38,6 +40,8 @@ export interface Alert {
 type AlertDraft = Omit<Alert, 'at'>;
 
 const DISMISS_AFTER_MS = 12_000;
+/** The leave motion's length (app.css `.alert-leave`). */
+const LEAVE_MS = 160;
 const INBOX_SIZE = 30;
 const VISIBLE = 3;
 const DISMISSED_KEY = 'dockiq.alerts.dismissed';
@@ -187,9 +191,7 @@ export function pendingAlerts(issues: readonly Issue[], role: Role): Alert[] {
   }
   if (role === 'quality') {
     // What Quality must decide: product on hold, or a cold room over its limit, without a disposition.
-    return issues
-      .filter((issue) => (issue.room || (issue.held_pallets?.length ?? 0) > 0) && !issue.disposition)
-      .map(dated);
+    return issues.filter(awaitsDisposition).map(dated);
   }
   return [];
 }
@@ -430,21 +432,36 @@ function AlertGlyph({ alert, size = 20 }: { alert: Pick<Alert, 'icon' | 'severit
   return <Icon size={size} aria-hidden="true" />;
 }
 
-function AlertCard({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }) {
+function AlertCard({ alert, dismiss }: { alert: Alert; dismiss: (key: string) => void }) {
   const critical = alert.severity === 'critical' || alert.sticky;
-  const { sticky } = alert;
+  const { sticky, key, at } = alert;
+  // A critical card arrives and leaves solid: no motion on a critical alert (rules §2.4).
+  const [still] = useState(() => critical || prefersStill());
+  const [leaving, setLeaving] = useState(false);
+  const onDismiss = useCallback(() => dismiss(key), [dismiss, key]);
+  const leave = useCallback(() => {
+    if (still) onDismiss();
+    else setLeaving(true);
+  }, [still, onDismiss]);
+
+  useEffect(() => {
+    if (!leaving) return undefined;
+    const timer = window.setTimeout(onDismiss, LEAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [leaving, onDismiss]);
 
   useEffect(() => {
     if (sticky) return undefined;
-    const timer = window.setTimeout(onDismiss, DISMISS_AFTER_MS);
+    const timer = window.setTimeout(leave, DISMISS_AFTER_MS);
     return () => window.clearTimeout(timer);
-  }, [sticky, onDismiss]);
+  }, [sticky, leave, at]);
 
+  const motion = still ? '' : leaving ? 'alert-leave' : 'alert-enter';
   return (
     <div
       role={critical ? 'alert' : 'status'}
       // Critical banners are solid: no translucency on a critical alert (rules §2.3).
-      className={`flex overflow-hidden rounded-2xl shadow-float ${critical ? 'bg-surface ring-2 ring-hazard' : 'material-thick'}`}
+      className={`relative flex overflow-hidden rounded-2xl shadow-float ${critical ? 'bg-surface ring-2 ring-hazard' : 'material-thick'} ${motion}`}
     >
       <Link to={alert.href} onClick={onDismiss} className="flex-1 px-4 py-3">
         <p className="text-sm font-semibold text-ink-mute">{alert.kicker}</p>
@@ -458,11 +475,20 @@ function AlertCard({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
       <button
         type="button"
         aria-label="Dismiss"
-        onClick={onDismiss}
+        onClick={leave}
         className="m-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-mute hover:bg-paper-sunk"
       >
         <X size={18} aria-hidden="true" />
       </button>
+      {/* How long it stays: a hairline that runs down over the card's life. Not on a sticky card. */}
+      {!sticky && (
+        <span
+          key={at}
+          className="alert-timer"
+          style={{ '--life': `${String(DISMISS_AFTER_MS)}ms` } as CSSProperties}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }
@@ -476,15 +502,25 @@ export function AlertStack({
   dismiss: (key: string) => void;
   onOpenInbox: () => void;
 }) {
-  if (alerts.length === 0) return null;
-  const hidden = alerts.length - VISIBLE;
+  // Wide screens: bottom right, clear of every page header's actions; lifted over the assistant's
+  // composer. Below lg: above the tab bar and the request button.
+  const path = useLocation().pathname;
+  const onAssistant = path.startsWith('/app/chat');
+  // The summary of what was already waiting lives in the queue, the bell and the tab title; floating,
+  // it would sit over every screen's own work. On an issue's page nothing floats over the decision.
+  const shown = /^\/app\/issues\/\d+/.test(path)
+    ? []
+    : alerts.filter((alert) => !alert.key.startsWith('pending-'));
+  if (shown.length === 0) return null;
+  const hidden = shown.length - VISIBLE;
   return (
     <div
-      className="fixed top-3 right-3 left-3 z-50 flex flex-col gap-2 sm:left-auto sm:w-96"
+      className="alert-stack flex flex-col gap-2"
+      data-lifted={onAssistant ? '' : undefined}
       aria-live="assertive"
     >
-      {alerts.slice(0, VISIBLE).map((alert) => (
-        <AlertCard key={alert.key} alert={alert} onDismiss={() => dismiss(alert.key)} />
+      {shown.slice(0, VISIBLE).map((alert) => (
+        <AlertCard key={alert.key} alert={alert} dismiss={dismiss} />
       ))}
       {hidden > 0 && (
         <button type="button" className="btn btn-secondary" onClick={onOpenInbox}>

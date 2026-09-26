@@ -115,12 +115,41 @@ describe('Issue detail: product disposition belongs to Quality', () => {
     renderIssue('supervisor');
     expect(screen.getByRole('button', { name: 'On my way' })).toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Accept' }));
-    const resolve = screen.getByRole('button', { name: 'Resolve issue' });
+    const resolve = screen.getByRole('button', { name: 'Record: Accept' });
     expect(resolve).toBeDisabled();
+    expect(screen.getByText('Write your reason in the notes to record Accept.')).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Notes for the record/), 'Reprobed within limit');
     expect(resolve).toBeEnabled();
     await user.click(screen.getByRole('radio', { name: 'Contact Carrier' }));
     expect(screen.getByRole('button', { name: 'Put on hold — awaiting the carrier' })).toBeInTheDocument();
+  });
+
+  it('shows the procedure suggestion as advice, and a reject always needs the reason', async () => {
+    const user = userEvent.setup();
+    renderIssue('supervisor', {
+      severity: 'medium',
+      issue_type: 'Damaged Pallet',
+      ai_resolution: {
+        found: true,
+        confidence: 'high',
+        scenario: 'More than 5% of cases damaged',
+        steps: ['Mark the pallet with a REJECT tag'],
+        source: 'Company SOP 4.2',
+        suggested_decision: 'Full Reject',
+      },
+    });
+    expect(screen.getByText(/Procedure suggests:/)).toHaveTextContent('Procedure suggests: Full Reject');
+    const suggested = screen.getByRole('radio', { name: 'Full Reject · suggested' });
+    expect(suggested).toHaveAttribute('aria-checked', 'false'); // advice: never chosen for them
+    expect(screen.getByRole('button', { name: 'Choose a decision' })).toBeDisabled();
+    await user.click(suggested);
+    const record = screen.getByRole('button', { name: 'Record: Full Reject' });
+    expect(record).toBeDisabled();
+    expect(screen.getByText('Full Reject is always recorded with your reason.')).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Notes for the record/), 'Over 5% crushed');
+    expect(record).toBeEnabled();
+    await user.click(screen.getByRole('radio', { name: 'Accept' }));
+    expect(screen.getByRole('button', { name: 'Record: Accept' })).toBeEnabled(); // not critical, not cold
   });
 });
 

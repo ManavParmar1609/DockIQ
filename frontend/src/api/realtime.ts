@@ -16,7 +16,12 @@ export type RealtimeEvent =
   | { type: 'issue_resolved'; issue_id: number; method: string; resolution: string | null }
   | { type: 'issue_acknowledged'; issue_id: number; supervisor_name: string; door_number: number | null }
   | { type: 'order_complete'; order_id: number }
-  | { type: 'new_request'; request_id: number; request_type: string; status?: 'pending' | 'fulfilled' }
+  | {
+      type: 'new_request';
+      request_id: number;
+      request_type: string;
+      status?: 'pending' | 'fulfilled' | 'cancelled';
+    }
   | { type: 'broadcast'; id: number; message: string }
   | { type: 'floor_update' };
 

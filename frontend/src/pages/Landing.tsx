@@ -16,7 +16,10 @@ import {
   Repeat2,
   Warehouse,
 } from 'lucide-react';
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import { SplitText } from 'gsap/SplitText';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import type { Severity } from '../api/types';
@@ -37,6 +40,66 @@ import {
   Spark,
   Squiggle,
 } from './landing/Shapes';
+
+gsap.registerPlugin(useGSAP, SplitText);
+
+/**
+ * The hero, built as gsap.com builds its own: each letter rises out of its own mask, the shapes
+ * arrive out of a blur between them. Once, on load; with reduced motion the finished headline shows.
+ */
+function useHeroBuild() {
+  const hero = useRef<HTMLElement>(null);
+  // Split only once the faces are in, so each letter's box is its real width.
+  const [fontsReady, setFontsReady] = useState(() => document.fonts.status === 'loaded');
+  useEffect(() => {
+    if (fontsReady) return undefined;
+    let live = true;
+    void document.fonts.ready.then(() => {
+      if (live) setFontsReady(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, [fontsReady]);
+  useGSAP(
+    () => {
+      const title = hero.current?.querySelector('h1');
+      if (!title || !fontsReady) return;
+      const mm = gsap.matchMedia();
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        title.setAttribute('data-split', '');
+        const split = SplitText.create(title, {
+          type: 'words,chars',
+          mask: 'chars',
+          charsClass: 'hero-char',
+          aria: 'auto',
+        });
+        gsap.from(split.chars, {
+          yPercent: 110,
+          rotate: 8,
+          duration: 1.1,
+          ease: 'expo.out',
+          stagger: 0.028,
+        });
+        gsap.from('.shape', {
+          autoAlpha: 0,
+          filter: 'blur(12px)',
+          duration: 1.2,
+          ease: 'power3.out',
+          stagger: 0.14,
+          delay: 0.5,
+        });
+        return () => {
+          split.revert();
+          title.removeAttribute('data-split');
+        };
+      });
+      return () => mm.revert();
+    },
+    { scope: hero, dependencies: [fontsReady] },
+  );
+  return hero;
+}
 
 /** Adds `.in` to each `.enter` element as it scrolls into view. */
 function useReveal() {
@@ -323,6 +386,7 @@ const NAV_LINKS: [string, string][] = [
 
 export default function Landing() {
   const root = useReveal();
+  const hero = useHeroBuild();
   return (
     <div ref={root} className="min-h-dvh overflow-x-clip bg-paper text-ink">
       <p className="signal-strip px-4 py-2.5 text-center text-sm font-medium">
@@ -365,7 +429,7 @@ export default function Landing() {
 
       <main>
         {/* Hero: the carved two-line claim, shapes drifting through it, the note and the action */}
-        <section className="relative mx-auto max-w-page px-6 pt-14 pb-20 sm:pt-20">
+        <section ref={hero} className="relative mx-auto max-w-page px-6 pt-14 pb-20 sm:pt-20">
           <Clover className="shape hero-clover" />
           <Squiggle className="shape hero-squiggle" />
           <Spark className="shape hero-spark" />

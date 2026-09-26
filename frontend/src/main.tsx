@@ -10,7 +10,10 @@ import { RouterProvider } from 'react-router/dom';
 
 import { queryClient } from './api/hooks';
 import { AuthProvider } from './auth/AuthProvider';
+import { installFlair } from './lib/flair';
 import { router } from './router';
+
+installFlair();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root is missing from index.html');
