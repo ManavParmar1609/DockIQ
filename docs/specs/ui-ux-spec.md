@@ -42,12 +42,12 @@ palette, radii and shadows are **removed**. Built record: `DESIGN.md`; product t
 | `sage-ink` | `#1B8A57` | Meters, focus rings, the wordmark's IQ (graphic marks) |
 | `signal` + `-soft` / `-ink` | `#FFCD48` signal yellow | Lamps and marks in diagrams; the simulated tag; the People filing colour |
 | `night` / `night-raised` | `#132322` obsidian / `#0E1A19` deep abyss | The app rail (tokens re-scoped by `.rail`) and the announcement strip |
-| `hazard` / `orange` / `amber` | brick `#B42318` / saffron `#8A5A10` / olive `#515C0B` | **Severity only**, always with a word and a shape |
+| `hazard` / `orange` / `amber` | brick `#A4291F` (critical surfaces take its `#FBF1EF` wash and `#EEC6C0` rule; the solid fill is kept for badges, chips and plates) / saffron `#8A5A10` / olive `#515C0B` | **Severity only**, always with a word and a shape |
 | `teal`/`indigo`/`mint`/`purple` + `-soft` | deep mint `#0A6D78`, sky `#00679E`, moss `#456D18`, forest — on pale tints | Product content and filing: zones (A moss, B mint, C sky), report groups (Product mint, People yellow, Systems sky), inspection sections |
 | `chart-1…4` | `#007096` `#679725` `#6A78CD` `#007D65` | Categorical data, fixed order; dataviz checks pass |
 
-- **Type (owner's spec):** Playfair Display 400 for display and section headings, tight
-  (−0.02em, line-height ~0.95) — the free stand-in for Heldane Display; Inter for everything read at
+- **Type:** Geist 600 for display and section headings, tight (−0.035em, line-height ~1.05) — a
+  product-grade sans, one family with the mono (the owner replaced the editorial serif); Inter for everything read at
   work, tightened (−0.018em) with `ss01`/`cv11`; Hanken Grotesk for captions and labels — the stand-in
   for Aktiv Grotesk; Geist Mono for telemetry (IDs, codes, times, counts). 14px floor (Grafbase's 13px
   captions would fail the dock). Wordmark: *IQ* upright in steel.

@@ -1,5 +1,5 @@
 import '@fontsource-variable/inter/index.css';
-import '@fontsource-variable/playfair-display/index.css';
+import '@fontsource-variable/geist/index.css';
 import '@fontsource-variable/hanken-grotesk/index.css';
 import '@fontsource-variable/geist-mono/index.css';
 import './styles/app.css';

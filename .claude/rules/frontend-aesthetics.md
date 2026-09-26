@@ -37,7 +37,7 @@ to be legible at arm's length, unmistakable about severity, and calm under press
 
 The owner pinned the Grafbase style reference for structure (hairline cards without shadows, 6px
 buttons, 12px panels, 20px cards, 40px pills, one drop shadow, light only), their own type spec
-(an editorial display serif over tightened Inter, a grotesk for captions, a mono for telemetry), and
+(Geist for titles over tightened Inter, a grotesk for captions, a mono for telemetry), and
 then their own palette for colour: an obsidian rail and strip, a mint-frost canvas, neon pulse for
 the one filled action and the selected place, mint whisper for highlights, signal yellow as warm
 punctuation in diagrams. Colour files things (zones, report groups, inspection sections) or raises
@@ -48,7 +48,7 @@ alarms; it never decorates. Values: `docs/specs/ui-ux-spec.md` §2.
 | Grafbase says | DockIQ does instead | Why |
 |---|---|---|
 | 99% achromatic; no status colour | Critical **brick red**, high saffron, medium olive — each with a word and a shape | A food-safety alert must never be grey |
-| One family, Inter | Playfair Display (for Heldane Display), Inter, Hanken Grotesk (for Aktiv Grotesk), Geist Mono | The owner's type spec; Heldane and Aktiv are paid, the project is free |
+| One family, Inter | Geist (display and titles), Inter, Hanken Grotesk (for Aktiv Grotesk), Geist Mono | The owner asked for a product-grade sans over the editorial serif (2026-09-25); Aktiv is paid, the project is free |
 | 13px captions | **14px floor** | Gloves, distance, glare |
 | Ash `#7C7C7C` for tertiary text | Steel for all small text | Ash fails AA for small text |
 | Announcement gradient `#19A05F → #0D7F8C` | Same angle, each stop one step deeper | White text on the light end is 3.3:1; the strip must pass AA |

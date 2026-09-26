@@ -1,6 +1,6 @@
 ---
 name: dockiq-frontend
-description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (Grafbase exactly, light only: drafting-gray canvas, white hairline cards without shadows, graphite text and action, 6px buttons, 20px cards, 40px pills; Playfair Display + Inter + Hanken Grotesk + Geist Mono), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
+description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (Grafbase structure in the owner's palette, light only: mint-frost canvas, white hairline cards without shadows, obsidian rail, neon pulse action, 6px buttons, 20px cards, 40px pills; Geist + Inter + Hanken Grotesk + Geist Mono), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
 ---
 
 # DockIQ Frontend
@@ -21,7 +21,7 @@ in severity.
 
 - **Grafbase, exactly** (owner-pinned, 2026-09-25), light only. Values: `docs/specs/ui-ux-spec.md` §2,
   `DESIGN.md`; departures: `.claude/rules/frontend-aesthetics.md` §2.3; product truth: `PRODUCT.md`.
-- **Type:** Playfair Display 400 for display and section headings (`.display`, `.section-heading`);
+- **Type:** Geist 600 for display and section headings (`.display`, `.section-heading`);
   Inter, tightened, for everything read at work (`.heading` 600 for card titles); Hanken Grotesk for
   captions (`.label`); Geist Mono for telemetry (`.telemetry`). No kickers above headings.
 - **Surfaces:** drafting-gray canvas, white 20px cards with a 1px hairline and **no shadow**.

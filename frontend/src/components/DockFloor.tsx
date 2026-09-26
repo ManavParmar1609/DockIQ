@@ -19,7 +19,7 @@ const ZONE_TINTS = ['zone-sage', 'zone-slate', 'zone-clay'] as const;
 function StatusChip({ status }: { status: Dock['status'] }) {
   if (status === 'critical') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-sm font-bold text-hazard">
+      <span className="inline-flex items-center gap-1 rounded-full bg-hazard px-2.5 py-0.5 text-sm font-bold text-white">
         <TriangleAlert size={15} strokeWidth={2.4} aria-hidden="true" />
         {DOCK_STATUS.critical}
       </span>
@@ -62,7 +62,7 @@ function Bay({
   phase: Dock['lifecycle_phase'];
   share: number | null;
 }) {
-  const line = critical ? 'var(--color-white)' : 'var(--color-ink-mute)';
+  const line = critical ? 'var(--color-hazard)' : 'var(--color-ink-mute)';
   const open = occupied && (phase === 'loading' || phase === 'unloading' || phase === 'inspection');
   const done = (share ?? 0) / 100;
   const full = phase === 'loading' ? done : phase === 'unloading' ? 1 - done : 0;

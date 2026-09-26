@@ -95,15 +95,17 @@ export function Stat({
   index?: number;
 }) {
   const style = index === undefined ? undefined : ({ '--i': index } as CSSProperties);
-  const surface = alert ? 'rounded-xl bg-hazard text-white shadow-card' : 'card';
+  const surface = alert ? 'rounded-xl border border-hazard-line bg-hazard-soft' : 'card';
   return (
     <div
       className={`flex flex-col justify-between gap-2 p-4 ${surface} ${index === undefined ? '' : 'reveal'}`}
       style={style}
     >
-      <p className={`text-sm font-semibold ${alert ? 'text-white' : 'text-ink-mute'}`}>{label}</p>
-      <p className="num text-4xl leading-none">{value}</p>
-      {sub && <p className={`text-sm ${alert ? 'text-white' : 'text-ink-mute'}`}>{sub}</p>}
+      <p className={`text-sm font-semibold ${alert ? 'text-hazard-deep' : 'text-ink-mute'}`}>{label}</p>
+      <p className={`num text-4xl leading-none ${alert ? 'text-hazard-deep' : ''}`}>{value}</p>
+      {sub && (
+        <p className={`text-sm ${alert ? 'font-semibold text-hazard-deep' : 'text-ink-mute'}`}>{sub}</p>
+      )}
     </div>
   );
 }
@@ -185,7 +187,7 @@ export function Notice({
 }) {
   if (tone === 'alert') {
     return (
-      <div role="alert" className="flex overflow-hidden rounded-xl bg-hazard-soft ring-1 ring-hazard">
+      <div role="alert" className="flex overflow-hidden rounded-xl border border-hazard-line bg-hazard-soft">
         <div className="flex flex-1 flex-wrap items-start justify-between gap-3 p-4">
           <div className="flex gap-3">
             <AlertTriangle size={22} aria-hidden="true" className="mt-0.5 shrink-0 text-hazard-deep" />

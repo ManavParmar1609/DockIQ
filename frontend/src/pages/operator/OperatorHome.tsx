@@ -123,27 +123,52 @@ export default function OperatorHome() {
         kicker={`${greeting()}, ${firstName(user.name)}`}
         title={assignment ? `Dock ${assignment.door_number ?? '—'}` : 'No assignment'}
         meta={
-          assignment ? (
-            <>
-              <span>
-                {outbound ? 'Loading' : 'Unloading'} for{' '}
-                <strong className="text-ink">{assignment.company_name}</strong>
-              </span>
-              <span className="telemetry">{assignment.order_number}</span>
-              <span className="telemetry">Trailer {assignment.trailer_number}</span>
-              <span>{assignment.carrier_name}</span>
-              {/* `undefined`: an API that does not report inspections. Say nothing rather than guess. */}
-              {detail?.inspection !== undefined && (
-                <Link to="/app/inspection" className="font-semibold text-ink underline">
-                  {inspection.meta}
-                </Link>
-              )}
-            </>
-          ) : (
+          assignment ? undefined : (
             <span>Your dock assignment appears here as soon as a load is ready for you.</span>
           )
         }
       />
+
+      {assignment && (
+        <dl className="fact-strip">
+          <div>
+            <dt className="label">Job</dt>
+            <dd className="mt-1 flex items-center gap-2 font-semibold">
+              <span className="file-dot file-green" aria-hidden="true" />
+              {outbound ? 'Loading' : 'Unloading'}
+            </dd>
+          </div>
+          <div>
+            <dt className="label">Customer</dt>
+            <dd className="mt-1 font-semibold">{assignment.company_name}</dd>
+          </div>
+          <div>
+            <dt className="label">Order</dt>
+            <dd className="telemetry mt-1">{assignment.order_number}</dd>
+          </div>
+          <div>
+            <dt className="label">Trailer</dt>
+            <dd className="telemetry mt-1">{assignment.trailer_number}</dd>
+          </div>
+          <div>
+            <dt className="label">Carrier</dt>
+            <dd className="mt-1 font-semibold">{assignment.carrier_name}</dd>
+          </div>
+          <div>
+            <dt className="label">Inspection</dt>
+            <dd className="mt-1">
+              {/* `undefined`: an API that does not report inspections. Say nothing rather than guess. */}
+              {detail?.inspection !== undefined ? (
+                <Link to="/app/inspection" className="font-semibold text-accent-ink underline">
+                  {inspection.meta}
+                </Link>
+              ) : (
+                <span className="text-ink-mute">—</span>
+              )}
+            </dd>
+          </div>
+        </dl>
+      )}
 
       {order.isError && <ErrorBlock error={order.error} onRetry={() => void order.refetch()} />}
 

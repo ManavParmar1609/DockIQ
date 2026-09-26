@@ -138,7 +138,7 @@ export default function MyIssues() {
             type="button"
             aria-selected={filter === option.id}
             onClick={() => setFilter(option.id)}
-            className={`min-h-11 rounded-md text-base font-semibold transition-colors ${filter === option.id ? 'bg-surface text-ink shadow-card' : 'text-ink-mute'}`}
+            className={`min-h-11 rounded-md text-base font-semibold transition-colors ${filter === option.id ? 'bg-accent text-on-accent' : 'text-ink-mute'}`}
           >
             {option.label}
           </button>
