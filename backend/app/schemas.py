@@ -3,11 +3,12 @@
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.db import MAX_ID
 from app.domain.enums import (
     ChatRole,
+    Disposition,
     DockStatus,
     IssueStatus,
     LifecyclePhase,
@@ -24,6 +25,8 @@ from app.domain.enums import (
     TaskStatus,
     YardEventKind,
 )
+from app.domain.lifecycle import PENDING_DECISIONS
+from app.wms.clock import shift_of, time_of
 
 
 class Schema(BaseModel):
@@ -41,8 +44,9 @@ Choice = Annotated[str, Field(max_length=32)]  # a short vocabulary value, store
 
 
 class IssueCreate(BaseModel):
+    # A person's product issue names its order; people and systems issues may name neither (§8).
     order_id: Id | None = None
-    dock_door_id: Id
+    dock_door_id: Id | None = None
     issue_type: str = Field(min_length=1, max_length=64)
     issue_subtype: str | None = Field(default=None, max_length=120)
     description: FreeText | None = ""
@@ -55,6 +59,7 @@ class IssueCreate(BaseModel):
     temp_threshold_max: float | None = None
     count_expected: int | None = Field(default=None, ge=0)
     count_actual: int | None = Field(default=None, ge=0)
+    lot: str | None = Field(default=None, max_length=16)
 
 
 class IssueSelfResolve(BaseModel):
@@ -114,6 +119,25 @@ class ScanCreate(BaseModel):
 
 class TemperatureCheckCreate(BaseModel):
     reading: float = Field(ge=-80, le=150)
+
+
+class IssueDispositionUpdate(BaseModel):
+    disposition: Disposition
+    notes: str = Field(min_length=1, max_length=2000)
+
+
+class ReceivingChecksUpdate(BaseModel):
+    """Answers by check id (from `GET /api/taxonomy` → `receiving_checks`). Unnamed checks keep theirs."""
+
+    answers: dict[Annotated[str, Field(max_length=32)], bool] = Field(min_length=1, max_length=20)
+
+
+class LoadStepUpdate(BaseModel):
+    """The load guide's current pallet. With `count`, moving on by one counts the pallet just loaded
+    on its order line, and moving back by one takes it off again."""
+
+    step: int = Field(ge=1, le=1000)
+    count: bool = False
 
 
 # ── Responses ──
@@ -203,6 +227,9 @@ class DockOut(Schema):
     order_type: OrderType | None
     cases_done: int | None  # on the current order; None when the door has no order
     cases_expected: int | None
+    # Open issues at this door, whoever's team they are: a count only, so another zone's door can say
+    # "handled by that zone's supervisor" without showing records outside the viewer's scope.
+    open_issues: int = 0
 
 
 class OrderItemOut(Schema):
@@ -252,10 +279,23 @@ class OrderOut(Schema):
     wms_synced: bool = True
 
 
+class InspectionSummary(BaseModel):
+    """The order's most recent trailer inspection, judged by the same rule as when it was submitted."""
+
+    id: int
+    overall_pass: bool
+    temperature_limit: float
+    failed_checks: list[str]
+    interior_temperature: float | None
+    created_at: datetime
+
+
 class OrderDetailOut(OrderOut):
     items: list[OrderItemOut]
-    # Why it cannot be signed off yet (business-rules §7.1). Empty when it can.
+    # Why it cannot be signed off yet (business-rules §7.1, §11.3). Empty when it can.
     completion_blockers: list[str] = []
+    load_step: int | None = None  # the load guide's current pallet, kept on the server
+    inspection: InspectionSummary | None = None  # None until the trailer is inspected
 
 
 class IssueOut(Schema):
@@ -295,6 +335,39 @@ class IssueOut(Schema):
     product_sku: str | None
     carrier_name: str | None
     photo_count: int
+    # Who said "on my way" (`supervisor_name` is who decided) and a pending decision (§7.2).
+    acknowledged_by: int | None = None
+    acknowledged_by_name: str | None = None
+    on_hold_at: datetime | None = None
+    pending_action: str | None = None  # e.g. "Awaiting the carrier" while `on_hold`
+    # As reported, and the order as it was when filed (§7).
+    temp_reading: float | None = None
+    temp_limit: float | None = None
+    quantity_affected: int | None = None
+    lot: str | None = None
+    room: str | None = None  # a cold-room alarm: F, C, P or D
+    order_number: str | None = None
+    trailer_number: str | None = None
+    bol_number: str | None = None
+    # Simulated issues: when, on the WMS clock ("07:42" in shift 1).
+    sim_minute: float | None = None
+    sim_time: str | None = None
+    sim_shift: int | None = None
+    # Quality hold and disposition (§7.3).
+    held_pallets: list[str] = []
+    disposition: Disposition | None = None
+    disposition_notes: str | None = None
+    disposition_by: int | None = None
+    disposition_by_name: str | None = None
+    disposition_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def _derived(self) -> "IssueOut":
+        if self.sim_minute is not None:
+            self.sim_time, self.sim_shift = time_of(self.sim_minute), shift_of(self.sim_minute) + 1
+        if self.status is IssueStatus.ON_HOLD and self.resolution_type in PENDING_DECISIONS:
+            self.pending_action = PENDING_DECISIONS[self.resolution_type]
+        return self
 
 
 class RecurringPattern(BaseModel):
@@ -336,6 +409,48 @@ class TemperatureCheckOut(BaseModel):
     limit: float | None
     delta: float | None
     guidance: str
+    id: int | None = None  # the HACCP log entry (§11.1)
+    issue_id: int | None = None  # the Temperature Deviation a critical reading filed, or joined
+    created_at: datetime | None = None
+
+
+class TemperatureLogOut(Schema):
+    """One probe reading in the order's HACCP log."""
+
+    id: int
+    order_id: int
+    user_id: int
+    operator_name: str | None
+    reading: float
+    limit: float | None
+    delta: float | None
+    status: str
+    issue_id: int | None
+    created_at: datetime
+
+
+class ReceivingCheckOut(BaseModel):
+    id: str
+    question: str
+    issue_type: str  # what a "No" is reported as
+    issue_subtype: str
+    answer: bool | None  # None: not answered yet
+    answered_at: datetime | None
+    answered_by_name: str | None
+
+
+class ReceivingChecksOut(BaseModel):
+    order_id: int
+    checks: list[ReceivingCheckOut]
+    all_answered: bool
+    probes: int  # probe readings recorded on the order
+    needs_probe: bool  # the load has a temperature-controlled product
+
+
+class LoadStepOut(BaseModel):
+    order_id: int
+    load_step: int
+    counted: "OrderItemOut | None"  # with `count`: the line the pallet was counted on or taken off
 
 
 class OrderCompleted(BaseModel):
@@ -399,11 +514,29 @@ class IssueTypeOut(BaseModel):
     floor: dict[str, Severity]
 
 
+class ReceivingCheckSpecOut(BaseModel):
+    id: str
+    question: str
+    issue_type: str
+    issue_subtype: str
+
+
 class TaxonomyOut(BaseModel):
     issue_types: list[IssueTypeOut]
     operator_resolutions: list[str]
     supervisor_decisions: list[str]
     request_types: list[str]
+    # Decisions that accept product (notes required on a critical or temperature issue) and those that
+    # wait on someone else (the issue goes `on_hold`), business-rules §7.2.
+    accept_decisions: list[str] = []
+    pending_decisions: list[str] = []
+    # Minutes an open issue may wait for its decision, by severity (business-rules §7.4).
+    decision_targets: dict[str, int] = {}
+    # What each pending decision waits on ("Awaiting the carrier"), and the issue types on which accepting
+    # product needs the supervisor's reason alongside critical ones (§7.2).
+    pending_actions: dict[str, str] = {}
+    cold_chain_issue_types: list[str] = []
+    receiving_checks: list[ReceivingCheckSpecOut] = []
 
 
 # ── The assistant (an agent over the user's own scoped data) ──
@@ -479,8 +612,49 @@ class OrderCard(BaseModel):
     simulated: bool
 
 
+class RoomLine(BaseModel):
+    code: str
+    name: str
+    temp: float
+    limit: float
+    setpoint: float
+    over_limit: bool
+    alarm: bool
+    on_hold_cases: int
+
+
+class RoomsCard(BaseModel):
+    kind: Literal["rooms"] = "rooms"
+    rooms: list[RoomLine]
+    wms_online: bool
+    simulated: bool
+
+
+class TraceMove(BaseModel):
+    time: str
+    kind: str  # receive | putaway | ship | adjust | … — a WMS movement
+    pallet_id: str
+    lot: str
+    cases: int
+    from_location: str | None
+    to_location: str | None
+    order_number: str | None
+
+
+class TraceCard(BaseModel):
+    kind: Literal["trace"] = "trace"
+    sku: str
+    product_name: str | None
+    lot: str | None  # None: every lot of the SKU
+    on_hand: list[StockPallet]
+    movements: list[TraceMove]
+    wms_online: bool
+    simulated: bool
+
+
 AgentCard = Annotated[
-    ProcedureCard | TemperatureCard | StockCard | IssuesCard | OrderCard, Field(discriminator="kind")
+    ProcedureCard | TemperatureCard | StockCard | IssuesCard | OrderCard | RoomsCard | TraceCard,
+    Field(discriminator="kind"),
 ]
 
 
@@ -506,7 +680,20 @@ class HandoffDraft(BaseModel):
     notes: str
 
 
-AgentAction = Annotated[IssueDraft | BroadcastDraft | HandoffDraft, Field(discriminator="kind")]
+class SelfResolveDraft(BaseModel):
+    """Closing the worker's own issue. They confirm it; PUT /api/issues/{id}/self-resolve applies it."""
+
+    kind: Literal["self_resolve"] = "self_resolve"
+    issue_id: int
+    title: str
+    severity: Severity
+    resolution_type: str | None  # one of the taxonomy's operator_resolutions; None: the worker picks
+    resolution_notes: str
+
+
+AgentAction = Annotated[
+    IssueDraft | BroadcastDraft | HandoffDraft | SelfResolveDraft, Field(discriminator="kind")
+]
 
 
 class AgentStep(BaseModel):
@@ -570,6 +757,65 @@ class ShiftHandoffOut(Schema):
     notes: str
     created_at: datetime
     supervisor_name: str
+    read_by: int | None = None  # the read receipt: the first other supervisor of the zone to open it
+    read_by_name: str | None = None
+    read_at: datetime | None = None
+
+
+class HandoffIssueLine(BaseModel):
+    id: int
+    severity: Severity
+    status: IssueStatus
+    title: str
+    door_number: int | None
+    order_number: str | None
+    operator_name: str | None
+    created_at: datetime
+
+
+class HandoffDecisionLine(BaseModel):
+    id: int
+    title: str
+    decision: str
+    status: IssueStatus  # supervisor_resolved, or on_hold for a decision still pending
+    notes: str | None
+    decided_by: str | None
+    decided_at: datetime | None
+
+
+class HandoffTrailerLine(BaseModel):
+    order_number: str
+    trailer: str
+    carrier: str
+    customer: str
+    state: Literal["scheduled", "in_yard", "at_door"]
+    door: int
+    due_in_minutes: float | None
+    detention: bool
+    simulated: bool
+
+
+class HandoffRoomLine(BaseModel):
+    code: str
+    name: str
+    temp: float
+    limit: float
+    alarm: bool
+    simulated: bool
+
+
+class HandoffDraftOut(BaseModel):
+    """A pre-filled handoff for the supervisor's zone: what the next shift inherits."""
+
+    zone: str | None
+    since: datetime  # "this shift": decisions since then
+    open_criticals: list[HandoffIssueLine]
+    decisions: list[HandoffDecisionLine]
+    trailers: list[HandoffTrailerLine]  # in the yard, at a door, or due in the next 90 minutes
+    room_alarms: list[HandoffRoomLine]  # rooms in alarm or over their limit now
+    pending_requests: list[QuickRequestOut]
+    wms_online: bool
+    notes: str  # the same, as text for the notes field
 
 
 class CountByLabel(BaseModel):
@@ -619,6 +865,7 @@ class OperatorCount(BaseModel):
     name: str
     total: int
     self_resolved: int
+    simulated: bool = False  # simulated crew: shown as simulated wherever it is listed
 
 
 class DateCount(CountByLabel):
@@ -626,6 +873,9 @@ class DateCount(CountByLabel):
 
 
 class AnalyticsSummary(BaseModel):
+    # Whose issues these are: a supervisor's team, or what Quality can open (quality issues and every
+    # critical issue) — the same scope as the issue list.
+    scope: Literal["team", "quality"] = "team"
     total_issues: int
     self_resolved: int
     escalated: int
@@ -720,7 +970,8 @@ class WmsStatusOut(BaseModel):
 class YardEntryOut(BaseModel):
     ref: str
     order_number: str
-    door: int
+    door: int  # the door it is at (or left from); the booked door until it reaches one
+    booked_door: int | None = None  # the door the appointment was booked onto
     type: str
     customer: str
     carrier: str

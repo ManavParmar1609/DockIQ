@@ -1,10 +1,11 @@
 from datetime import timedelta
 
 from fastapi import APIRouter
-from sqlalchemy import case, func, select, true
+from sqlalchemy import case, func, select
 
 from app.api.access import issue_scope
 from app.api.deps import SessionDep, Staff
+from app.api.issues import FromFilter, ToFilter, day_range
 from app.db import utcnow
 from app.domain.enums import IssueStatus, Role, Severity
 from app.domain.lifecycle import OPEN_STATUSES
@@ -24,16 +25,25 @@ def _minutes(value: float | None) -> float | None:
 
 
 @router.get("/summary")
-async def analytics_summary(user: Staff, session: SessionDep) -> AnalyticsSummary:
-    """A supervisor sees their team; quality staff see every issue in the facility."""
-    scope = issue_scope(user) if user.role is Role.SUPERVISOR else true()
+async def analytics_summary(
+    user: Staff, session: SessionDep, date_from: FromFilter = None, date_to: ToFilter = None
+) -> AnalyticsSummary:
+    """The same issues the person can open: a supervisor's team; for Quality, quality issues and every
+    critical issue (`scope` says which). `from` / `to` (UTC days) bound everything, the trend and the
+    repeats included; without `from` the trend and repeats cover the last 30 days."""
+    start, end = day_range(date_from, date_to)
+    scope = issue_scope(user)
+    if start is not None:
+        scope = scope & (Issue.created_at >= start)
+    if end is not None:
+        scope = scope & (Issue.created_at < end)
     is_open = Issue.status.in_(OPEN_STATUSES)
     open_count = func.count(Issue.id).filter(is_open)
     resolution_minutes = func.avg(elapsed_minutes(Issue.created_at, Issue.resolved_at)).filter(
         Issue.resolved_at.is_not(None)
     )
     cold_chain = Issue.issue_type.in_(COLD_CHAIN_ISSUE_TYPES)
-    window_start = utcnow() - timedelta(days=TREND_WINDOW_DAYS)
+    window_start = start if start is not None else utcnow() - timedelta(days=TREND_WINDOW_DAYS)
 
     totals = (
         await session.execute(
@@ -106,9 +116,10 @@ async def analytics_summary(user: Staff, session: SessionDep) -> AnalyticsSummar
             User.name,
             func.count(Issue.id).label("total"),
             func.sum(self_resolved_flag).label("self_resolved"),
+            User.simulated,
         )
         .join(User, Issue.operator_id == User.id)
-        .group_by(User.id, User.name)
+        .group_by(User.id, User.name, User.simulated)
         .order_by(func.count(Issue.id).desc(), User.name)
         .where(scope)
     )
@@ -156,6 +167,7 @@ async def analytics_summary(user: Staff, session: SessionDep) -> AnalyticsSummar
     )
 
     return AnalyticsSummary(
+        scope="team" if user.role is Role.SUPERVISOR else "quality",
         total_issues=total,
         self_resolved=self_resolved,
         escalated=escalated,

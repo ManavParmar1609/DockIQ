@@ -9,18 +9,30 @@ from sqlalchemy import or_, select
 from app.api.deps import CurrentUser, PathId, SessionDep, get_or_404
 from app.db import MAX_ID
 from app.domain.enums import Role
+from app.domain.lifecycle import ACCEPT_DECISIONS, DECISION_TARGET_MINUTES, PENDING_DECISIONS
 from app.domain.severity import ISSUE_TYPE_WEIGHTS
 from app.domain.taxonomy import (
+    COLD_CHAIN_ISSUE_TYPES,
     ISSUE_TAXONOMY,
     OPERATOR_RESOLUTIONS,
     QUALITY_ISSUE_TYPES,
+    RECEIVING_CHECKS,
     REQUEST_TYPES,
     SEVERITY_FLOORS,
     SUPERVISOR_DECISIONS,
 )
 from app.models import Carrier, Company, DockDoor, Product, User
 from app.queries import dock_select
-from app.schemas import CarrierOut, CompanyOut, DockOut, IssueTypeOut, ProductOut, TaxonomyOut, UserOut
+from app.schemas import (
+    CarrierOut,
+    CompanyOut,
+    DockOut,
+    IssueTypeOut,
+    ProductOut,
+    ReceivingCheckSpecOut,
+    TaxonomyOut,
+    UserOut,
+)
 
 router = APIRouter(tags=["reference"])
 
@@ -44,6 +56,20 @@ async def taxonomy(_: CurrentUser) -> TaxonomyOut:
         operator_resolutions=list(OPERATOR_RESOLUTIONS),
         supervisor_decisions=list(SUPERVISOR_DECISIONS),
         request_types=list(REQUEST_TYPES),
+        accept_decisions=[d for d in SUPERVISOR_DECISIONS if d in ACCEPT_DECISIONS],
+        pending_decisions=[d for d in SUPERVISOR_DECISIONS if d in PENDING_DECISIONS],
+        decision_targets={severity.value: minutes for severity, minutes in DECISION_TARGET_MINUTES.items()},
+        pending_actions={d: PENDING_DECISIONS[d] for d in SUPERVISOR_DECISIONS if d in PENDING_DECISIONS},
+        cold_chain_issue_types=sorted(COLD_CHAIN_ISSUE_TYPES),
+        receiving_checks=[
+            ReceivingCheckSpecOut(
+                id=check.id,
+                question=check.question,
+                issue_type=check.issue_type,
+                issue_subtype=check.issue_subtype,
+            )
+            for check in RECEIVING_CHECKS
+        ],
     )
 
 

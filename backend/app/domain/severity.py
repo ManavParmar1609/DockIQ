@@ -7,7 +7,7 @@ No model output may feed into it.
 from dataclasses import dataclass
 
 from app.domain.enums import Severity
-from app.domain.taxonomy import PEOPLE_RISK_TYPES, severity_floor
+from app.domain.taxonomy import PEOPLE_RISK_TYPES, is_quantity_scaled, severity_floor
 
 ISSUE_TYPE_WEIGHTS: dict[str, int] = {
     "Temperature Deviation": 5,
@@ -40,6 +40,24 @@ CUSTOMER_TIER_MULTIPLIER: dict[int, float] = {
 
 DWELL_LIMIT_MINUTES = 30
 
+# The share of a pallet (or of the order line, when that is smaller) that damage touches → the factor
+# on the base score. Upper bound of each band, smallest first; above the last band the factor is 1.0.
+# 5% is the SOP's partial-accept allowance (business-rules §4.1). See business-rules §1.9.
+QUANTITY_SHARE_FACTORS: tuple[tuple[float, float], ...] = (
+    (0.05, 0.4),
+    (0.25, 0.7),
+)
+
+# A cold room over its limit this long raises the alarm (the warehouse's rule, business-rules §12.12).
+ROOM_ALARM_MINUTES = 15.0
+
+# A Temperature Deviation with product more than this many °F over its limit is never below the
+# severity — the probe check's warning and critical bands (business-rules §1.10, §11.1).
+TEMPERATURE_FLOORS: tuple[tuple[float, Severity], ...] = (
+    (10.0, Severity.CRITICAL),
+    (5.0, Severity.HIGH),
+)
+
 # Lower bound of each band, highest first.
 SEVERITY_BANDS: tuple[tuple[float, Severity], ...] = (
     (18, Severity.CRITICAL),
@@ -70,6 +88,19 @@ def band_for(score: float) -> Severity:
     return Severity.LOW
 
 
+def quantity_share_factor(share: float) -> float:
+    for upper, factor in QUANTITY_SHARE_FACTORS:
+        if share <= upper:
+            return factor
+    return 1.0
+
+
+def reference_cases(cases_per_pallet: int | None, line_cases: int | None) -> int | None:
+    """What damaged cases are a share of: a pallet, or the order line when that is smaller."""
+    known = [cases for cases in (cases_per_pallet, line_cases) if cases is not None and cases > 0]
+    return min(known) if known else None
+
+
 def classify_severity(
     issue_type: str,
     product_category: str | None = None,
@@ -81,7 +112,14 @@ def classify_severity(
     is_allergen: bool = False,
     trailer_dwell_minutes: int | None = None,
     issue_subtype: str | None = None,
+    quantity_affected: int | None = None,
+    cases_per_pallet: int | None = None,
+    line_cases: int | None = None,
+    room_minutes_over_limit: float | None = None,
 ) -> SeverityResult:
+    """`quantity_affected`: the cases the person said are affected (None = not given, so no scaling).
+    `room_minutes_over_limit`: set only for a cold-room excursion — the whole room, not one load — and
+    says how long the room has read over its limit."""
     base_weight = ISSUE_TYPE_WEIGHTS.get(issue_type, DEFAULT_ISSUE_WEIGHT)
     reasons = [f"Issue type '{issue_type}' (weight: {base_weight})"]
 
@@ -98,6 +136,22 @@ def classify_severity(
             reasons.append(f"Customer Tier {customer_tier} (×{tier_multiplier})")
     score = base_weight * product_multiplier * tier_multiplier
 
+    # Proportional damage: a few cases off a pallet are not a whole pallet (business-rules §1.9).
+    reference = reference_cases(cases_per_pallet, line_cases)
+    if (
+        quantity_affected is not None
+        and reference is not None
+        and is_quantity_scaled(issue_type, issue_subtype)
+    ):
+        share = quantity_affected / reference
+        factor = quantity_share_factor(share)
+        score *= factor
+        unit = "order line" if line_cases is not None and reference == line_cases else "pallet"
+        reasons.append(
+            f"{quantity_affected} of {reference} cases on the {unit} ({share * 100:.1f}%) (×{factor})"
+        )
+
+    delta: float | None = None
     if temp_reading is not None and temp_threshold_max is not None:
         delta = temp_reading - temp_threshold_max
         if delta > 10:
@@ -128,12 +182,28 @@ def classify_severity(
         score += 2
         reasons.append(f"Trailer dwell time {trailer_dwell_minutes} min > {DWELL_LIMIT_MINUTES} min (+2)")
 
+    # Floors raise the band, never lower it; the highest that applies is the one recorded (§1.8, §1.10).
     severity = band_for(score)
-    floor = severity_floor(issue_type, issue_subtype)
-    if floor is not None and SEVERITY_RANK[floor] > SEVERITY_RANK[severity]:
-        severity = floor
-        label = f"'{issue_subtype}'" if issue_subtype else f"'{issue_type}'"
-        reasons.append(f"Floor: {label} is never below {floor.value.upper()}")
+    floors: list[tuple[Severity, str]] = []
+    if (subtype_floor := severity_floor(issue_type, issue_subtype)) is not None:
+        floors.append((subtype_floor, f"'{issue_subtype}'" if issue_subtype else f"'{issue_type}'"))
+    if issue_type == "Temperature Deviation" and delta is not None:
+        for above, temperature_floor in TEMPERATURE_FLOORS:
+            if delta > above:
+                floors.append((temperature_floor, f"product more than {above:.0f}°F over its limit"))
+                break
+    if room_minutes_over_limit is not None:
+        alarmed = delta is not None and delta > 0 and room_minutes_over_limit >= ROOM_ALARM_MINUTES
+        floors.append(
+            (Severity.CRITICAL, f"a cold room over its limit for {ROOM_ALARM_MINUTES:.0f} min")
+            if alarmed
+            else (Severity.HIGH, "a cold-room excursion (the whole room)")
+        )
+    if floors:
+        floor, label = max(floors, key=lambda pair: SEVERITY_RANK[pair[0]])
+        if SEVERITY_RANK[floor] > SEVERITY_RANK[severity]:
+            severity = floor
+            reasons.append(f"Floor: {label} is never below {floor.value.upper()}")
 
     reason = f"Score: {score:.1f} → {severity.value.upper()}. Factors: " + "; ".join(reasons)
     return SeverityResult(severity=severity, score=round(score, 1), reason=reason)

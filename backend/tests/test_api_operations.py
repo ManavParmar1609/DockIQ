@@ -96,6 +96,10 @@ def test_taxonomy_is_the_single_source_of_lists(client: TestClient, login: Login
     assert safety["floor"]["Employee injury"] == "critical"
     assert "Partial Accept" in taxonomy["operator_resolutions"]
     assert "Override — Accept Anyway" in taxonomy["supervisor_decisions"]
+    # Decision targets by severity, minutes (business-rules §7.4)
+    assert taxonomy["decision_targets"] == {"critical": 15, "high": 60, "medium": 240, "low": 480}
+    assert taxonomy["pending_actions"]["Contact Carrier"] == "Awaiting the carrier"
+    assert "Temperature Deviation" in taxonomy["cold_chain_issue_types"]
 
 
 def test_users_are_scoped_to_the_team(client: TestClient, login: Login) -> None:
@@ -207,6 +211,19 @@ def test_probe_temperature_is_judged_server_side(client: TestClient, login: Logi
     assert ok["status"] == "ok"
 
 
+def record_receiving_evidence(client: TestClient, headers: dict[str, str], order_id: int) -> None:
+    """Every receiving check answered and one probe in range: what inbound sign-off needs (§11.3)."""
+    checks = client.get("/api/taxonomy", headers=headers).json()["receiving_checks"]
+    answered = client.put(
+        f"/api/orders/{order_id}/receiving-checks",
+        json={"answers": {check["id"]: True for check in checks}},
+        headers=headers,
+    )
+    assert answered.status_code == 200, answered.text
+    probe = client.post(f"/api/orders/{order_id}/temperature-check", json={"reading": -12}, headers=headers)
+    assert probe.status_code == 200, probe.text
+
+
 def test_inbound_completion_files_count_discrepancies(client: TestClient, login: Login) -> None:
     op, sup = login("OP-002"), login("SUP-001")
     detail = client.get("/api/orders/2", headers=op).json()
@@ -219,6 +236,7 @@ def test_inbound_completion_files_count_discrepancies(client: TestClient, login:
         json={"product_id": milk["product_id"], "actual_quantity": milk["expected_quantity"]},
         headers=op,
     )
+    record_receiving_evidence(client, op, 2)
     done = client.post("/api/orders/2/complete", json={}, headers=op).json()
     assert len(done["discrepancy_issue_ids"]) == 1  # salmon 100 of 120; milk exact
     issue = client.get(f"/api/issues/{done['discrepancy_issue_ids'][0]}", headers=sup).json()
@@ -252,6 +270,7 @@ def test_an_inbound_order_without_a_dock_signs_off_and_still_files_its_discrepan
         json={"product_id": milk["product_id"], "actual_quantity": milk["expected_quantity"]},
         headers=op,
     )
+    record_receiving_evidence(client, op, 2)
     done = client.post("/api/orders/2/complete", json={}, headers=op)
     assert done.status_code == 200, done.text
     [issue_id] = done.json()["discrepancy_issue_ids"]
@@ -289,6 +308,21 @@ def test_inspection_gate_follows_the_load_not_a_fixed_45f(client: TestClient, lo
     cold = client.post("/api/inspections", json=inspection(interior_temperature=-5), headers=op).json()
     assert cold["overall_pass"] is True
     assert client.get("/api/docks/1", headers=op).json()["lifecycle_phase"] == "inspection"
+
+
+def test_the_order_carries_its_latest_inspection(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    assert client.get("/api/orders/1", headers=op).json()["inspection"] is None
+    client.post("/api/inspections", json=inspection(interior_temperature=40), headers=op)
+    latest = client.get("/api/orders/1", headers=op).json()["inspection"]
+    assert (latest["overall_pass"], latest["failed_checks"], latest["temperature_limit"]) == (
+        False,
+        ["temperature"],
+        0,
+    )
+    assert latest["interior_temperature"] == 40
+    client.post("/api/inspections", json=inspection(interior_temperature=-5), headers=op)
+    assert client.get("/api/orders/1", headers=op).json()["inspection"]["overall_pass"] is True
 
 
 def test_inspection_without_a_load_uses_the_default_limit(client: TestClient, login: Login) -> None:
@@ -377,11 +411,19 @@ def test_chat_uses_the_token_identity(client: TestClient, login: Login) -> None:
 
 
 def test_analytics_are_team_scoped_for_supervisors(client: TestClient, login: Login) -> None:
-    facility = client.get("/api/analytics/summary", headers=login("QA-001")).json()
-    team = client.get("/api/analytics/summary", headers=login("SUP-001")).json()
-    assert facility["total_issues"] == 50
+    qa, sup = login("QA-001"), login("SUP-001")
+    quality = client.get("/api/analytics/summary", headers=qa).json()
+    team = client.get("/api/analytics/summary", headers=sup).json()
+    assert (quality["scope"], team["scope"]) == ("quality", "team")
     assert 0 < team["total_issues"] < 50
-    assert sum(row["count"] for row in facility["by_type"]) == 50
+    # Quality's analytics count exactly what Quality can open: quality issues and every critical one.
+    openable = client.get("/api/issues", params={"limit": 500}, headers=qa).json()
+    assert 0 < quality["total_issues"] == len(openable) < 50
+    assert sum(row["count"] for row in quality["by_type"]) == len(openable)
+    # People are flagged when they are simulated crew, so the screen can mark them.
+    people = {row["name"]: row["simulated"] for row in team["by_operator"]}
+    assert all(isinstance(flag, bool) for flag in people.values())
+    assert people["Mike Johnson"] is False
     assert client.get("/api/analytics/summary", headers=login("OP-001")).status_code == 403
 
 

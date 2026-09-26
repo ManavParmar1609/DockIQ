@@ -13,9 +13,21 @@ from app.domain.inspection import evaluate_inspection, interior_temperature_limi
 from app.domain.lifecycle import can_transition
 from app.domain.receiving import CountLine, TemperatureStatus, check_probe_temperature, count_discrepancies
 from app.domain.recurrence import carrier_pattern, dock_pattern
-from app.domain.retrieval import FALLBACK_RESOLUTION, KbEntry, find_resolution
+from app.domain.retrieval import (
+    BAND_BONUS,
+    FALLBACK_RESOLUTION,
+    INBOUND,
+    MARGINAL_BAND_MAX,
+    OUTBOUND,
+    SCENARIO_DIRECTION,
+    SCENARIO_TEMPERATURE_BAND,
+    KbEntry,
+    find_resolution,
+    temperature_band,
+)
 from app.domain.severity import ISSUE_TYPE_WEIGHTS
 from app.domain.taxonomy import ISSUE_TAXONOMY, ISSUE_TYPES, is_quality_relevant, is_valid_subtype
+from app.seed import load as load_seed
 
 # ── Cost ──
 
@@ -109,6 +121,145 @@ def test_keywords_match_case_insensitively() -> None:
         find_resolution([kb("a", ["crushed", "torn"])], "Damaged Pallet", "CRUSHED and Torn")["confidence"]
         == "medium"
     )
+
+
+# ── Retrieval by direction and temperature band — see docs/architecture/business-rules.md §3.1–§3.3 ──
+
+
+def seeded_kb() -> list[KbEntry]:
+    return [
+        KbEntry(
+            issue_type=row["issue_type"],
+            scenario=row["scenario"],
+            keywords=row["keywords"],
+            resolution_steps=row["resolution_steps"],
+            confidence=row["confidence"],
+            source_reference=row["source_reference"],
+            applicable_categories=row["applicable_categories"],
+            applicable_companies=row["applicable_companies"],
+        )
+        for row in load_seed("knowledge_base")
+    ]
+
+
+def test_direction_and_band_tables_name_real_knowledge_base_scenarios() -> None:
+    # The knowledge base has no direction column: these tables must not drift from its scenarios.
+    scenarios = {entry.scenario: entry.issue_type for entry in seeded_kb()}
+    assert set(SCENARIO_DIRECTION) <= set(scenarios)
+    assert set(SCENARIO_DIRECTION.values()) == {INBOUND, OUTBOUND}
+    assert set(SCENARIO_TEMPERATURE_BAND) <= set(scenarios)
+    assert {scenarios[name] for name in SCENARIO_TEMPERATURE_BAND} == {"Temperature Deviation"}
+
+
+def test_the_knowledge_base_has_47_entries() -> None:
+    # see docs/architecture/business-rules.md §4: 41 before, + 6 in §3.1–§3.3
+    assert len(seeded_kb()) == 47
+
+
+def test_marginal_band_boundary_and_bonus_are_pinned() -> None:
+    # see docs/architecture/business-rules.md §3.2
+    assert (MARGINAL_BAND_MAX, BAND_BONUS) == (5.0, 2)
+
+
+@pytest.mark.parametrize(
+    ("delta", "band"),
+    [
+        (None, None),
+        (-2.0, None),
+        (0.0, None),
+        (0.1, "marginal"),
+        (5.0, "marginal"),
+        (5.1, "critical"),
+    ],
+)
+def test_temperature_band_boundaries(delta: float | None, band: str | None) -> None:
+    assert temperature_band(delta) == band
+
+
+def test_a_loading_job_never_gets_a_receiving_procedure() -> None:
+    found = find_resolution(
+        seeded_kb(),
+        "Damaged Pallet",
+        "two cases crushed",
+        product_category="Frozen",
+        direction=OUTBOUND,
+    )
+    assert found["scenario"] == "Damaged cases found while loading"
+    assert not any("unloading" in step.lower() or "partial accept" in step.lower() for step in found["steps"])
+
+
+def test_a_receiving_job_gets_the_receiving_procedure() -> None:
+    found = find_resolution(
+        seeded_kb(),
+        "Damaged Pallet",
+        "two cases crushed",
+        product_category="Frozen",
+        direction=INBOUND,
+    )
+    assert found["scenario"] == "Less than 5% of cases damaged"
+
+
+def test_a_short_count_while_loading_is_reconciled_not_signed_for() -> None:
+    found = find_resolution(seeded_kb(), "Count Discrepancy", "Short count", direction=OUTBOUND)
+    assert found["scenario"] == "Staged count does not match the order"
+    assert not any("BOL" in step for step in found["steps"])
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Torn or loose shrink wrap",
+        "the shrink wrap is torn",
+        "stretch wrap came loose on pallet 3",
+        "torn wrap",
+        "loose wrap on the top layer",
+    ],
+)
+@pytest.mark.parametrize("direction", [INBOUND, OUTBOUND, None])
+def test_torn_or_loose_wrap_is_rewrapped_not_rejected(description: str, direction: str | None) -> None:
+    found = find_resolution(
+        seeded_kb(),
+        "Damaged Pallet",
+        description,
+        product_category="Frozen",
+        company_name="Crestline Markets",
+        direction=direction,
+    )
+    assert found["scenario"] == "Torn or loose shrink wrap"
+    assert any(step.startswith("Re-wrap the pallet") for step in found["steps"])
+    assert not any("reject" in step.lower() and "not a reason" not in step for step in found["steps"])
+
+
+@pytest.mark.parametrize(
+    ("direction", "band", "scenario"),
+    [
+        (INBOUND, "marginal", "Temperature within 5°F of threshold (marginal)"),
+        (INBOUND, "critical", "Temperature more than 5°F above threshold"),
+        (
+            OUTBOUND,
+            "marginal",
+            "Product within 5°F of its limit while loading (marginal)",
+        ),
+        (OUTBOUND, "critical", "Product more than 5°F above its limit while loading"),
+    ],
+)
+def test_the_reading_picks_the_temperature_procedure(direction: str, band: str, scenario: str) -> None:
+    found = find_resolution(
+        seeded_kb(),
+        "Temperature Deviation",
+        "Product temperature out of range",
+        product_category="Frozen",
+        direction=direction,
+        temp_band=band,
+    )
+    assert found["scenario"] == scenario
+
+
+def test_filters_that_leave_nothing_fall_back_to_escalation() -> None:
+    inbound_only = kb("Less than 5% of cases damaged", ["crushed"])
+    result = find_resolution([inbound_only], "Damaged Pallet", "crushed", direction=OUTBOUND)
+    assert result["found"] is False
+    assert result["source"] == FALLBACK_RESOLUTION["source"]
 
 
 # ── Recurrence ──
@@ -269,6 +420,20 @@ def test_probe_bands_match_the_severity_modifier(reading: float, status: Tempera
     assert check_probe_temperature(reading, [0.0, 40.0]).status is status
 
 
+def test_probe_guidance_follows_the_direction() -> None:
+    # see docs/architecture/business-rules.md §11.1: receiving stops the unload, loading holds the product
+    from app.domain.enums import OrderType
+
+    inbound = check_probe_temperature(12.0, [0.0], OrderType.INBOUND)
+    outbound = check_probe_temperature(12.0, [0.0], OrderType.OUTBOUND)
+    assert inbound.status is outbound.status is TemperatureStatus.CRITICAL
+    assert inbound.guidance.startswith("DO NOT UNLOAD")
+    assert outbound.guidance.startswith("DO NOT LOAD")
+    assert "unload" not in outbound.guidance.lower()
+    assert "Stop loading" in check_probe_temperature(6.0, [0.0], OrderType.OUTBOUND).guidance
+    assert check_probe_temperature(0.0, [0.0]).guidance == "Within the limit. Proceed."  # inbound default
+
+
 def test_probe_on_a_dry_load_is_not_applicable() -> None:
     assert check_probe_temperature(70.0, [None]).status is TemperatureStatus.NOT_APPLICABLE
 
@@ -302,3 +467,165 @@ def test_completion_blockers() -> None:
     assert completion_blockers(0, inspection_failed=True, inspection_cleared=True) == []
     assert len(completion_blockers(2, inspection_failed=True, inspection_cleared=False)) == 2
     assert completion_blockers(2, False, False)[0].startswith("2 critical issues are still open")
+
+
+# ── Ordinals in the recurrence message (business-rules §6) ──
+
+
+@pytest.mark.parametrize(
+    ("count", "word"),
+    [
+        (1, "1st"),
+        (2, "2nd"),
+        (3, "3rd"),
+        (4, "4th"),
+        (11, "11th"),
+        (12, "12th"),
+        (13, "13th"),
+        (21, "21st"),
+        (22, "22nd"),
+        (101, "101st"),
+        (111, "111th"),
+    ],
+)
+def test_recurrence_counts_read_as_english_ordinals(count: int, word: str) -> None:
+    from app.domain.recurrence import ordinal
+
+    assert ordinal(count) == word
+
+
+def test_the_third_repeat_says_3rd_not_3th() -> None:
+    assert "the 3rd 'Damaged Pallet'" in dock_pattern(3, "Damaged Pallet", 4, 7)["message"]  # type: ignore[index]
+    assert "the 12th" in carrier_pattern(12, "Damaged Pallet", "FrostLine Carriers", 7)["message"]  # type: ignore[index]
+
+
+# ── Decisions (business-rules §7.2) ──
+
+
+def test_pending_decisions_put_an_issue_on_hold_and_keep_it_open() -> None:
+    from app.domain.lifecycle import OPEN_STATUSES, decision_status
+
+    assert decision_status("Contact Carrier") is IssueStatus.ON_HOLD
+    assert decision_status("Request Re-inspection") is IssueStatus.ON_HOLD
+    for final in ("Accept", "Partial Accept", "Full Reject", "Override — Accept Anyway", "Other"):
+        assert decision_status(final) is IssueStatus.SUPERVISOR_RESOLVED
+    assert IssueStatus.ON_HOLD in OPEN_STATUSES
+    assert can_transition(IssueStatus.ESCALATED, IssueStatus.ON_HOLD)
+    assert can_transition(IssueStatus.ON_HOLD, IssueStatus.ON_HOLD)
+    assert can_transition(IssueStatus.ON_HOLD, IssueStatus.SUPERVISOR_RESOLVED)
+    assert not can_transition(IssueStatus.ON_HOLD, IssueStatus.SELF_RESOLVED)
+    assert not can_transition(IssueStatus.SUPERVISOR_RESOLVED, IssueStatus.ON_HOLD)
+
+
+def test_accepting_product_on_a_critical_or_temperature_issue_needs_a_reason() -> None:
+    from app.domain.lifecycle import decision_needs_notes
+
+    for decision in ("Accept", "Partial Accept", "Override — Accept Anyway"):
+        assert decision_needs_notes(decision, Severity.CRITICAL, "Damaged Pallet")
+        assert decision_needs_notes(decision, Severity.LOW, "Temperature Deviation")
+        assert not decision_needs_notes(decision, Severity.HIGH, "Damaged Pallet")
+    assert not decision_needs_notes("Full Reject", Severity.CRITICAL, "Temperature Deviation")
+    assert not decision_needs_notes("Contact Carrier", Severity.CRITICAL, "Temperature Deviation")
+
+
+def test_decision_targets_are_pinned() -> None:
+    # see docs/architecture/business-rules.md §7.4
+    from app.domain.lifecycle import DECISION_TARGET_MINUTES
+
+    assert DECISION_TARGET_MINUTES == {
+        Severity.CRITICAL: 15,
+        Severity.HIGH: 60,
+        Severity.MEDIUM: 240,
+        Severity.LOW: 480,
+    }
+
+
+def test_an_open_issue_is_overdue_past_its_target_and_a_pending_decision_stops_the_clock() -> None:
+    from app.domain.lifecycle import is_overdue
+
+    assert not is_overdue(IssueStatus.ESCALATED, Severity.CRITICAL, 15)
+    assert is_overdue(IssueStatus.ESCALATED, Severity.CRITICAL, 15.5)
+    assert is_overdue(IssueStatus.RESOLUTION_IN_PROGRESS, Severity.HIGH, 61)
+    assert not is_overdue(IssueStatus.RESOLUTION_IN_PROGRESS, Severity.LOW, 479)
+    assert not is_overdue(IssueStatus.ON_HOLD, Severity.CRITICAL, 600)
+    assert not is_overdue(IssueStatus.SUPERVISOR_RESOLVED, Severity.CRITICAL, 600)
+
+
+def test_a_rejected_load_and_a_pending_reinspection_block_sign_off() -> None:
+    from app.domain.lifecycle import Rejection, completion_blockers
+
+    blockers = completion_blockers(
+        0,
+        False,
+        False,
+        rejections=[Rejection("Sarah Mitchell", "Seal broken"), Rejection("Tom Bradley", None)],
+        reinspection_requested_by=["Sarah Mitchell"],
+    )
+    assert blockers == [
+        "Rejected by Sarah Mitchell — Seal broken",
+        "Rejected by Tom Bradley.",
+        "Re-inspection requested by Sarah Mitchell: a new trailer inspection must pass first.",
+    ]
+
+
+def test_a_rejected_load_keeps_the_door_flagged() -> None:
+    state = transition(DockStatus.CRITICAL, LifecyclePhase.UNLOADING, DockEvent.LOAD_REJECTED)
+    assert state == (DockStatus.ISSUE, LifecyclePhase.UNLOADING)
+
+
+# ── Receiving evidence (business-rules §11.3) ──
+
+
+def test_inbound_sign_off_needs_every_check_a_probe_and_no_open_critical_probe() -> None:
+    from app.domain.receiving import receiving_gaps
+    from app.domain.taxonomy import RECEIVING_CHECK_IDS
+
+    assert receiving_gaps(RECEIVING_CHECK_IDS, RECEIVING_CHECK_IDS, 1, True) == []
+    assert receiving_gaps(RECEIVING_CHECK_IDS, RECEIVING_CHECK_IDS, 0, False) == []  # a dry load
+    assert receiving_gaps(RECEIVING_CHECK_IDS, ["pallets"], 1, True) == [
+        "4 receiving checks are not answered yet."
+    ]
+    assert receiving_gaps(RECEIVING_CHECK_IDS, RECEIVING_CHECK_IDS[:-1], 0, True) == [
+        "1 receiving check is not answered yet.",
+        "No probe reading recorded: probe the centre of a case before sign-off.",
+    ]
+    assert receiving_gaps(RECEIVING_CHECK_IDS, RECEIVING_CHECK_IDS, 2, True, [(7, 14.5)]) == [
+        "Critical probe reading 14.5°F: Temperature Deviation #7 must be resolved first."
+    ]
+
+
+def test_the_receiving_checks_are_pinned() -> None:
+    from app.domain.taxonomy import RECEIVING_CHECKS, is_valid_subtype
+
+    assert [check.id for check in RECEIVING_CHECKS] == ["pallets", "packaging", "labels", "bol", "lot"]
+    for check in RECEIVING_CHECKS:  # a "No" is reported as a real taxonomy entry
+        assert is_valid_subtype(check.issue_type, check.issue_subtype)
+
+
+def test_only_product_issues_need_an_order() -> None:
+    from app.domain.taxonomy import needs_order
+
+    assert needs_order("Damaged Pallet")
+    assert needs_order("Temperature Deviation")
+    assert not needs_order("Safety Incident")
+    assert not needs_order("Equipment Failure")
+    assert not needs_order("WMS/System Issue")
+
+
+# ── Quality hold and disposition (business-rules §7.3) ──
+
+
+def test_hold_scope_and_final_dispositions() -> None:
+    from app.domain.enums import Disposition
+    from app.domain.quality_hold import can_dispose, holds_stock, lot_wide
+
+    assert holds_stock("Temperature Deviation")
+    assert holds_stock("Product Quality Concern")
+    assert not holds_stock("Damaged Pallet")
+    assert lot_wide("Product Quality Concern")
+    assert not lot_wide("Temperature Deviation")
+    assert can_dispose(None, Disposition.RELEASE)
+    assert can_dispose(Disposition.HOLD, Disposition.HOLD)
+    assert can_dispose(Disposition.HOLD, Disposition.DESTROY)
+    for final in (Disposition.RELEASE, Disposition.DESTROY, Disposition.RETURN_TO_VENDOR):
+        assert not can_dispose(final, Disposition.HOLD)

@@ -2,9 +2,17 @@ import { Megaphone, Send } from 'lucide-react';
 import { useState, type SyntheticEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
-import { useDocks, useFulfillRequest, useIssues, useRequests, useSendBroadcast } from '../../api/hooks';
+import {
+  useDocks,
+  useFulfillRequest,
+  useHandoffs,
+  useIssues,
+  useRequests,
+  useSendBroadcast,
+} from '../../api/hooks';
 import { useUser } from '../../auth/AuthProvider';
 import { DockFloor } from '../../components/DockFloor';
+import { HandoffNote } from '../../components/HandoffNote';
 import { IssueQueue } from '../../components/IssueQueue';
 import {
   EmptyState,
@@ -16,6 +24,10 @@ import {
   StatGrid,
 } from '../../components/ui';
 import { firstName, greeting, timeAgo } from '../../lib/format';
+import { triage } from '../../lib/triage';
+import { useNow } from '../../lib/useNow';
+
+const HANDOFF_FRESH_MS = 16 * 60 * 60 * 1000;
 
 function BroadcastComposer({ onSent }: { onSent: () => void }) {
   const send = useSendBroadcast();
@@ -61,6 +73,11 @@ export default function SupervisorFloor() {
   const docks = useDocks();
   const requests = useRequests('pending');
   const fulfill = useFulfillRequest();
+  const handoffs = useHandoffs();
+  const now = useNow(60_000);
+  const latestHandoff = handoffs.data?.find(
+    (handoff) => now - new Date(handoff.created_at).getTime() < HANDOFF_FRESH_MS,
+  );
   const [composing, setComposing] = useState(false);
 
   // The open dock lives in the URL (?dock=4), so it survives a refresh and the back button closes it.
@@ -84,10 +101,7 @@ export default function SupervisorFloor() {
     setParams(next, { replace: true });
   };
 
-  const open = issues.data ?? [];
-  const escalated = open.filter((issue) => issue.status === 'escalated');
-  const working = open.filter((issue) => issue.status === 'resolution_in_progress');
-  const critical = escalated.filter((issue) => issue.severity === 'critical');
+  const { priority, onHold, working, critical } = triage(issues.data ?? []);
   const activeDocks = (docks.data ?? []).filter((dock) => dock.status !== 'idle');
 
   return (
@@ -95,7 +109,7 @@ export default function SupervisorFloor() {
       <PageHeader
         kicker={`${greeting()}, ${firstName(user.name)}`}
         title={user.zone ?? 'The floor'}
-        meta={<span>Your team&apos;s escalations, in the order they should be handled.</span>}
+        meta={<span>What needs you, in the order it should be handled.</span>}
         actions={
           <button
             type="button"
@@ -110,21 +124,32 @@ export default function SupervisorFloor() {
 
       {composing && <BroadcastComposer onSent={() => setComposing(false)} />}
 
+      {latestHandoff && (
+        <Panel title="From the last shift">
+          <HandoffNote handoff={latestHandoff} />
+        </Panel>
+      )}
+
       <StatGrid>
         <Stat
-          label="Escalated"
-          value={escalated.length}
-          sub={escalated.length ? 'Awaiting you' : 'Queue clear'}
+          label="Needs you"
+          value={priority.length}
+          sub={priority.length ? 'Escalated or critical' : 'Queue clear'}
           index={0}
         />
         <Stat
           label="Critical"
           value={critical.length}
-          sub={critical.length ? 'Go now' : 'None'}
+          sub={critical.length ? 'Open, in any state' : 'None'}
           alert={critical.length > 0}
           index={1}
         />
-        <Stat label="Being resolved" value={working.length} sub="By operators, with a procedure" index={2} />
+        <Stat
+          label="On hold"
+          value={onHold.length}
+          sub={onHold.length ? 'Waiting on a carrier or inspection' : 'Nothing pending'}
+          index={2}
+        />
         <Stat label="Requests" value={requests.data?.length ?? 0} sub="Pending" index={3} />
       </StatGrid>
 
@@ -136,11 +161,20 @@ export default function SupervisorFloor() {
             index={4}
           >
             <QueryBoundary query={issues} loading="Loading the queue">
-              {() => <IssueQueue issues={escalated} empty="No escalations — the team is handling it" />}
+              {() => <IssueQueue issues={priority} empty="No escalations — the team is handling it" />}
             </QueryBoundary>
           </Panel>
+          {onHold.length > 0 && (
+            <Panel title="On hold" aside={<span className="label">Waiting on someone else</span>} index={5}>
+              <IssueQueue issues={onHold} empty="" />
+            </Panel>
+          )}
           {working.length > 0 && (
-            <Panel title="Being resolved at the dock" index={5}>
+            <Panel
+              title="Being resolved at the dock"
+              aside={<span className="label">{working.length} with a procedure</span>}
+              index={5}
+            >
               <IssueQueue issues={working} empty="" />
             </Panel>
           )}
@@ -158,6 +192,7 @@ export default function SupervisorFloor() {
                       <li key={request.id} className="flex items-center gap-3 rounded-lg bg-paper p-3">
                         <div className="min-w-0 flex-1">
                           <p className="font-bold">{request.request_type}</p>
+                          {request.details && <p className="text-base">{request.details}</p>}
                           <p className="telemetry text-sm text-ink-mute">
                             {request.operator_name} · Dock {request.door_number ?? '—'} ·{' '}
                             {timeAgo(request.created_at)}

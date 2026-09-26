@@ -7,7 +7,7 @@ WMS has no play button). Everything the simulator creates is marked `simulated`.
 from fastapi import APIRouter, HTTPException, Request
 from fastapi import status as http
 
-from app.api.deps import SessionDep, Staff
+from app.api.deps import SessionDep, Staff, Supervisor
 from app.schemas import SimInject, SimInjected, SimReset, SimSpeed, SimStatusOut, SimStep
 from app.wms.engine import SimulationEngine
 
@@ -64,7 +64,9 @@ async def next_shift(request: Request, user: Staff, session: SessionDep) -> SimS
 
 
 @router.post("/reset")
-async def reset(body: SimReset, request: Request, user: Staff, session: SessionDep) -> SimStatusOut:
+async def reset(body: SimReset, request: Request, user: Supervisor, session: SessionDep) -> SimStatusOut:
+    """Remove everything simulated and rewind. A supervisor's call: it clears the floor for everyone.
+    Reports a person filed on a simulated trailer are kept, detached from it (business-rules §12.5)."""
     await _engine(request).reset(body.seed)
     return await _status(request, session)
 

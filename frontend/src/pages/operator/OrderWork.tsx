@@ -1,19 +1,33 @@
-import { Check, Minus, Plus, TriangleAlert } from 'lucide-react';
+import { Check, Minus, Plus, RotateCw, TriangleAlert } from 'lucide-react';
 import { useState, type SyntheticEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import {
   useActiveOrder,
   useCompleteOrder,
+  useCountQueue,
   useLoadPlan,
+  useLoadStepSync,
   useOrder,
+  useReceivingChecks,
+  useSaveReceivingChecks,
   useScan,
   useCounter,
   useInventory,
+  useTaxonomy,
   useTemperatureCheck,
+  useTemperatureLog,
 } from '../../api/hooks';
-import { ApiError } from '../../api/client';
-import type { OrderCompleted, OrderDetail, OrderItem, ScanResult, TemperatureCheck } from '../../api/types';
+import { ApiError, errorMessage } from '../../api/client';
+import type {
+  OrderCompleted,
+  OrderDetail,
+  OrderItem,
+  ReceivingChecks,
+  ScanResult,
+  TemperatureCheck,
+  TemperatureLog,
+} from '../../api/types';
 import { Barcode } from '../../components/Barcode';
 import { LoadPlanView } from '../../components/LoadPlanView';
 import { PalletList } from '../../components/PalletList';
@@ -29,8 +43,9 @@ import {
   PageHeader,
   Panel,
   QueryBoundary,
+  Tag,
 } from '../../components/ui';
-import { formatTemp, percent } from '../../lib/format';
+import { formatDateTime, formatTemp, percent } from '../../lib/format';
 import { reportLink } from './reportLink';
 
 type Tab = 'plan' | 'temperature' | 'checks' | 'count' | 'signoff';
@@ -63,7 +78,36 @@ function ProgressBar({ done, total, label }: { done: number; total: number; labe
   );
 }
 
+function plural(count: number, one: string, many = `${one}s`): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
 // ── Counting ──
+
+/**
+ * Counts the server has not accepted yet. They are kept on this tablet and replayed in order; the
+ * operator is told, never left guessing, and sign-off waits for them.
+ */
+function CountSync({ orderId }: { orderId: number }) {
+  const queue = useCountQueue(orderId);
+  return (
+    <>
+      {queue.stalled && queue.pending > 0 && (
+        <Notice
+          title={`${plural(queue.pending, 'count')} not sent yet`}
+          action={
+            <button type="button" className="btn btn-secondary" onClick={queue.retry}>
+              <RotateCw size={18} aria-hidden="true" /> Send now
+            </button>
+          }
+        >
+          {errorMessage(queue.stalled)} Keep counting; sign-off waits for them.
+        </Notice>
+      )}
+      <MutationError error={queue.refused} />
+    </>
+  );
+}
 
 /** Pick locations from the WMS. When the WMS is down, say so plainly: the paper pick list still works. */
 function StockLocations({ sku }: { sku: string }) {
@@ -179,6 +223,17 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
               {step}
             </button>
           ))}
+          {item.cases_per_pallet > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={outbound && done}
+              aria-label={`Add one pallet, ${item.cases_per_pallet} cases`}
+              onClick={() => change(item.cases_per_pallet)}
+            >
+              <Plus size={18} aria-hidden="true" />1 pallet
+            </button>
+          )}
           <form onSubmit={submitManual} className="flex gap-2">
             <label htmlFor={`set-${item.id}`} className="sr-only">
               Set count for {item.product_name}
@@ -197,9 +252,6 @@ function LineItem({ order, item }: { order: OrderDetail; item: OrderItem }) {
               Set
             </button>
           </form>
-        </div>
-        <div className="mt-3">
-          <MutationError error={counter.error} />
         </div>
       </div>
     </li>
@@ -285,139 +337,226 @@ function CountTab({ order }: { order: OrderDetail }) {
 
 // ── Receiving ──
 
-function TemperatureTab({ order }: { order: OrderDetail }) {
-  const check = useTemperatureCheck(order.id);
+const PROBE_STATUS: Record<string, string> = {
+  ok: 'OK',
+  marginal: 'Marginal',
+  warning: 'Warning',
+  critical: 'Critical',
+  not_applicable: 'No limit',
+};
+
+/** A probe result: the one just taken, or the last one logged (which carries no guidance text). */
+type ProbeResult = Pick<TemperatureCheck, 'status' | 'reading' | 'limit' | 'delta' | 'issue_id'> & {
+  guidance?: string;
+};
+
+function ProbeOutcome({ result }: { result: ProbeResult }) {
+  if (result.status === 'critical') {
+    return (
+      <Notice
+        tone="alert"
+        title={`Critical — ${formatTemp(result.reading)} is ${result.delta ?? 0}°F over`}
+        action={
+          result.issue_id != null && (
+            <Link to={`/app/issues/${result.issue_id}`} className="btn btn-hazard">
+              View issue <span className="telemetry">#{result.issue_id}</span>
+            </Link>
+          )
+        }
+      >
+        {result.guidance && <p>{result.guidance}</p>}
+        {result.issue_id != null && (
+          <p className="mt-1">
+            A Temperature Deviation was filed for you and your supervisor alerted. Sign-off waits until it is
+            resolved.
+          </p>
+        )}
+      </Notice>
+    );
+  }
+  return (
+    <Notice
+      title={
+        result.status === 'ok'
+          ? `OK — ${formatTemp(result.reading)}, within ${formatTemp(result.limit ?? 0)}`
+          : result.status === 'not_applicable'
+            ? 'No temperature limit'
+            : `${PROBE_STATUS[result.status] ?? result.status} — ${result.delta ?? 0}°F over ${formatTemp(result.limit ?? 0)}`
+      }
+    >
+      {result.guidance}
+    </Notice>
+  );
+}
+
+function ProbeLog({ log }: { log: TemperatureLog[] }) {
+  if (log.length === 0) {
+    return <p className="text-base text-ink-mute">No readings logged for this load yet.</p>;
+  }
+  return (
+    <table className="w-full text-left">
+      <thead>
+        <tr className="border-b border-hairline">
+          <th className="label py-2">Time</th>
+          <th className="label py-2 text-right">Reading</th>
+          <th className="label py-2 pl-4">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[...log].reverse().map((entry) => (
+          <tr key={entry.id} className="border-b border-hairline">
+            <td className="telemetry py-2 text-sm">
+              {formatDateTime(entry.created_at)}
+              {entry.operator_name && <span className="block text-ink-mute">{entry.operator_name}</span>}
+            </td>
+            <td className="telemetry py-2 text-right text-lg">{formatTemp(entry.reading)}</td>
+            <td className="py-2 pl-4">
+              <span className="flex flex-wrap items-center gap-2">
+                <Tag tone={entry.status === 'critical' ? 'hazard' : 'plain'}>
+                  {entry.status === 'critical' && <TriangleAlert size={14} aria-hidden="true" />}
+                  {PROBE_STATUS[entry.status] ?? entry.status}
+                </Tag>
+                {entry.issue_id != null && (
+                  <Link to={`/app/issues/${entry.issue_id}`} className="telemetry text-sm underline">
+                    #{entry.issue_id}
+                  </Link>
+                )}
+              </span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function TemperatureTab({
+  order,
+  check,
+}: {
+  order: OrderDetail;
+  check: ReturnType<typeof useTemperatureCheck>;
+}) {
+  const log = useTemperatureLog(order.id);
   const [reading, setReading] = useState('');
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
     const value = Number.parseFloat(reading);
-    if (!Number.isNaN(value)) check.mutate(value);
+    if (!Number.isNaN(value)) check.mutate(value, { onSuccess: () => setReading('') });
   };
-  const result: TemperatureCheck | undefined = check.data;
+  // The reading just taken, or — after a reload — the last one in the log.
+  const result: ProbeResult | undefined = check.data ?? log.data?.at(-1);
   return (
-    <Panel title="Probe temperature">
-      <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
-        <div className="flex-1">
-          <FieldLabel htmlFor="probe" hint="Probe the centre of a case, never the edge">
-            Reading (°F)
-          </FieldLabel>
-          <input
-            id="probe"
-            type="number"
-            step="0.1"
-            inputMode="decimal"
-            className="field text-2xl"
-            value={reading}
-            onChange={(event) => setReading(event.target.value)}
-          />
+    <div className="flex flex-col gap-4">
+      <Panel title="Probe temperature">
+        <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
+          <div className="flex-1">
+            <FieldLabel htmlFor="probe" hint="Probe the centre of a case, never the edge">
+              Reading (°F)
+            </FieldLabel>
+            <input
+              id="probe"
+              type="number"
+              step="0.1"
+              inputMode="decimal"
+              className="field text-2xl"
+              value={reading}
+              onChange={(event) => setReading(event.target.value)}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={check.isPending || reading === ''}>
+            {check.isPending ? 'Logging…' : 'Check'}
+          </button>
+        </form>
+        <div className="mt-4 flex flex-col gap-3">
+          <MutationError error={check.error} />
+          {result && <ProbeOutcome result={result} />}
         </div>
-        <button type="submit" className="btn btn-primary" disabled={check.isPending || reading === ''}>
-          Check
-        </button>
-      </form>
-      <div className="mt-4">
-        <MutationError error={check.error} />
-        {result && result.status === 'critical' && (
-          <Notice
-            tone="alert"
-            title={`Critical — ${formatTemp(result.reading)} is ${result.delta ?? 0}°F over`}
-            action={
-              <Link
-                to={reportLink({
-                  type: 'Temperature Deviation',
-                  subtype: 'Product temperature out of range',
-                  temp: result.reading,
-                  limit: result.limit ?? undefined,
-                  description: `Probe read ${result.reading}°F against a ${result.limit ?? '?'}°F limit`,
-                })}
-                className="btn btn-hazard"
-              >
-                Report it
-              </Link>
-            }
-          >
-            {result.guidance}
-          </Notice>
-        )}
-        {result && result.status !== 'critical' && (
-          <Notice
-            title={
-              result.status === 'ok'
-                ? `OK — within ${formatTemp(result.limit ?? 0)}`
-                : result.status === 'not_applicable'
-                  ? 'No temperature limit'
-                  : `${result.status === 'warning' ? 'Warning' : 'Marginal'} — ${result.delta ?? 0}°F over ${formatTemp(result.limit ?? 0)}`
-            }
-          >
-            {result.guidance}
-          </Notice>
-        )}
-      </div>
-    </Panel>
+      </Panel>
+      <Panel title="Probe log" aside={<span className="label">{order.order_number}</span>}>
+        <QueryBoundary query={log} loading="Reading the probe log">
+          {(entries) => <ProbeLog log={entries} />}
+        </QueryBoundary>
+      </Panel>
+    </div>
   );
 }
 
-const CHECKS = [
-  {
-    id: 'pallets',
-    question: 'Pallets intact?',
-    report: { type: 'Damaged Pallet', subtype: 'Damaged or broken pallet' },
-  },
-  {
-    id: 'packaging',
-    question: 'Packaging sealed, not punctured?',
-    report: { type: 'Damaged Pallet', subtype: 'Damaged cartons or packaging' },
-  },
-  {
-    id: 'labels',
-    question: 'Labels readable and matching?',
-    report: { type: 'Barcode Issue', subtype: 'Barcode damaged or unreadable' },
-  },
-  {
-    id: 'bol',
-    question: 'Product matches the BOL?',
-    report: { type: 'SKU Mismatch', subtype: 'Paperwork does not match product' },
-  },
-  {
-    id: 'lot',
-    question: 'Lot and expiry verified?',
-    report: { type: 'Lot/Expiry Issue', subtype: 'Wrong lot or batch number' },
-  },
-] as const;
-
-function ChecksTab() {
-  const [answers, setAnswers] = useState<Record<string, boolean | undefined>>({});
+function ChecksTab({ order }: { order: OrderDetail }) {
+  const taxonomy = useTaxonomy();
+  const checks = useReceivingChecks(order.id);
+  const save = useSaveReceivingChecks(order.id);
   return (
-    <Panel title="Receiving checks">
-      <ul className="flex flex-col gap-3">
-        {CHECKS.map((check) => (
-          <li
-            key={check.id}
-            className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline pb-3"
+    <QueryBoundary query={checks} loading="Loading the receiving checks">
+      {(saved: ReceivingChecks) => {
+        const answers = new Map(saved.checks.map((check) => [check.id, check]));
+        const specs = taxonomy.data?.receiving_checks?.length ? taxonomy.data.receiving_checks : saved.checks;
+        const answered = saved.checks.filter((check) => check.answer !== null).length;
+        return (
+          <Panel
+            title="Receiving checks"
+            aside={
+              <span className="telemetry text-base">
+                {answered} / {specs.length} answered
+              </span>
+            }
           >
-            <span className="text-lg font-semibold">{check.question}</span>
-            <span className="flex gap-2">
-              {([true, false] as const).map((answer) => (
-                <button
-                  key={String(answer)}
-                  type="button"
-                  className="choice min-w-20 justify-center"
-                  aria-pressed={answers[check.id] === answer}
-                  onClick={() => setAnswers((current) => ({ ...current, [check.id]: answer }))}
-                >
-                  {answer ? 'Yes' : 'No'}
-                </button>
-              ))}
-              {answers[check.id] === false && (
-                <Link to={reportLink(check.report)} className="btn btn-hazard">
-                  <TriangleAlert size={18} aria-hidden="true" /> Report
-                </Link>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </Panel>
+            <ul className="flex flex-col gap-3">
+              {specs.map((spec) => {
+                const stored = answers.get(spec.id);
+                // While a tap is being saved, show it at once.
+                const pendingAnswer = save.isPending ? save.variables[spec.id] : undefined;
+                const answer = pendingAnswer ?? stored?.answer ?? null;
+                return (
+                  <li
+                    key={spec.id}
+                    className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline pb-3"
+                  >
+                    <span>
+                      <span className="block text-lg font-semibold">{spec.question}</span>
+                      {stored?.answered_at && (
+                        <span className="telemetry text-sm text-ink-mute">
+                          {stored.answered_by_name ?? 'Answered'} · {formatDateTime(stored.answered_at)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex flex-wrap gap-2">
+                      {([true, false] as const).map((value) => (
+                        <button
+                          key={String(value)}
+                          type="button"
+                          className="choice min-w-20 justify-center"
+                          aria-pressed={answer === value}
+                          disabled={save.isPending}
+                          onClick={() => save.mutate({ [spec.id]: value })}
+                        >
+                          {value ? 'Yes' : 'No'}
+                        </button>
+                      ))}
+                      {answer === false && (
+                        <Link
+                          to={reportLink({ type: spec.issue_type, subtype: spec.issue_subtype })}
+                          className="btn btn-hazard"
+                        >
+                          <TriangleAlert size={18} aria-hidden="true" /> Report
+                        </Link>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-3 text-base text-ink-soft">
+              Every check needs an answer before sign-off. A &ldquo;No&rdquo; is recorded as evidence; report
+              it so your supervisor can decide.
+            </p>
+            <div className="mt-3">
+              <MutationError error={save.error} />
+            </div>
+          </Panel>
+        );
+      }}
+    </QueryBoundary>
   );
 }
 
@@ -453,19 +592,47 @@ function OrderDone({ order, result }: { order: OrderDetail; result: OrderComplet
   );
 }
 
+/** What the receiving evidence still lacks, as places to go (the blocker text says why). */
+function EvidenceLinks({ order, onGoTo }: { order: OrderDetail; onGoTo: (tab: Tab) => void }) {
+  const checks = useReceivingChecks(order.id);
+  const data = checks.data;
+  if (!data) return null;
+  const missingChecks = !data.all_answered;
+  const missingProbe = data.needs_probe && data.probes === 0;
+  if (!missingChecks && !missingProbe) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {missingProbe && (
+        <button type="button" className="btn btn-secondary" onClick={() => onGoTo('temperature')}>
+          Probe a case
+        </button>
+      )}
+      {missingChecks && (
+        <button type="button" className="btn btn-secondary" onClick={() => onGoTo('checks')}>
+          Answer the checks
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SignOffTab({
   order,
   onComplete,
+  onGoTo,
 }: {
   order: OrderDetail;
   onComplete: (result: OrderCompleted) => void;
+  onGoTo: (tab: Tab) => void;
 }) {
   const complete = useCompleteOrder(order.id);
+  const queue = useCountQueue(order.id);
   const [seal, setSeal] = useState('');
   const outbound = order.type === 'outbound';
   // `verified`, not a zero count: counting a line as 0 (nothing arrived) is a count.
   const uncounted = order.items.filter((item) => !item.verified);
   const blockers = order.completion_blockers ?? [];
+  const unsent = queue.pending;
 
   return (
     <Panel title="Sign-off">
@@ -495,8 +662,15 @@ function SignOffTab({
       )}
       {uncounted.length > 0 && (
         <div className="mt-3">
-          <Notice title={`${uncounted.length} line${uncounted.length > 1 ? 's' : ''} not counted yet`}>
+          <Notice title={`${plural(uncounted.length, 'line')} not counted yet`}>
             Count every line before signing off.
+          </Notice>
+        </div>
+      )}
+      {unsent > 0 && (
+        <div className="mt-3">
+          <Notice title={`${plural(unsent, 'count')} not sent yet`}>
+            Sign-off waits until DockIQ has every count, so the record matches the trailer.
           </Notice>
         </div>
       )}
@@ -514,12 +688,13 @@ function SignOffTab({
       )}
       {blockers.length > 0 && (
         <div className="mt-3">
-          <Notice tone="alert" title="Waiting on your supervisor">
+          <Notice tone="alert" title="Not ready to sign off">
             <ul className="flex flex-col gap-1">
               {blockers.map((blocker) => (
                 <li key={blocker}>{blocker}</li>
               ))}
             </ul>
+            {!outbound && <EvidenceLinks order={order} onGoTo={onGoTo} />}
           </Notice>
         </div>
       )}
@@ -529,7 +704,11 @@ function SignOffTab({
           type="button"
           className="btn btn-primary text-lg"
           disabled={
-            complete.isPending || uncounted.length > 0 || blockers.length > 0 || (outbound && !seal.trim())
+            complete.isPending ||
+            unsent > 0 ||
+            uncounted.length > 0 ||
+            blockers.length > 0 ||
+            (outbound && !seal.trim())
           }
           onClick={() =>
             // The promise, not a mutate() callback: it resolves even if the refetched active order has
@@ -562,6 +741,9 @@ function Work({
   const order = useOrder(orderId);
   const outbound = order.data?.type === 'outbound';
   const plan = useLoadPlan(outbound ? orderId : undefined);
+  // Held here, not in the tab, so the last probe result survives switching tabs.
+  const probe = useTemperatureCheck(orderId);
+  const loadStep = useLoadStepSync(orderId);
   const tabs: { id: Tab; label: string }[] = outbound
     ? [
         { id: 'plan', label: 'Load plan' },
@@ -598,6 +780,7 @@ function Work({
               </Link>
             }
           />
+          <CountSync orderId={orderId} />
           <Tabs
             tabs={tabs}
             active={active}
@@ -609,14 +792,20 @@ function Work({
           <div role="tabpanel" id={PANEL_ID} aria-labelledby={`${PANEL_ID}-tab-${active}`}>
             {active === 'plan' && (
               <QueryBoundary query={plan} loading="Planning the load">
-                {(data) => <LoadPlanView plan={data} />}
+                {(data) => (
+                  <LoadPlanView plan={data} initialStep={detail.load_step ?? null} onStep={loadStep} />
+                )}
               </QueryBoundary>
             )}
-            {active === 'temperature' && <TemperatureTab order={detail} />}
-            {active === 'checks' && <ChecksTab />}
+            {active === 'temperature' && <TemperatureTab order={detail} check={probe} />}
+            {active === 'checks' && <ChecksTab order={detail} />}
             {active === 'count' && <CountTab order={detail} />}
             {active === 'signoff' && (
-              <SignOffTab order={detail} onComplete={(result) => onComplete(detail, result)} />
+              <SignOffTab
+                order={detail}
+                onComplete={(result) => onComplete(detail, result)}
+                onGoTo={setTab}
+              />
             )}
           </div>
         </div>

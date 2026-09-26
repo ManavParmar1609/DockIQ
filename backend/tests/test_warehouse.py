@@ -563,7 +563,9 @@ def test_a_room_excursion_is_filed_once_as_a_cold_chain_issue(client: TestClient
         and "Produce" in (i["description"] or "")
     ]
     assert len(filed) == 1
-    assert filed[0]["severity_reason"]
+    # A whole room over its limit for the alarm's 15 minutes is critical (business-rules §1.10).
+    assert filed[0]["severity"] == "critical"
+    assert filed[0]["status"] == "escalated"
     assert filed[0]["dock_door_id"] is None
     assert client.get("/api/wms/rooms?readings=97", headers=sup).status_code == 422
 
@@ -578,3 +580,67 @@ def test_rooms_report_occupancy(client: TestClient, login: Login) -> None:
         assert room["pallets"] > 0
         assert room["cases"] > 0
     assert client.get("/api/wms/rooms", headers=login("OP-001")).status_code == 403
+
+
+# ── Quality hold and disposition (business-rules §7.3) ──
+
+
+def test_a_hold_takes_named_plates_the_same_lot_or_a_rooms_exposed_stock() -> None:
+    from app.wms.warehouse import select_for_hold
+
+    chilled = ProductRef("DR-1", "Yogurt", "Refrigerated", 80, 38.0)
+    products = {FROZEN.sku: FROZEN, chilled.sku: chilled}
+    stock = [
+        StockLine("A", "FZ-1", "L1", date(2026, 12, 1), FACE, 20),
+        StockLine("B", "FZ-1", "L1", date(2026, 12, 1), "F-10-B01-2", 60),
+        StockLine("C", "FZ-1", "L2", date(2027, 1, 1), "DOCK-04", 60),
+        StockLine("D", "FZ-1", "L2", date(2027, 1, 1), "STAGE-04", 30),
+        StockLine("E", "FZ-1", "L2", date(2027, 1, 1), "TRL-1", 30),  # on a trailer: never held
+        StockLine("F", "FZ-1", "L1", date(2026, 12, 1), "F-HOLD", 5),  # already held
+        StockLine("G", "DR-1", "L9", date(2026, 10, 1), "C-10-B01-2", 80),
+    ]
+
+    def lpns(lines: list[StockLine]) -> list[str]:
+        return [line.lpn for line in lines]
+
+    assert lpns(select_for_hold(stock, products, plates=["C", "D", "E", "F"])) == ["C", "D"]
+    assert lpns(select_for_hold(stock, products, plates=["A", "G"], sku="DR-1")) == ["G"]
+    # a quality concern is about the lot: every other plate of it in storage
+    assert lpns(select_for_hold(stock, products, plates=["A"], same_lot=True)) == ["A", "B"]
+    # a cold-room alarm: stock in that room whose own limit the reading is over
+    assert lpns(select_for_hold(stock, products, room="F", above=3.0)) == ["A", "B"]
+    assert lpns(select_for_hold(stock, products, room="C", above=38.0)) == []
+    assert lpns(select_for_hold(stock, products, room="C", above=38.5)) == ["G"]
+
+
+def test_held_stock_is_never_picked_and_its_pick_is_allocated_again() -> None:
+    stock = [
+        StockLine("A", "FZ-1", "L1", date(2026, 12, 1), FACE, 20),
+        StockLine("B", "FZ-1", "L2", date(2026, 11, 1), "F-10-B01-2", 60),
+        StockLine("C", "FZ-1", "L3", date(2027, 1, 1), "F-10-B01-3", 60),
+        StockLine("D", "FZ-1", "L4", date(2027, 2, 1), "F-10-B01-4", 60),
+    ]
+    house = Warehouse(1, -1.0, OPENING_SERIALS, PRODUCTS, stock)
+    house.run([Trailer(appointment())], until=61.0)
+    assert ("B", 60) in [(t.lpn, t.cases) for t in house.tasks.values() if t.kind is TaskKind.PICK]
+
+    held = house.hold([house.stock[("B", "F-10-B01-2")]], 61.0, "QA-001", "ISSUE-1", "ISSUE-1:t")
+    assert held == ["B"]
+    assert house.stock[("B", "F-HOLD")].cases == 60
+    assert any(m.kind is MovementKind.HOLD and m.lpn == "B" for m in house.movements)
+    open_picks = [
+        t for t in house.tasks.values() if t.kind is TaskKind.PICK and t.status in warehouse.OPEN_STATUSES
+    ]
+    assert all(t.lpn != "B" for t in open_picks)
+    assert all(layout.area_of(t.from_location or "") is layout.Area.STORAGE for t in open_picks)
+    assert all(line.location != "F-HOLD" for line, _ in house._available("FZ-1"))  # FEFO skips held
+
+    # Quality's call: release puts it back in a reserve slot, destroy takes it out of the building.
+    assert house.dispose(["B"], "release", 62.0, "QA-001", "ISSUE-1", "ISSUE-1:r") == ["B"]
+    [(plate, location)] = [key for key in house.stock if key[0] == "B"]
+    assert layout.area_of(location) is layout.Area.STORAGE
+    house.hold([house.stock[(plate, location)]], 63.0, "QA-001", "ISSUE-2", "ISSUE-2:t")
+    assert house.dispose(["B"], "destroy", 64.0, "QA-001", "ISSUE-2", "ISSUE-2:d") == ["B"]
+    assert not [key for key in house.stock if key[0] == "B"]
+    assert house.movements[-1].kind is MovementKind.ADJUST
+    assert house.dispose(["B"], "release", 65.0, "QA-001", "ISSUE-2", "ISSUE-2:x") == []  # nothing held

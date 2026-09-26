@@ -15,6 +15,7 @@ export type AgentAction = NonNullable<Schemas['ChatReply']['actions']>[number];
 export type IssueDraft = Schemas['IssueDraft'];
 export type BroadcastDraft = Schemas['BroadcastDraft'];
 export type HandoffDraft = Schemas['HandoffDraft'];
+export type SelfResolveDraft = Schemas['SelfResolveDraft'];
 
 export interface Step {
   tool: string;

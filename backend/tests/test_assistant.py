@@ -48,7 +48,7 @@ def test_a_temperature_is_judged_by_the_rule_against_the_strictest_limit(
     card = next(card for card in reply["cards"] if card["kind"] == "temperature")
     # CRM-FZ-1001 is frozen (max 0°F) — stricter than the refrigerated line. See business-rules §11.1.
     assert (card["limit"], card["delta"], card["status"]) == (0.0, 12.0, "critical")
-    assert "DO NOT UNLOAD" in reply["response"]
+    assert "DO NOT LOAD" in reply["response"]  # OP-001 is loading: the guidance follows the direction
 
 
 def test_where_is_a_sku_asks_the_wms(client: TestClient, login: Login) -> None:
@@ -328,3 +328,319 @@ def test_non_finite_or_oversized_numbers_are_refused_by_the_tools(client: TestCl
     reply = ask(client, login("OP-001"), "the load is warm")
     assert [step["ok"] for step in reply["steps"]] == [False, False, False]
     assert reply["actions"] == []
+
+
+# ── Procedures: direction, band, and never extended — business-rules §3, functional-specs §2.6 ──
+
+
+def tool_result(model: ScriptedModel, request: int = 1) -> dict[str, Any]:
+    """What the tool returned to the model, as the model read it in its next request."""
+    return json.loads(model.requests[request]["messages"][-1]["content"])
+
+
+def procedure_titles(reply: dict[str, Any]) -> list[str]:
+    return [card["title"] for card in reply["cards"] if card["kind"] == "procedure"]
+
+
+def test_a_loading_job_gets_the_loading_procedure(client: TestClient, login: Login) -> None:
+    # OP-001 is loading ORD-2026-4521 (outbound): no "continue unloading", no "partial accept".
+    args = json.dumps({"issue_type": "Damaged Pallet", "description": "two cases crushed"})
+    model = ScriptedModel(
+        [
+            [_chunk(calls=_call(0, "find_procedure", args, "p1"))],
+            [_chunk("Steps above.")],
+        ]
+    )
+    use_model(client, model)
+    reply = ask(client, login("OP-001"), "two cases are crushed, what do I do?")
+    assert procedure_titles(reply) == ["Damaged cases found while loading"]
+    steps = next(card for card in reply["cards"] if card["kind"] == "procedure")["steps"]
+    assert not any("unloading" in step.lower() or "partial accept" in step.lower() for step in steps)
+    result = tool_result(model)
+    assert result["direction"] == "loading (outbound)"
+    assert "word for word" in result["how_to_answer"]
+
+
+def test_without_a_reading_both_temperature_procedures_come_back_labelled(
+    client: TestClient, login: Login
+) -> None:
+    args = json.dumps({"issue_type": "Temperature Deviation", "description": "the chicken feels warm"})
+    model = ScriptedModel(
+        [
+            [_chunk(calls=_call(0, "find_procedure", args, "t1"))],
+            [_chunk("Which reading?")],
+        ]
+    )
+    use_model(client, model)
+    reply = ask(client, login("OP-001"), "the chicken feels warm")
+    assert procedure_titles(reply) == [
+        "Product within 5°F of its limit while loading (marginal)",
+        "Product more than 5°F above its limit while loading",
+    ]
+    result = tool_result(model)
+    assert [p["applies_when"] for p in result["procedures"]] == [
+        "reading 0–5°F over the product's limit",
+        "reading more than 5°F over the product's limit",
+    ]
+
+
+def test_a_reading_picks_one_temperature_procedure(client: TestClient, login: Login) -> None:
+    # CRM-FZ-1001's limit is 0°F: 3°F is 3° over, the marginal band (business-rules §3.2).
+    args = json.dumps({"issue_type": "Temperature Deviation", "description": "probe", "reading_f": 3})
+    model = ScriptedModel([[_chunk(calls=_call(0, "find_procedure", args, "t2"))], [_chunk("Re-probe.")]])
+    use_model(client, model)
+    reply = ask(client, login("OP-001"), "probe says 3")
+    assert procedure_titles(reply) == ["Product within 5°F of its limit while loading (marginal)"]
+    assert tool_result(model)["reading_over_limit_f"] == 3.0
+
+
+def test_a_weak_match_is_flagged_so_the_model_adds_nothing(client: TestClient, login: Login) -> None:
+    args = json.dumps({"issue_type": "Equipment Failure", "description": "zzz"})
+    model = ScriptedModel(
+        [
+            [_chunk(calls=_call(0, "find_procedure", args, "w1"))],
+            [_chunk("Weak match.")],
+        ]
+    )
+    use_model(client, model)
+    ask(client, login("SUP-001"), "zzz")
+    assert tool_result(model)["note"] == agent_tools.LOW_MATCH_NOTE
+
+
+def system_text(client: TestClient, headers: dict[str, str]) -> str:
+    model = ScriptedModel([[_chunk("Hello.")]])
+    use_model(client, model)
+    ask(client, headers, "hello")
+    return str(model.requests[0]["messages"][0]["content"])
+
+
+def test_the_prompt_forbids_extending_a_procedure(client: TestClient, login: Login) -> None:
+    prompt = system_text(client, login("OP-001"))
+    assert "word for word" in prompt
+    assert "Never add, merge, reword or generalise a step" in prompt
+
+
+def test_the_prompt_speaks_to_each_role(client: TestClient, login: Login) -> None:
+    operator = system_text(client, login("OP-001"))
+    assert "**Stop and call your supervisor now.**" in operator
+    supervisor = system_text(client, login("SUP-001"))
+    assert "your supervisor" not in supervisor
+    assert "Never tell them to confirm with, wait for or call a supervisor" in supervisor
+    quality = system_text(client, login("QA-001"))
+    assert "your supervisor" not in quality
+    assert "stand by for supervisor" not in quality
+    assert all(word in quality for word in ("holds", "disposition", "traceability"))
+
+
+# ── Self-resolve through the assistant: a draft the worker confirms — business-rules §7.1 ──
+
+MINOR = {
+    "order_id": 1,
+    "dock_door_id": 1,
+    "issue_type": "Barcode Issue",
+    "issue_subtype": "Barcode will not scan",
+    "description": "label smudged",
+    "company_id": 1,
+    "carrier_id": 1,
+}
+CRITICAL = {
+    "order_id": 1,
+    "dock_door_id": 1,
+    "issue_type": "Temperature Deviation",
+    "issue_subtype": "Product temperature out of range",
+    "description": "probe reads 20F",
+    "product_id": 1,
+    "company_id": 1,
+    "carrier_id": 1,
+    "temp_reading": 20.0,
+    "temp_threshold_max": 0.0,
+}
+
+
+def file(client: TestClient, headers: dict[str, str], body: dict[str, Any]) -> dict[str, Any]:
+    response = client.post("/api/issues", json=body, headers=headers)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def clear_open_issues(client: TestClient, headers: dict[str, str]) -> None:
+    """Close the seeded open issues the operator may close, so a test starts from a known queue."""
+    for issue in client.get("/api/issues?limit=200", headers=headers).json():
+        if issue["status"] == "resolution_in_progress" and issue["severity"] != "critical":
+            client.put(
+                f"/api/issues/{issue['id']}/self-resolve",
+                json={"resolution_type": "Other", "resolution_notes": "setup"},
+                headers=headers,
+            )
+
+
+def test_close_issue_drafts_a_resolution_and_changes_nothing_until_confirmed(
+    client: TestClient, login: Login
+) -> None:
+    op = login("OP-001")
+    issue = file(client, op, MINOR)
+    assert issue["severity"] != "critical"
+    reply = ask(client, op, f"close issue {issue['id']}, I did a manual entry")
+    assert [step["tool"] for step in reply["steps"]] == [
+        "my_open_issues",
+        "draft_self_resolve",
+    ]
+    draft = reply["actions"][0]
+    assert (draft["kind"], draft["issue_id"], draft["resolution_type"]) == (
+        "self_resolve",
+        issue["id"],
+        "Manual Entry",
+    )
+    assert draft["title"] == "Barcode will not scan"
+    assert f"Resolve issue #{issue['id']}" in reply["response"]
+    # The assistant wrote nothing (security.md §4): still open until the worker confirms.
+    assert client.get(f"/api/issues/{issue['id']}", headers=op).json()["status"] == "resolution_in_progress"
+
+    # Confirming is the ordinary endpoint, called with the draft's values.
+    confirmed = client.put(
+        f"/api/issues/{issue['id']}/self-resolve",
+        json={
+            "resolution_type": draft["resolution_type"],
+            "resolution_notes": draft["resolution_notes"],
+        },
+        headers=op,
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    assert client.get(f"/api/issues/{issue['id']}", headers=op).json()["status"] == "self_resolved"
+
+
+def test_a_critical_issue_is_the_supervisors_decision_with_nothing_to_confirm(
+    client: TestClient, login: Login
+) -> None:
+    op = login("OP-001")
+    issue = file(client, op, CRITICAL)
+    assert issue["severity"] == "critical"
+    reply = ask(client, op, f"close issue {issue['id']}")
+    assert reply["actions"] == []
+    assert "supervisor decides" in reply["response"]
+    assert "nothing for you to confirm" in reply["response"]
+
+
+def test_i_fixed_it_drafts_the_one_issue_the_worker_may_close(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    clear_open_issues(client, op)
+    minor, critical = file(client, op, MINOR), file(client, op, CRITICAL)
+    reply = ask(client, op, "I fixed it")
+    assert [action["issue_id"] for action in reply["actions"]] == [minor["id"]]
+    assert reply["actions"][0]["resolution_type"] is None  # the worker picks what they did
+    assert "Pick what you did" in reply["response"]
+    assert critical["id"] not in [action["issue_id"] for action in reply["actions"]]
+
+
+def test_my_open_issues_says_which_the_worker_may_close(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    minor, critical = file(client, op, MINOR), file(client, op, CRITICAL)
+    model = ScriptedModel([[_chunk(calls=_call(0, "my_open_issues", "{}", "o1"))], [_chunk("Here.")]])
+    use_model(client, model)
+    ask(client, op, "resolve my issue")
+    listed = {issue["id"]: issue for issue in tool_result(model)["open_issues"]}
+    assert listed[minor["id"]]["can_self_resolve"] is True
+    assert listed[critical["id"]]["can_self_resolve"] is False
+    assert "supervisor decides" in listed[critical["id"]]["why_not"]
+    assert "Manual Entry" in tool_result(model)["resolution_options"]
+
+
+def test_a_model_cannot_draft_an_unknown_resolution(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    issue = file(client, op, MINOR)
+    bad = json.dumps({"issue_id": issue["id"], "resolution_type": "Threw it away"})
+    model = ScriptedModel([[_chunk(calls=_call(0, "draft_self_resolve", bad, "r1"))], [_chunk("No.")]])
+    use_model(client, model)
+    reply = ask(client, op, "close it")
+    assert reply["actions"] == []
+    assert "resolution_type must be one of" in model.requests[1]["messages"][-1]["content"]
+
+
+def test_self_resolve_is_for_operators_and_the_wms_tools_for_staff() -> None:
+    operator = {tool.name for tool in tools_for(Role.OPERATOR)}
+    assert {"my_open_issues", "draft_self_resolve"} <= operator
+    assert not {"room_status", "trace_lot"} & operator
+    for role in (Role.SUPERVISOR, Role.QUALITY):
+        staff = {tool.name for tool in tools_for(role)}
+        assert {"room_status", "trace_lot"} <= staff
+        assert not {"my_open_issues", "draft_self_resolve"} & staff
+
+
+# ── Severity in a draft is the formula's, proportional to the cases — business-rules §1.9 ──
+
+
+def test_two_torn_cases_draft_scores_by_share_and_files_the_same(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    args = json.dumps(
+        {
+            "issue_type": "Damaged Pallet",
+            "issue_subtype": "Damaged cartons or packaging",
+            "description": "two torn cases of chicken",
+            "product_sku": "CRM-FZ-1001",
+            "quantity_affected": 2,
+        }
+    )
+    model = ScriptedModel(
+        [
+            [_chunk(calls=_call(0, "draft_issue_report", args, "d1"))],
+            [_chunk("Drafted.")],
+        ]
+    )
+    use_model(client, model)
+    draft = ask(client, op, "two torn cases of chicken")["actions"][0]
+    # 4 × 3.0 × 1.5 = 18 × 0.4 (2 of a 48-case pallet) = 7.2, + 2 dwell = 9.2 → MEDIUM (was 20.0 critical)
+    assert (draft["severity"], draft["severity_score"]) == ("medium", 9.2)
+    filed = file(client, op, draft["payload"])
+    assert (filed["severity"], filed["severity_score"]) == ("medium", 9.2)
+
+
+def test_a_draft_without_a_case_count_is_not_scaled(client: TestClient, login: Login) -> None:
+    args = json.dumps(
+        {
+            "issue_type": "Damaged Pallet",
+            "issue_subtype": "Damaged cartons or packaging",
+            "description": "torn cases",
+            "product_sku": "CRM-FZ-1001",
+        }
+    )
+    model = ScriptedModel(
+        [
+            [_chunk(calls=_call(0, "draft_issue_report", args, "d2"))],
+            [_chunk("Drafted.")],
+        ]
+    )
+    use_model(client, model)
+    draft = ask(client, login("OP-001"), "torn cases")["actions"][0]
+    assert draft["payload"]["quantity_affected"] is None
+    assert (draft["severity"], draft["severity_score"]) == ("critical", 20.0)
+
+
+# ── Quality and supervisors: cold rooms and lot trace through the WMS ──
+
+
+def test_freezer_temperature_reads_the_rooms_from_the_wms(client: TestClient, login: Login) -> None:
+    reply = ask(client, login("QA-001"), "what's the freezer temp?")
+    assert reply["steps"][0]["tool"] == "room_status"
+    card = next(card for card in reply["cards"] if card["kind"] == "rooms")
+    assert [room["name"] for room in card["rooms"]] == ["Freezer"]
+    assert card["rooms"][0]["limit"] == 0.0
+    assert card["simulated"] is True
+
+
+def test_trace_lot_follows_a_sku_and_one_lot(client: TestClient, login: Login) -> None:
+    sup = login("SUP-001")
+    reply = ask(client, sup, "trace CRM-FZ-1001")
+    card = next(card for card in reply["cards"] if card["kind"] == "trace")
+    assert card["on_hand"]
+    lot = card["on_hand"][0]["lot"]
+    one = ask(client, sup, f"trace CRM-FZ-1001 lot {lot}")
+    traced = next(card for card in one["cards"] if card["kind"] == "trace")
+    assert traced["lot"] == lot
+    assert traced["on_hand"]
+    assert {pallet["lot"] for pallet in traced["on_hand"]} == {lot}
+    assert len(traced["on_hand"]) <= agent_tools.MAX_LIST
+
+
+def test_an_operator_asking_to_trace_gets_no_wms_trace(client: TestClient, login: Login) -> None:
+    reply = ask(client, login("OP-001"), "trace CRM-FZ-1001")
+    assert not any(step["tool"] == "trace_lot" for step in reply["steps"])

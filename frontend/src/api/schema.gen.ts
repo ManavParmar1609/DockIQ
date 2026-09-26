@@ -333,6 +333,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/orders/{order_id}/load-step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Load Step
+         * @description Where the operator is in the load guide, kept on the server so it survives a tablet swap. With
+         *     `count`, stepping on by one counts the pallet just loaded on its order line (never past the line's
+         *     expected cases); stepping back by one takes it off again (never below zero).
+         */
+        put: operations["set_load_step_api_orders__order_id__load_step_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/orders/{order_id}/temperature-check": {
         parameters: {
             query?: never;
@@ -344,9 +366,54 @@ export interface paths {
         put?: never;
         /**
          * Temperature Check
-         * @description Judge a probe reading against the strictest product limit on this load (business-rules §11).
+         * @description Judge a probe reading against the strictest product limit on this load, and log it (the HACCP
+         *     record). A critical reading files a Temperature Deviation through the ordinary scoring path — or
+         *     joins the one a critical probe already filed that is still open — and holds sign-off until it is
+         *     resolved (business-rules §11.1).
          */
         post: operations["temperature_check_api_orders__order_id__temperature_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{order_id}/temperature-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Temperature Log
+         * @description The order's probe readings, oldest first: the HACCP log.
+         */
+        get: operations["temperature_log_api_orders__order_id__temperature_checks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{order_id}/receiving-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Receiving Checks */
+        get: operations["get_receiving_checks_api_orders__order_id__receiving_checks_get"];
+        /**
+         * Save Receiving Checks
+         * @description Record answers to the receiving checks (business-rules §11.3). A "No" is evidence, not a
+         *     report: the operator reports it as the issue the check names.
+         */
+        put: operations["save_receiving_checks_api_orders__order_id__receiving_checks_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -386,6 +453,26 @@ export interface paths {
         put?: never;
         /** Create Issue */
         post: operations["create_issue_api_issues_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Issues
+         * @description The issue list as CSV: the same filters and the same scope, newest first, bounded.
+         */
+        get: operations["export_issues_api_issues_export_csv_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -456,7 +543,8 @@ export interface paths {
         get?: never;
         /**
          * Acknowledge Issue
-         * @description "On my way": the supervisor takes the issue and the operator is told who is coming.
+         * @description "On my way": the supervisor takes the issue and the operator is told who is coming. Who
+         *     acknowledged is kept apart from who later decides (`acknowledged_by`, `supervisor_id`).
          */
         put: operations["acknowledge_issue_api_issues__issue_id__acknowledge_put"];
         post?: never;
@@ -474,8 +562,34 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Supervisor Resolve Issue */
+        /**
+         * Supervisor Resolve Issue
+         * @description The supervisor's decision (business-rules §7.2). Accepting product on a critical or temperature
+         *     issue needs a reason; Contact Carrier and Request Re-inspection put the issue `on_hold` (still
+         *     open); Full Reject closes it and blocks the order's sign-off, and the door stays flagged.
+         */
         put: operations["supervisor_resolve_issue_api_issues__issue_id__supervisor_resolve_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues/{issue_id}/disposition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Dispose Issue
+         * @description Quality's decision on the product held for an issue: hold (applied again), release to storage,
+         *     destroy, or return to the vendor. Supervisors read it; only Quality decides it.
+         */
+        put: operations["dispose_issue_api_issues__issue_id__disposition_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -535,6 +649,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/requests/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Requests
+         * @description The requests you made, newest first, with their status: what you are still waiting for.
+         */
+        get: operations["my_requests_api_requests_mine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/requests": {
         parameters: {
             query?: never;
@@ -561,7 +695,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Fulfill Request */
+        /**
+         * Fulfill Request
+         * @description Mark a request done. The operator who asked is told (`new_request` with status `fulfilled`).
+         */
         put: operations["fulfill_request_api_requests__request_id__fulfill_put"];
         post?: never;
         delete?: never;
@@ -603,6 +740,49 @@ export interface paths {
         put?: never;
         /** Create Handoff */
         post: operations["create_handoff_api_shift_handoffs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shift-handoffs/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Handoff Draft
+         * @description A pre-filled handoff for the supervisor's team and zone: open critical issues, the decisions
+         *     made this shift, trailers in the yard or due, cold rooms out of range, requests still open. Read
+         *     only: the supervisor edits the notes and saves them with `POST /shift-handoffs`.
+         */
+        get: operations["handoff_draft_api_shift_handoffs_draft_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shift-handoffs/{handoff_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Read Handoff
+         * @description The incoming supervisor opened the handoff: the first to do so is its read receipt. A handoff
+         *     from another zone is a 404; your own is a 409 (you cannot receive your own handoff).
+         */
+        put: operations["read_handoff_api_shift_handoffs__handoff_id__read_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -679,7 +859,9 @@ export interface paths {
         };
         /**
          * Analytics Summary
-         * @description A supervisor sees their team; quality staff see every issue in the facility.
+         * @description The same issues the person can open: a supervisor's team; for Quality, quality issues and every
+         *     critical issue (`scope` says which). `from` / `to` (UTC days) bound everything, the trend and the
+         *     repeats included; without `from` the trend and repeats cover the last 30 days.
          */
         get: operations["analytics_summary_api_analytics_summary_get"];
         put?: never;
@@ -1027,7 +1209,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reset */
+        /**
+         * Reset
+         * @description Remove everything simulated and rewind. A supervisor's call: it clears the floor for everyone.
+         *     Reports a person filed on a simulated trailer are kept, detached from it (business-rules §12.5).
+         */
         post: operations["reset_api_sim_reset_post"];
         delete?: never;
         options?: never;
@@ -1069,6 +1255,12 @@ export interface components {
         };
         /** AnalyticsSummary */
         AnalyticsSummary: {
+            /**
+             * Scope
+             * @default team
+             * @enum {string}
+             */
+            scope?: "team" | "quality";
             /** Total Issues */
             total_issues: number;
             /** Self Resolved */
@@ -1236,12 +1428,12 @@ export interface components {
              * Cards
              * @default []
              */
-            cards?: (components["schemas"]["ProcedureCard"] | components["schemas"]["TemperatureCard"] | components["schemas"]["StockCard"] | components["schemas"]["IssuesCard"] | components["schemas"]["OrderCard"])[];
+            cards?: (components["schemas"]["ProcedureCard"] | components["schemas"]["TemperatureCard"] | components["schemas"]["StockCard"] | components["schemas"]["IssuesCard"] | components["schemas"]["OrderCard"] | components["schemas"]["RoomsCard"] | components["schemas"]["TraceCard"])[];
             /**
              * Actions
              * @default []
              */
-            actions?: (components["schemas"]["IssueDraft"] | components["schemas"]["BroadcastDraft"] | components["schemas"]["HandoffDraft"])[];
+            actions?: (components["schemas"]["IssueDraft"] | components["schemas"]["BroadcastDraft"] | components["schemas"]["HandoffDraft"] | components["schemas"]["SelfResolveDraft"])[];
         };
         /**
          * ChatRole
@@ -1349,6 +1541,12 @@ export interface components {
             /** Supervisor Name */
             supervisor_name: string | null;
         };
+        /**
+         * Disposition
+         * @description Quality's decision on product held for an issue (business-rules §7.3).
+         * @enum {string}
+         */
+        Disposition: "hold" | "release" | "destroy" | "return_to_vendor";
         /** DockCount */
         DockCount: {
             /** Count */
@@ -1391,6 +1589,11 @@ export interface components {
             cases_done: number | null;
             /** Cases Expected */
             cases_expected: number | null;
+            /**
+             * Open Issues
+             * @default 0
+             */
+            open_issues?: number;
         };
         /**
          * DockRepeat
@@ -1446,6 +1649,22 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HandoffDecisionLine */
+        HandoffDecisionLine: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Decision */
+            decision: string;
+            status: components["schemas"]["IssueStatus"];
+            /** Notes */
+            notes: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+        };
         /** HandoffDraft */
         HandoffDraft: {
             /**
@@ -1455,6 +1674,92 @@ export interface components {
             kind: "handoff_note";
             /** Notes */
             notes: string;
+        };
+        /**
+         * HandoffDraftOut
+         * @description A pre-filled handoff for the supervisor's zone: what the next shift inherits.
+         */
+        HandoffDraftOut: {
+            /** Zone */
+            zone: string | null;
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            /** Open Criticals */
+            open_criticals: components["schemas"]["HandoffIssueLine"][];
+            /** Decisions */
+            decisions: components["schemas"]["HandoffDecisionLine"][];
+            /** Trailers */
+            trailers: components["schemas"]["HandoffTrailerLine"][];
+            /** Room Alarms */
+            room_alarms: components["schemas"]["HandoffRoomLine"][];
+            /** Pending Requests */
+            pending_requests: components["schemas"]["QuickRequestOut"][];
+            /** Wms Online */
+            wms_online: boolean;
+            /** Notes */
+            notes: string;
+        };
+        /** HandoffIssueLine */
+        HandoffIssueLine: {
+            /** Id */
+            id: number;
+            severity: components["schemas"]["Severity"];
+            status: components["schemas"]["IssueStatus"];
+            /** Title */
+            title: string;
+            /** Door Number */
+            door_number: number | null;
+            /** Order Number */
+            order_number: string | null;
+            /** Operator Name */
+            operator_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** HandoffRoomLine */
+        HandoffRoomLine: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Temp */
+            temp: number;
+            /** Limit */
+            limit: number;
+            /** Alarm */
+            alarm: boolean;
+            /** Simulated */
+            simulated: boolean;
+        };
+        /** HandoffTrailerLine */
+        HandoffTrailerLine: {
+            /** Order Number */
+            order_number: string;
+            /** Trailer */
+            trailer: string;
+            /** Carrier */
+            carrier: string;
+            /** Customer */
+            customer: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "scheduled" | "in_yard" | "at_door";
+            /** Door */
+            door: number;
+            /** Due In Minutes */
+            due_in_minutes: number | null;
+            /** Detention */
+            detention: boolean;
+            /** Simulated */
+            simulated: boolean;
         };
         /** InspectionCreate */
         InspectionCreate: {
@@ -1487,12 +1792,33 @@ export interface components {
             /** Failed Checks */
             failed_checks: string[];
         };
+        /**
+         * InspectionSummary
+         * @description The order's most recent trailer inspection, judged by the same rule as when it was submitted.
+         */
+        InspectionSummary: {
+            /** Id */
+            id: number;
+            /** Overall Pass */
+            overall_pass: boolean;
+            /** Temperature Limit */
+            temperature_limit: number;
+            /** Failed Checks */
+            failed_checks: string[];
+            /** Interior Temperature */
+            interior_temperature: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** IssueCreate */
         IssueCreate: {
             /** Order Id */
             order_id?: number | null;
             /** Dock Door Id */
-            dock_door_id: number;
+            dock_door_id?: number | null;
             /** Issue Type */
             issue_type: string;
             /** Issue Subtype */
@@ -1526,6 +1852,8 @@ export interface components {
             count_expected?: number | null;
             /** Count Actual */
             count_actual?: number | null;
+            /** Lot */
+            lot?: string | null;
         };
         /** IssueCreated */
         IssueCreated: {
@@ -1545,6 +1873,12 @@ export interface components {
             estimated_cost_impact: number;
             /** Recurring Patterns */
             recurring_patterns: components["schemas"]["RecurringPattern"][];
+        };
+        /** IssueDispositionUpdate */
+        IssueDispositionUpdate: {
+            disposition: components["schemas"]["Disposition"];
+            /** Notes */
+            notes: string;
         };
         /**
          * IssueDraft
@@ -1662,6 +1996,50 @@ export interface components {
             carrier_name: string | null;
             /** Photo Count */
             photo_count: number;
+            /** Acknowledged By */
+            acknowledged_by?: number | null;
+            /** Acknowledged By Name */
+            acknowledged_by_name?: string | null;
+            /** On Hold At */
+            on_hold_at?: string | null;
+            /** Pending Action */
+            pending_action?: string | null;
+            /** Temp Reading */
+            temp_reading?: number | null;
+            /** Temp Limit */
+            temp_limit?: number | null;
+            /** Quantity Affected */
+            quantity_affected?: number | null;
+            /** Lot */
+            lot?: string | null;
+            /** Room */
+            room?: string | null;
+            /** Order Number */
+            order_number?: string | null;
+            /** Trailer Number */
+            trailer_number?: string | null;
+            /** Bol Number */
+            bol_number?: string | null;
+            /** Sim Minute */
+            sim_minute?: number | null;
+            /** Sim Time */
+            sim_time?: string | null;
+            /** Sim Shift */
+            sim_shift?: number | null;
+            /**
+             * Held Pallets
+             * @default []
+             */
+            held_pallets?: string[];
+            disposition?: components["schemas"]["Disposition"] | null;
+            /** Disposition Notes */
+            disposition_notes?: string | null;
+            /** Disposition By */
+            disposition_by?: number | null;
+            /** Disposition By Name */
+            disposition_by_name?: string | null;
+            /** Disposition At */
+            disposition_at?: string | null;
         };
         /** IssueSelfResolve */
         IssueSelfResolve: {
@@ -1677,7 +2055,7 @@ export interface components {
          * IssueStatus
          * @enum {string}
          */
-        IssueStatus: "resolution_in_progress" | "self_resolved" | "escalated" | "supervisor_resolved";
+        IssueStatus: "resolution_in_progress" | "self_resolved" | "escalated" | "on_hold" | "supervisor_resolved";
         /** IssueSupervisorResolve */
         IssueSupervisorResolve: {
             /** Resolution Type */
@@ -1800,6 +2178,28 @@ export interface components {
             /** Pallets */
             pallets: components["schemas"]["PlacedPalletOut"][];
         };
+        /** LoadStepOut */
+        LoadStepOut: {
+            /** Order Id */
+            order_id: number;
+            /** Load Step */
+            load_step: number;
+            counted: components["schemas"]["OrderItemOut"] | null;
+        };
+        /**
+         * LoadStepUpdate
+         * @description The load guide's current pallet. With `count`, moving on by one counts the pallet just loaded
+         *     on its order line, and moving back by one takes it off again.
+         */
+        LoadStepUpdate: {
+            /** Step */
+            step: number;
+            /**
+             * Count
+             * @default false
+             */
+            count?: boolean;
+        };
         /** MeOut */
         MeOut: {
             /** Id */
@@ -1829,7 +2229,7 @@ export interface components {
          * MovementKind
          * @enum {string}
          */
-        MovementKind: "receive" | "putaway" | "replenish" | "pick" | "load" | "ship" | "adjust";
+        MovementKind: "receive" | "putaway" | "replenish" | "pick" | "load" | "ship" | "adjust" | "hold" | "release";
         /** NameCount */
         NameCount: {
             /** Count */
@@ -1845,6 +2245,11 @@ export interface components {
             total: number;
             /** Self Resolved */
             self_resolved: number;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated?: boolean;
         };
         /** OrderCard */
         OrderCard: {
@@ -1953,6 +2358,9 @@ export interface components {
              * @default []
              */
             completion_blockers?: string[];
+            /** Load Step */
+            load_step?: number | null;
+            inspection?: components["schemas"]["InspectionSummary"] | null;
         };
         /** OrderItemOut */
         OrderItemOut: {
@@ -2238,6 +2646,57 @@ export interface components {
             /** Door Number */
             door_number: number | null;
         };
+        /** ReceivingCheckOut */
+        ReceivingCheckOut: {
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Issue Type */
+            issue_type: string;
+            /** Issue Subtype */
+            issue_subtype: string;
+            /** Answer */
+            answer: boolean | null;
+            /** Answered At */
+            answered_at: string | null;
+            /** Answered By Name */
+            answered_by_name: string | null;
+        };
+        /** ReceivingCheckSpecOut */
+        ReceivingCheckSpecOut: {
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Issue Type */
+            issue_type: string;
+            /** Issue Subtype */
+            issue_subtype: string;
+        };
+        /** ReceivingChecksOut */
+        ReceivingChecksOut: {
+            /** Order Id */
+            order_id: number;
+            /** Checks */
+            checks: components["schemas"]["ReceivingCheckOut"][];
+            /** All Answered */
+            all_answered: boolean;
+            /** Probes */
+            probes: number;
+            /** Needs Probe */
+            needs_probe: boolean;
+        };
+        /**
+         * ReceivingChecksUpdate
+         * @description Answers by check id (from `GET /api/taxonomy` → `receiving_checks`). Unnamed checks keep theirs.
+         */
+        ReceivingChecksUpdate: {
+            /** Answers */
+            answers: {
+                [key: string]: boolean;
+            };
+        };
         /** RecurringPattern */
         RecurringPattern: {
             /** Type */
@@ -2257,6 +2716,25 @@ export interface components {
          * @enum {string}
          */
         Role: "operator" | "supervisor" | "quality";
+        /** RoomLine */
+        RoomLine: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Temp */
+            temp: number;
+            /** Limit */
+            limit: number;
+            /** Setpoint */
+            setpoint: number;
+            /** Over Limit */
+            over_limit: boolean;
+            /** Alarm */
+            alarm: boolean;
+            /** On Hold Cases */
+            on_hold_cases: number;
+        };
         /** RoomReadingOut */
         RoomReadingOut: {
             /** Minute */
@@ -2265,6 +2743,20 @@ export interface components {
             time: string;
             /** Temp */
             temp: number;
+        };
+        /** RoomsCard */
+        RoomsCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "rooms";
+            /** Rooms */
+            rooms: components["schemas"]["RoomLine"][];
+            /** Wms Online */
+            wms_online: boolean;
+            /** Simulated */
+            simulated: boolean;
         };
         /** ScanCreate */
         ScanCreate: {
@@ -2289,6 +2781,26 @@ export interface components {
          * @enum {string}
          */
         ScanResult: "match" | "mismatch" | "unknown";
+        /**
+         * SelfResolveDraft
+         * @description Closing the worker's own issue. They confirm it; PUT /api/issues/{id}/self-resolve applies it.
+         */
+        SelfResolveDraft: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "self_resolve";
+            /** Issue Id */
+            issue_id: number;
+            /** Title */
+            title: string;
+            severity: components["schemas"]["Severity"];
+            /** Resolution Type */
+            resolution_type: string | null;
+            /** Resolution Notes */
+            resolution_notes: string;
+        };
         /**
          * Severity
          * @enum {string}
@@ -2328,6 +2840,12 @@ export interface components {
             created_at: string;
             /** Supervisor Name */
             supervisor_name: string;
+            /** Read By */
+            read_by?: number | null;
+            /** Read By Name */
+            read_by_name?: string | null;
+            /** Read At */
+            read_at?: string | null;
         };
         /** ShiftKpisOut */
         ShiftKpisOut: {
@@ -2568,6 +3086,40 @@ export interface components {
             supervisor_decisions: string[];
             /** Request Types */
             request_types: string[];
+            /**
+             * Accept Decisions
+             * @default []
+             */
+            accept_decisions?: string[];
+            /**
+             * Pending Decisions
+             * @default []
+             */
+            pending_decisions?: string[];
+            /**
+             * Decision Targets
+             * @default {}
+             */
+            decision_targets?: {
+                [key: string]: number;
+            };
+            /**
+             * Pending Actions
+             * @default {}
+             */
+            pending_actions?: {
+                [key: string]: string;
+            };
+            /**
+             * Cold Chain Issue Types
+             * @default []
+             */
+            cold_chain_issue_types?: string[];
+            /**
+             * Receiving Checks
+             * @default []
+             */
+            receiving_checks?: components["schemas"]["ReceivingCheckSpecOut"][];
         };
         /** TemperatureCard */
         TemperatureCard: {
@@ -2606,6 +3158,41 @@ export interface components {
             delta: number | null;
             /** Guidance */
             guidance: string;
+            /** Id */
+            id?: number | null;
+            /** Issue Id */
+            issue_id?: number | null;
+            /** Created At */
+            created_at?: string | null;
+        };
+        /**
+         * TemperatureLogOut
+         * @description One probe reading in the order's HACCP log.
+         */
+        TemperatureLogOut: {
+            /** Id */
+            id: number;
+            /** Order Id */
+            order_id: number;
+            /** User Id */
+            user_id: number;
+            /** Operator Name */
+            operator_name: string | null;
+            /** Reading */
+            reading: number;
+            /** Limit */
+            limit: number | null;
+            /** Delta */
+            delta: number | null;
+            /** Status */
+            status: string;
+            /** Issue Id */
+            issue_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** TokenOut */
         TokenOut: {
@@ -2619,6 +3206,47 @@ export interface components {
             /** Expires In */
             expires_in: number;
             user: components["schemas"]["MeOut"];
+        };
+        /** TraceCard */
+        TraceCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "trace";
+            /** Sku */
+            sku: string;
+            /** Product Name */
+            product_name: string | null;
+            /** Lot */
+            lot: string | null;
+            /** On Hand */
+            on_hand: components["schemas"]["StockPallet"][];
+            /** Movements */
+            movements: components["schemas"]["TraceMove"][];
+            /** Wms Online */
+            wms_online: boolean;
+            /** Simulated */
+            simulated: boolean;
+        };
+        /** TraceMove */
+        TraceMove: {
+            /** Time */
+            time: string;
+            /** Kind */
+            kind: string;
+            /** Pallet Id */
+            pallet_id: string;
+            /** Lot */
+            lot: string;
+            /** Cases */
+            cases: number;
+            /** From Location */
+            from_location: string | null;
+            /** To Location */
+            to_location: string | null;
+            /** Order Number */
+            order_number: string | null;
         };
         /** TypeCount */
         TypeCount: {
@@ -2727,6 +3355,8 @@ export interface components {
             order_number: string;
             /** Door */
             door: number;
+            /** Booked Door */
+            booked_door?: number | null;
             /** Type */
             type: string;
             /** Customer */
@@ -3267,6 +3897,41 @@ export interface operations {
             };
         };
     };
+    set_load_step_api_orders__order_id__load_step_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoadStepUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadStepOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     temperature_check_api_orders__order_id__temperature_check_post: {
         parameters: {
             query?: never;
@@ -3289,6 +3954,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemperatureCheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    temperature_log_api_orders__order_id__temperature_checks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemperatureLogOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_receiving_checks_api_orders__order_id__receiving_checks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivingChecksOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_receiving_checks_api_orders__order_id__receiving_checks_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceivingChecksUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivingChecksOut"];
                 };
             };
             /** @description Validation Error */
@@ -3344,6 +4106,13 @@ export interface operations {
                 status?: string | null;
                 operator_id?: number | null;
                 severity?: components["schemas"]["Severity"] | null;
+                /** @description A door number */
+                dock?: number | null;
+                carrier_id?: number | null;
+                /** @description Filed on or after this day (UTC) */
+                from?: string | null;
+                /** @description Filed on or before this day (UTC) */
+                to?: string | null;
                 limit?: number;
             };
             header?: never;
@@ -3393,6 +4162,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IssueCreated"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_issues_api_issues_export_csv_get: {
+        parameters: {
+            query?: {
+                /** @description An issue status, or 'active' for open issues */
+                status?: string | null;
+                operator_id?: number | null;
+                severity?: components["schemas"]["Severity"] | null;
+                /** @description A door number */
+                dock?: number | null;
+                carrier_id?: number | null;
+                /** @description Filed on or after this day (UTC) */
+                from?: string | null;
+                /** @description Filed on or before this day (UTC) */
+                to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3568,6 +4377,41 @@ export interface operations {
             };
         };
     };
+    dispose_issue_api_issues__issue_id__disposition_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueDispositionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_photos_api_issues__issue_id__photos_get: {
         parameters: {
             query?: never;
@@ -3683,6 +4527,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_requests_api_requests_mine_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["RequestStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuickRequestOut"][];
                 };
             };
             /** @description Validation Error */
@@ -3897,6 +4772,57 @@ export interface operations {
             };
         };
     };
+    handoff_draft_api_shift_handoffs_draft_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoffDraftOut"];
+                };
+            };
+        };
+    };
+    read_handoff_api_shift_handoffs__handoff_id__read_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                handoff_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftHandoffOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stream_chat_api_chat_stream_post: {
         parameters: {
             query?: never;
@@ -3985,7 +4911,12 @@ export interface operations {
     };
     analytics_summary_api_analytics_summary_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filed on or after this day (UTC) */
+                from?: string | null;
+                /** @description Filed on or before this day (UTC) */
+                to?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3999,6 +4930,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalyticsSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

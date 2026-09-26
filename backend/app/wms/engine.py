@@ -22,7 +22,7 @@ from app import realtime
 from app.api.access import issue_audience
 from app.db import Database, utcnow
 from app.domain.dock import DockEvent, transition
-from app.domain.enums import IssueStatus, OrderStatus, OrderType, Role, Severity
+from app.domain.enums import IssueStatus, MovementKind, OrderStatus, OrderType, Role, Severity
 from app.models import (
     Carrier,
     Company,
@@ -32,17 +32,21 @@ from app.models import (
     Order,
     OrderItem,
     Product,
+    ReceivingCheck,
     ScanEvent,
     SimEvent,
     SimState,
+    TemperatureCheck,
     TrailerInspection,
     User,
+    WmsTransaction,
 )
 from app.queries import issue_select
 from app.realtime import ConnectionManager
 from app.schemas import IssueCreate, IssueOut
 from app.services.issue_filing import SystemFiling, file_issue
 from app.wms import ledger
+from app.wms.client import HoldRequest
 from app.wms.clock import SHIFT_MINUTES, Clock, clock_label, shift_of
 from app.wms.plan import (
     Appointment,
@@ -54,7 +58,7 @@ from app.wms.plan import (
     shift_kpis,
     work_window,
 )
-from app.wms.warehouse import IssueRequest, Trailer, Warehouse
+from app.wms.warehouse import SYSTEM, IssueRequest, Trailer, Warehouse, select_for_hold
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +262,7 @@ class SimulationEngine:
 
         for number, (start, end) in enumerate(plan.outages):
             if minute >= start and f"s{shift}-outage{number}" not in applied:
-                issue = await self._report_outage(session)
+                issue = await self._report_outage(session, minute)
                 self._record(session, f"s{shift}-outage{number}", "outage", minute, "WMS offline", issue)
                 if issue is not None:
                     notices.new_issues.append(issue)
@@ -357,8 +361,19 @@ class SimulationEngine:
             self._record(session, request.key, request.kind, request.minute, request.description[:200], issue)
             if issue is not None:
                 notices.new_issues.append(issue)
+        await self._link_receipt_holds(session, warehouse)
         if warehouse.changed:
             notices.floor_changed = True
+
+    async def _link_receipt_holds(self, session: AsyncSession, warehouse: Warehouse) -> None:
+        """A planned damage or temperature exception's cases come off the trailer onto their own plate,
+        bound for quality hold (§12.8): that plate is recorded on the exception's issue."""
+        for movement in warehouse.movements:
+            if movement.kind is not MovementKind.RECEIVE or not movement.key.endswith(":rcv:hold"):
+                continue
+            issue = await self._event_issue(session, movement.key.removesuffix(":rcv:hold") + ":exc")
+            if issue is not None and movement.lpn not in issue.held_pallets:
+                issue.held_pallets = [*issue.held_pallets, movement.lpn]
 
     async def _file_warehouse_issue(
         self, session: AsyncSession, reference: Reference, request: IssueRequest
@@ -378,7 +393,7 @@ class SimulationEngine:
             else None
         )
         company_id = order.company_id if order else product.company_id if product else None
-        return await file_issue(
+        issue = await file_issue(
             session,
             crew[0].id,
             SystemFiling(
@@ -394,9 +409,14 @@ class SimulationEngine:
                 temp_threshold_max=request.temp_limit,
                 count_expected=request.count_expected,
                 count_actual=request.count_actual,
+                room_minutes_over_limit=request.room_minutes_over_limit,
             ),
             simulated=True,
+            sim_minute=request.minute,
         )
+        issue.room = request.room
+        issue.held_pallets = list(request.held)
+        return issue
 
     async def _settle_warehouse_issues(
         self, session: AsyncSession, shifts: set[int], applied: set[str], minute: float, notices: Notices
@@ -672,6 +692,7 @@ class SimulationEngine:
                         count_actual=exception.count_actual,
                     ),
                     simulated=True,
+                    sim_minute=exception_at,
                 )
                 self._record(
                     session,
@@ -763,7 +784,7 @@ class SimulationEngine:
                     dock.status, dock.lifecycle_phase, DockEvent.ISSUE_RESOLVED
                 )
 
-    async def _report_outage(self, session: AsyncSession) -> Issue | None:
+    async def _report_outage(self, session: AsyncSession, minute: float) -> Issue | None:
         """A simulated crew member at a door reports the WMS as offline, as they would on the floor."""
         order = await session.scalar(
             select(Order).where(Order.status == OrderStatus.IN_PROGRESS, Order.sim_managed).order_by(Order.id)
@@ -783,6 +804,7 @@ class SimulationEngine:
                 carrier_id=order.carrier_id,
             ),
             simulated=True,
+            sim_minute=minute,
         )
 
     async def _notify(self, session: AsyncSession, notices: Notices) -> None:
@@ -853,7 +875,11 @@ class SimulationEngine:
             await session.execute(delete(SimEvent))
             await session.execute(delete(IssuePhoto).where(IssuePhoto.issue_id.in_(sim_issues)))
             await session.execute(delete(Issue).where(Issue.simulated))
-            await session.execute(delete(Issue).where(Issue.order_id.in_(sim_orders)))
+            # A person's report on a simulated trailer outlives the trailer: detached, never deleted. It
+            # keeps the order's number, trailer and BOL as they were when filed (business-rules §12.5).
+            await session.execute(update(Issue).where(Issue.order_id.in_(sim_orders)).values(order_id=None))
+            await session.execute(delete(TemperatureCheck).where(TemperatureCheck.order_id.in_(sim_orders)))
+            await session.execute(delete(ReceivingCheck).where(ReceivingCheck.order_id.in_(sim_orders)))
             await session.execute(delete(TrailerInspection).where(TrailerInspection.order_id.in_(sim_orders)))
             await session.execute(delete(ScanEvent).where(ScanEvent.order_id.in_(sim_orders)))
             await session.execute(delete(Order).where(Order.simulated))
@@ -873,6 +899,70 @@ class SimulationEngine:
         self._plans.clear()
         if self._events is not None:
             await self._events.send_all(realtime.floor_update())
+
+    # ── Quality hold and disposition (business-rules §7.3), for SimulatedWms ──
+
+    async def hold_stock(self, request: HoldRequest, now: datetime | None = None) -> list[str]:
+        """Bring the warehouse up to now, then put the matching plates on quality hold."""
+        await self.advance(now)
+        async with self._lock, self._database.sessionmaker() as session:
+            held = await self._hold(session, request)
+            await session.commit()
+        if held and self._events is not None:
+            await self._events.send_all(realtime.floor_update())
+        return held
+
+    async def dispose_stock(
+        self, plates: list[str], action: str, ref: str, actor: str, now: datetime | None = None
+    ) -> list[str]:
+        await self.advance(now)
+        async with self._lock, self._database.sessionmaker() as session:
+            state = await self._state(session)
+            loaded = await ledger.load(session, state, self.products(await self.reference(session)))
+            if not loaded.opened:
+                return []
+            warehouse = loaded.warehouse
+            moved = warehouse.dispose(
+                plates, action, warehouse.minute, actor, ref, f"{ref}:{uuid.uuid4().hex[:8]}"
+            )
+            await ledger.save(session, loaded, state)
+            await session.commit()
+        if moved and self._events is not None:
+            await self._events.send_all(realtime.floor_update())
+        return moved
+
+    async def _hold(self, session: AsyncSession, request: HoldRequest) -> list[str]:
+        state = await self._state(session)
+        loaded = await ledger.load(session, state, self.products(await self.reference(session)))
+        if not loaded.opened:
+            return []
+        plates: list[str] = []
+        if request.order_ref:
+            plates = list(
+                await session.scalars(
+                    select(WmsTransaction.lpn)
+                    .where(
+                        WmsTransaction.ref == request.order_ref,
+                        WmsTransaction.kind.in_((MovementKind.RECEIVE, MovementKind.PICK)),
+                    )
+                    .distinct()
+                )
+            )
+        warehouse = loaded.warehouse
+        lines = select_for_hold(
+            warehouse.stock.values(),
+            warehouse.products,
+            plates=plates,
+            sku=request.sku,
+            same_lot=request.same_lot,
+            room=request.room,
+            above=request.above,
+        )
+        held = warehouse.hold(
+            lines, warehouse.minute, request.actor, request.ref, f"{request.ref}:{uuid.uuid4().hex[:8]}"
+        )
+        await ledger.save(session, loaded, state)
+        return held
 
     async def inject(self, kind: str, now: datetime | None = None) -> str:
         """Trigger a scenario on cue — a live demo does not have to wait for the dice."""
@@ -897,7 +987,7 @@ class SimulationEngine:
     async def _inject(self, session: AsyncSession, kind: str, minute: float, notices: Notices) -> str:
         if kind == "wms_outage":
             (await self._state(session)).outage_until_minute = minute + INJECTED_OUTAGE_MINUTES
-            issue = await self._report_outage(session)
+            issue = await self._report_outage(session, minute)
             if issue is not None:
                 notices.new_issues.append(issue)
             return "WMS offline for 8 simulated minutes"
@@ -981,7 +1071,18 @@ class SimulationEngine:
                 raise LookupError(f"Unknown scenario '{kind}'")
 
         order.sim_managed = False  # a person is now handling this trailer
-        issue = await file_issue(session, order.operator_id, body, simulated=True)
+        issue = await file_issue(session, order.operator_id, body, simulated=True, sim_minute=minute)
+        if kind == "temperature_emergency" and order.external_ref:
+            crew = await session.get(User, order.operator_id)
+            issue.held_pallets = await self._hold(
+                session,
+                HoldRequest(
+                    ref=f"ISSUE-{issue.id}",
+                    actor=crew.employee_id if crew else SYSTEM,
+                    order_ref=order.external_ref,
+                    sku=product.sku if product else None,
+                ),
+            )
         notices.new_issues.append(issue)
         if issue.severity in (Severity.HIGH, Severity.CRITICAL):
             dock = await session.get(DockDoor, order.dock_door_id)

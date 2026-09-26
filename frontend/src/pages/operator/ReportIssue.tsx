@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router';
 import { errorMessage } from '../../api/client';
 import {
   useActiveOrder,
+  useDocks,
   useEscalate,
   useOrder,
   useReportIssue,
@@ -17,6 +18,7 @@ import { PhotoPicker, VoiceButton } from '../../components/Evidence';
 import { issueIcon } from '../../components/icons';
 import { ProcedureCard, RecurringPatterns, SeverityDerivation } from '../../components/Resolution';
 import {
+  ChoiceGroup,
   ErrorBlock,
   FieldLabel,
   LoadingBlock,
@@ -75,10 +77,25 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-function TypeStep({ types, onPick }: { types: IssueTypeSpec[]; onPick: (type: IssueTypeSpec) => void }) {
+function TypeStep({
+  types,
+  onPick,
+  hasOrder,
+}: {
+  types: IssueTypeSpec[];
+  onPick: (type: IssueTypeSpec) => void;
+  hasOrder: boolean;
+}) {
+  const groups = hasOrder ? GROUPS : GROUPS.filter((group) => group.id !== 'product');
   return (
     <div className="flex flex-col gap-6">
-      {GROUPS.map((group, groupIndex) => (
+      {!hasOrder && (
+        <Notice title="No trailer assigned">
+          Product issues need the trailer you are on; safety, equipment and system problems can be reported
+          now.
+        </Notice>
+      )}
+      {groups.map((group, groupIndex) => (
         <section key={group.id} className="reveal" style={{ '--i': groupIndex } as CSSProperties}>
           <div className="mb-3 flex flex-wrap items-baseline gap-3 border-b border-hairline pb-2">
             <h2 className="heading text-2xl">{group.title}</h2>
@@ -116,6 +133,8 @@ function TypeStep({ types, onPick }: { types: IssueTypeSpec[]; onPick: (type: Is
 interface Draft {
   subtype: string | null;
   productId: number | null;
+  /** The dock, when there is no order to take it from. */
+  dockId: number | null;
   description: string;
   tags: string[];
   temp: string;
@@ -124,6 +143,34 @@ interface Draft {
   actual: string;
   quantity: string;
   photos: Blob[];
+}
+
+/** Where it happened, when there is no assignment to say so. Optional: a WMS fault has no dock. */
+function DockPicker({ value, onChange }: { value: number | null; onChange: (dock: number | null) => void }) {
+  const docks = useDocks();
+  return (
+    <Panel title="Which dock?">
+      <label htmlFor="report-dock" className="sr-only">
+        Dock
+      </label>
+      <select
+        id="report-dock"
+        className="field text-lg"
+        value={value ?? ''}
+        onChange={(event) => onChange(event.target.value === '' ? null : Number(event.target.value))}
+      >
+        <option value="">Not at a dock</option>
+        {(docks.data ?? []).map((dock) => (
+          <option key={dock.id} value={dock.id}>
+            Dock {dock.door_number}
+          </option>
+        ))}
+      </select>
+      {docks.isError && (
+        <p className="mt-2 text-sm text-ink-mute">Docks could not be loaded; it can be filed without one.</p>
+      )}
+    </Panel>
+  );
 }
 
 function DetailsStep({
@@ -198,6 +245,8 @@ function DetailsStep({
           </p>
         )}
       </Panel>
+
+      {!order && <DockPicker value={draft.dockId} onChange={(dockId) => set({ dockId })} />}
 
       {isProduct && order && order.items.length > 0 && (
         <Panel title="Which product?">
@@ -396,6 +445,8 @@ function ResultStep({
   const taxonomy = useTaxonomy();
   const selfResolve = useSelfResolve();
   const escalate = useEscalate();
+  const [choice, setChoice] = useState<string | null>(null);
+  const [note, setNote] = useState('');
   const resolution = aiResolutionOf(created);
   const critical = created.severity === 'critical';
 
@@ -434,30 +485,58 @@ function ResultStep({
       ) : (
         <Panel title="Resolve it yourself" index={2}>
           <p className="mb-3 text-base">
-            Did the procedure fix it? Tap what you did and the issue is closed.
+            Did the procedure fix it? Pick what you did, add a note if it helps, and confirm.
           </p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
-              <button
-                key={option}
-                type="button"
-                className="choice justify-center"
-                disabled={selfResolve.isPending || escalate.isPending}
-                onClick={() =>
-                  selfResolve.mutate(
-                    {
-                      id: created.id,
-                      resolution_type: option,
-                      resolution_notes: 'Resolved with the suggested procedure',
-                    },
-                    { onSuccess: () => onDone('resolved') },
-                  )
-                }
-              >
-                {option}
-              </button>
-            ))}
+          <ChoiceGroup
+            label="What you did"
+            options={(taxonomy.data?.operator_resolutions ?? []).map((option) => ({
+              value: option,
+              label: option,
+            }))}
+            value={choice}
+            onChange={setChoice}
+            columns={4}
+          />
+          <div className="mt-4">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div className="flex-1">
+                <FieldLabel htmlFor="resolution-note" hint="Optional">
+                  Note for the record
+                </FieldLabel>
+              </div>
+              <div className="mb-2">
+                <VoiceButton
+                  onText={(text) =>
+                    setNote((current) => (current ? `${current} ${text}` : text).slice(0, 2000))
+                  }
+                />
+              </div>
+            </div>
+            <textarea
+              id="resolution-note"
+              rows={2}
+              className="field text-lg"
+              maxLength={2000}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="What you did, what you saw"
+            />
           </div>
+          <button
+            type="button"
+            className="btn btn-primary mt-4 w-full text-lg"
+            disabled={!choice || selfResolve.isPending || escalate.isPending}
+            onClick={() => {
+              if (!choice) return;
+              selfResolve.mutate(
+                { id: created.id, resolution_type: choice, resolution_notes: note.trim() },
+                { onSuccess: () => onDone('resolved') },
+              );
+            }}
+          >
+            <Check size={22} aria-hidden="true" />
+            {selfResolve.isPending ? 'Closing…' : 'Yes — mark it resolved'}
+          </button>
           <div className="mt-5 border-t border-hairline pt-5">
             <button
               type="button"
@@ -484,13 +563,14 @@ function ResultStep({
 const EMPTY_DRAFT: Draft = {
   subtype: null,
   productId: null,
+  dockId: null,
   description: '',
   tags: [],
   temp: '',
   limit: '',
   expected: '',
   actual: '',
-  quantity: '1',
+  quantity: '',
   photos: [],
 };
 
@@ -502,7 +582,7 @@ function toNumber(value: string): number | null {
 
 function Flow({ order }: { order: OrderDetail | undefined }) {
   const taxonomy = useTaxonomy();
-  const [search] = useSearchParams();
+  const [search, setSearch] = useSearchParams();
   const prefill = useMemo(() => readPrefill(search), [search]);
   const report = useReportIssue();
   const upload = useUploadPhoto();
@@ -527,8 +607,11 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
         {errorMessage(taxonomy.error)}
       </Notice>
     );
+  // Without an order, a product type cannot be reported: the link's type is ignored.
   const prefilledType = prefill.type
-    ? taxonomy.data.issue_types.find((spec) => spec.name === prefill.type)
+    ? taxonomy.data.issue_types.find(
+        (spec) => spec.name === prefill.type && (order !== undefined || spec.group !== 'product'),
+      )
     : undefined;
   const current = type ?? prefilledType ?? null;
   const step = outcome ? 3 : created ? 2 : current ? 1 : 0;
@@ -544,24 +627,26 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
   };
 
   const submit = () => {
-    if (!current || !order?.dock_door_id) return;
-    const product = order.items.find((item) => item.product_id === draft.productId);
+    if (!current) return;
+    const product = order?.items.find((item) => item.product_id === draft.productId);
     // The tags ride along in the text; keep the whole within the server's 2000-character limit.
     const tagText = draft.tags.join('. ');
     const room = 2000 - (tagText ? tagText.length + 2 : 0);
     const description = [draft.description.trim().slice(0, room), tagText].filter(Boolean).join('. ');
     report.mutate(
       {
-        order_id: order.id,
-        dock_door_id: order.dock_door_id,
+        // People and systems issues need no order (business-rules §8); product ones always have one here.
+        order_id: order?.id ?? null,
+        dock_door_id: order ? order.dock_door_id : draft.dockId,
         issue_type: current.name,
         issue_subtype: draft.subtype,
         description,
         quick_tags: draft.tags,
         product_id: product?.product_id ?? null,
-        company_id: order.company_id,
-        carrier_id: order.carrier_id,
-        quantity_affected: toNumber(draft.quantity) ?? 1,
+        company_id: order?.company_id ?? null,
+        carrier_id: order?.carrier_id ?? null,
+        // Blank = not stated: severity is not scaled by a guess (business-rules §1.9).
+        quantity_affected: toNumber(draft.quantity),
         temp_reading: toNumber(draft.temp),
         temp_threshold_max: toNumber(draft.limit),
         count_expected: toNumber(draft.expected),
@@ -576,7 +661,13 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
     );
   };
 
+  /** Drop the link's pre-fill, so the type picker shows and a fresh report starts from nothing. */
+  const clearPrefill = () => {
+    if (search.size > 0) setSearch(new URLSearchParams(), { replace: true });
+  };
+
   const restart = () => {
+    clearPrefill();
     setType(null);
     setDraft(EMPTY_DRAFT);
     setCreated(null);
@@ -591,6 +682,7 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
       {step === 0 && (
         <TypeStep
           types={taxonomy.data.issue_types}
+          hasOrder={order !== undefined}
           onPick={(spec) => {
             setType(spec);
             setDraft({ ...draft, subtype: null });
@@ -604,8 +696,9 @@ function Flow({ order }: { order: OrderDetail | undefined }) {
           draft={draft}
           setDraft={setDraft}
           onBack={() => {
+            // Back to the types, keeping what was typed; a pre-filled link must not pull straight back.
+            clearPrefill();
             setType(null);
-            setDraft(EMPTY_DRAFT);
           }}
           onSubmit={submit}
           pending={report.isPending}
@@ -670,9 +763,7 @@ export default function ReportIssue() {
       ) : active.isError && !active.data ? (
         <ErrorBlock error={active.error} onRetry={() => void active.refetch()} />
       ) : !active.data ? (
-        <Notice title="No active assignment">
-          Issues are reported against the trailer at your dock. Ask your supervisor for an assignment.
-        </Notice>
+        <Flow order={undefined} />
       ) : (
         <QueryBoundary query={order} loading="Loading the order">
           {(detail) => <Flow order={detail} />}

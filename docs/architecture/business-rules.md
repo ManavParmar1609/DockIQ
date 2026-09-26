@@ -15,16 +15,20 @@ documentation errors; they are real defects worth knowing about.
 
 ## 1. Severity classification
 
-**Source:** `backend/app/domain/severity.py` → `classify_severity()` (lines 60–114)
+**Source:** `backend/app/domain/severity.py` → `classify_severity()`; its inputs are built in one
+place, `app/services/issue_filing.py` → `score_issue()`, for a filing and for the assistant's preview.
 
 This is a **deterministic weighted formula, not an LLM call.** The LLM is used only for the chat
 assistant. Severity is reproducible and auditable, which is the point — a food-safety decision
 should not depend on a sampled token.
 
 ```
-score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier
+score = issue_type_weight × product_risk_multiplier × customer_tier_multiplier × quantity_share_factor
         + modifiers
+severity = the band of the score, raised (never lowered) to the highest floor that applies
 ```
+
+`quantity_share_factor` is 1.0 unless §1.9 applies.
 
 ### 1.1 Issue type weights
 
@@ -128,11 +132,83 @@ if it is below it — never lowered. `taxonomy.py` → `SEVERITY_FLOORS`.
 
 The reason text records it: `Floor: 'Employee injury' is never below CRITICAL`.
 
-### 1.9 Change history
+### 1.9 Proportional damage: the share of cases affected
+
+Two torn cases off a pallet are not a damaged pallet. For the damage below, the base score
+(weight × product × tier) is multiplied by a factor for the **share of cases affected**.
+`severity.py` → `QUANTITY_SHARE_FACTORS`; `taxonomy.py` → `QUANTITY_SCALED_SUBTYPES`.
+
+| Cases affected ÷ reference | Factor | Why |
+|---|---|---|
+| ≤ 5% | ×0.4 | Within the SOP's partial-accept allowance (§4.1) |
+| > 5% and ≤ 25% | ×0.7 | Past the allowance: the SOP escalates, but a fraction of the pallet |
+| > 25% (a quarter, a whole pallet or more) | ×1.0 | Treated as the whole pallet |
+
+- **Reference** = the product's `cases_per_pallet`, or the order line's expected cases when that is
+  smaller. With neither known, nothing is scaled.
+- **Scaled:** Damaged Pallet with no subtype, *Damaged cartons or packaging*, *Torn or loose shrink
+  wrap*, *Product fallen off pallet*; Product Quality Concern *Water damage from condensation*.
+- **Never scaled:** structural and handling damage (*Crushed or collapsed pallet*, *Leaning or unstable
+  load*, *Damaged or broken pallet*, *Frozen pallet stuck to floor*, *Cannot safely remove or place
+  pallet*) — the question is whether the pallet can move safely, not how many cases are hurt — and
+  every other type, **Temperature Deviation included**: product over its limit is a food-safety
+  judgement on the product and the reading, not on the case count.
+- **Only a stated quantity scales.** `IssueCreate.quantity_affected` defaults to 1; a report that
+  leaves it out is scored in full (`issue_filing.given_quantity()`). The Report screen's *Cases
+  affected* starts blank, and the assistant's draft carries only a number the person gave.
+- The reason text records it: `2 of 48 cases on the pallet (4.2%) (×0.4)`.
+
+### 1.10 Scope floors: a whole room, and product far over its limit
+
+Added to the floors of §1.8; the highest floor that applies is the one recorded.
+
+| Situation | Never below | Source |
+|---|---|---|
+| A **cold-room excursion** (the whole room, filed by the warehouse, §12.12) | **high** | `classify_severity(room_minutes_over_limit=…)` |
+| …and the room has read over its limit for **≥ 15 min** (`ROOM_ALARM_MINUTES`, the same as the warehouse alarm, §12.12) | **critical** | |
+| A Temperature Deviation with product **more than 5°F** over its limit | **high** | `TEMPERATURE_FLOORS`, the probe check's *warning* band (§11.1) |
+| A Temperature Deviation with product **more than 10°F** over its limit | **critical** | the probe check's *critical* band: *Do not unload* (receiving) / *Do not load* (loading) |
+
+A room excursion alarms only after 15 minutes over the limit, so every alarm the warehouse files is
+**critical** and escalated at once (§7.1). A person's report is never room-scoped: only the warehouse
+sets `room_minutes_over_limit` (`SystemFiling`).
+
+### 1.11 Worked examples (§1.9 and §1.10)
+
+**A. Two torn cases of frozen chicken.** OP-001 loading Crestline Markets (tier 1), CRM-FZ-1001
+(Frozen, 48 cases a pallet, a 200-case line), *Damaged cartons or packaging*, 2 cases, trailer at the
+door for 111 min.
+
+| | Derivation | Result |
+|---|---|---|
+| Before | 4 × 3.0 × 1.5 = 18.0, + 2 dwell | **20.0 → CRITICAL** — escalated, the dock goes red |
+| After | 4 × 3.0 × 1.5 = 18.0 × 0.4 (2 of 48 = 4.2%) = 7.2, + 2 dwell | **9.2 → MEDIUM** — the worker can segregate the cases and resolve it |
+
+**B. A tripped compressor in the produce room.** The room (limit 45°F) reads 48°F for 15 min; the
+most temperature-sensitive product stored there is a tier-1 customer's produce.
+
+| | Derivation | Result |
+|---|---|---|
+| Before | 5 × 2.0 × 1.5 = 15.0, + 1 (3°F over) | **16.0 → HIGH** — *below* two torn cases |
+| After | the same 16.0, then the §1.10 room floor (over its limit ≥ 15 min) | **16.0 → CRITICAL** — escalated; Supervisor and Quality alerted |
+
+Both are pinned: `test_worked_example_two_torn_cases_of_frozen_chicken`,
+`test_worked_example_produce_room_compressor_trip`, and end to end through the API and the assistant's
+draft (`test_damage_severity_follows_the_cases_the_person_states`,
+`test_two_torn_cases_draft_scores_by_share_and_files_the_same`).
+
+**Seeded history** is scored without a quantity (the seed does not state one), so its severities are
+unchanged. The simulator's receiving damage (1–6 cases, §12.13) now scores by share; its injected
+*Crushed or collapsed pallet* (§12.4) is structural and unchanged.
+
+### 1.12 Change history
 
 The Phase 1 code carried a truthiness test (`if count_expected and count_actual:`) that made a
 **total non-delivery score lower than a 6% shortage**. Fixed in Phase 2; pinned by
 `test_total_non_delivery_scores_shortage_modifier`.
+
+2026-09-25: proportional damage (§1.9) and scope floors (§1.10), approved by the product owner after
+two torn cases of chicken outranked a cold room in alarm.
 
 ---
 
@@ -188,12 +264,49 @@ Algorithm:
 The company bonus now fires in the issue-creation path *(Phase 2 — previously `company_name` was
 never passed, which depressed confidence on well-matched procedures)*.
 
+Before step 2, rows for the other direction or the other temperature band are dropped (§3.1, §3.2).
+If nothing is left, the fallback is returned — never a procedure for the wrong job.
+
+### 3.1 Direction: loading is not receiving
+
+`retrieval.py` → `SCENARIO_DIRECTION`. The order's `type` is passed in (`outbound` = loading,
+`inbound` = receiving). The knowledge base has no direction column, so the table names scenarios; a
+test fails if a name drifts from `knowledge_base.json`. Scenarios not listed apply to both.
+
+| Inbound only (receiving) | Outbound only (loading) |
+|---|---|
+| Less than 5% of cases damaged · More than 5% of cases damaged · Packaging is punctured on food items | **Damaged cases found while loading** (Loading SOP 3.2) · **Punctured or open food packaging found while loading** (Loading SOP 3.3) |
+| Temperature within 5°F of threshold (marginal) · Temperature more than 5°F above threshold | **Product within 5°F of its limit while loading (marginal)** (Cold Chain SOP 2.2) · **Product more than 5°F above its limit while loading** (Cold Chain SOP 2.4) |
+| Count is within / exceeds customer tolerance · Overage — received more than expected | **Staged count does not match the order** (Loading SOP 3.5) · Missing or extra pallet |
+| BOL doesn't match physical product | — |
+
+A loading job is never told to *continue unloading*, *partial accept* or *sign the BOL with the
+count received*. With no order (a warehouse filing, a staff question) every row competes.
+
+### 3.2 Temperature band
+
+`retrieval.py` → `temperature_band()`, `SCENARIO_TEMPERATURE_BAND`. With a reading and a limit, the
+band is **marginal** when the product is 0–5°F over (`MARGINAL_BAND_MAX = 5.0`) and **critical**
+beyond; at or under the limit there is no band. The other band's procedures are dropped, and a row in
+the reading's band scores **+2** (`BAND_BONUS`), so it beats a generic temperature row (the reefer
+check) on the same words. The assistant's `find_procedure` without a reading returns **both** band
+procedures, each labelled with when it applies.
+
+### 3.3 Torn or loose wrap
+
+A new row, **Torn or loose shrink wrap** (Company SOP 4.5 — Pallet Wrap Integrity), for the subtype of
+the same name and the words *shrink wrap, stretch wrap, torn wrap, loose wrap, wrap came off, re-wrap,
+wrap*: check the cases under the wrap, **re-wrap and continue** — torn wrap alone is not a reason to
+reject. Before, "torn" matched *Packaging is punctured on food items* (stop, quarantine, full
+rejection). Punctured or open cases under the wrap are still reported as damaged cartons.
+
 ---
 
 ## 4. Operational thresholds
 
-Encoded across the 41 seeded entries in `backend/app/seed/data/knowledge_base.json` (27 original,
-14 added in Phase 2 for Safety, WMS, count and trailer-restraint scenarios). The knowledge base is
+Encoded across the 47 seeded entries in `backend/app/seed/data/knowledge_base.json` (27 original,
+14 added in Phase 2 for Safety, WMS, count and trailer-restraint scenarios, 6 on 2026-09-25 for
+loading-side procedures and pallet wrap, §3.1–§3.3). The knowledge base is
 reference data: every boot replaces it with the repository's copy.
 These are the substantive food-safety and acceptance rules.
 
@@ -288,7 +401,8 @@ Company records also carry `tier` (1–3, feeding §1.3), `count_tolerance` (a f
 The patterns are **stored on the issue** (`issues.recurring_patterns`) and shown on the report
 confirmation, the supervisor queue and the issue detail — the *"3rd temp issue from this carrier"*
 line from Scenario 2. *(Phase 2 — previously computed and discarded, and the count excluded the
-report being filed, so the message read "the 3th" on what was really the 4th.)*
+report being filed, so the message read "the 3th" on what was really the 4th.)* Counts read as
+English ordinals — 1st, 2nd, 3rd, 4th, 11th, 12th, 13th, 21st (`recurrence.ordinal`).
 
 ---
 
@@ -298,15 +412,28 @@ report being filed, so the message read "the 3th" on what was really the 4th.)*
 
 ```
 resolution_in_progress ──┬──▶ self_resolved
-                         ├──▶ escalated ──▶ supervisor_resolved
+                         ├──▶ escalated ──┬──▶ supervisor_resolved
+                         │                └──▶ on_hold ──▶ supervisor_resolved
+                         ├──▶ on_hold      (a decision that waits on the carrier or a re-inspection)
                          └──▶ supervisor_resolved   (a supervisor may close it directly)
 ```
 
-Resolved states are terminal. Any other move is refused with **409 Conflict**
-(`domain/lifecycle.py`). Only the reporting operator may self-resolve; only **that operator's
-supervisor** may supervisor-resolve.
+Resolved states are terminal; `on_hold` is **open** (it counts as active, blocks sign-off if the
+issue is critical, and may move to another pending decision or to a final one). Any other move is
+refused with **409 Conflict** (`domain/lifecycle.py`). Only the reporting operator may self-resolve;
+only **that operator's supervisor** decides.
 
-**Timestamp trail:** `created_at` → `escalated_at` → `acknowledged_at` → `resolved_at`.
+**Timestamp trail:** `created_at` → `escalated_at` → `acknowledged_at` (+ `acknowledged_by`, who said
+"on my way") → `on_hold_at` (a pending decision) → `resolved_at` (+ `supervisor_id`, who decided). A
+decision no longer back-fills `acknowledged_at`: acknowledging and deciding are separate facts, and
+may be separate people.
+
+**The record as reported** (Phase 3 audit): every issue stores `temp_reading`, `temp_limit`,
+`quantity_affected` (as stated; not the form's default), `lot`, `room` (a cold-room alarm), and the
+order's `order_number`, `trailer_number` and `bol_number` **as they were when it was filed** — so a
+report stays traceable even if its order is later removed (a simulator reset, §12.5). A simulated
+issue also stores `sim_minute`, returned as `sim_time` ("07:42") and `sim_shift` so it lines up with
+the WMS clock. Timestamps are ISO-8601 UTC with an offset.
 
 ### 7.1 Guardrails: critical work is a supervisor's decision
 
@@ -315,14 +442,67 @@ failed inspections … stop workflow completion."* Rules in `domain/lifecycle.py
 
 | Rule | Behaviour |
 |---|---|
-| Critical is escalated on filing | An issue scored **critical** is created `escalated` (with `escalated_at`), the dock goes `critical`, and the supervisor and Quality are alerted with `new_issue`. There is no window in which it waits on the operator |
+| Critical is escalated on filing | An issue scored **critical** is created `escalated` (with `escalated_at`), the dock goes `critical`, and the supervisor and Quality are alerted with `new_issue`. There is no window in which it waits on the operator. Every path files through `file_issue` — a person's report, receiving discrepancies, a critical probe, the simulator's exceptions, alarms and scenarios — and a test asserts that no critical issue is ever left `resolution_in_progress`. Migration `0006` moved any such row filed before the rule to `escalated`, with `escalated_at` = when it was filed |
 | Critical cannot be self-resolved | `PUT /self-resolve` on a critical issue answers **409**; only the team supervisor resolves it |
 | Sign-off waits on critical issues | `POST /orders/{id}/complete` answers **409** while any critical issue on the order is open |
 | Sign-off waits on a failed inspection | If the order's most recent inspection failed, sign-off answers **409** until a supervisor resolves an issue on the order after that inspection, or a later inspection passes |
+| A rejected load is never signed off | A **Full Reject** on any issue of the order blocks sign-off for good: *"Rejected by ‹supervisor› — ‹reason›"* (§7.2) |
+| Sign-off waits on a requested re-inspection | While an issue on the order is `on_hold` with **Request Re-inspection**, sign-off waits for a trailer inspection that passes *after* the request |
+| Inbound sign-off needs its evidence | Every receiving check answered, a probe reading on a temperature-controlled load, and no critical probe whose Temperature Deviation is still open (§11.3) |
 
 `GET /orders/{id}` returns `completion_blockers`, the plain-language reasons above, so the sign-off
 screen explains itself instead of failing on tap. Count discrepancies filed *by* sign-off never block
 it: they are recorded with the completion.
+
+### 7.2 Supervisor decisions take effect
+
+`PUT /api/issues/{id}/supervisor-resolve`, `domain/lifecycle.py`. `GET /api/taxonomy` lists
+`accept_decisions` and `pending_decisions` so the screen can say which is which.
+
+| Decision | Status | Effect |
+|---|---|---|
+| Accept · Partial Accept · Override — Accept Anyway | `supervisor_resolved` | The dock goes back to `active`. On a **critical** or **temperature** (cold-chain) issue the decision needs the supervisor's reason in `supervisor_notes` — **422** without it |
+| Full Reject | `supervisor_resolved` | The order is blocked from sign-off (*"Rejected by ‹supervisor› — ‹notes›"*), and the dock is flagged `issue` (`DockEvent.LOAD_REJECTED` through `transition()`), not reopened |
+| Contact Carrier | `on_hold` | Still open, `pending_action` *"Awaiting the carrier"*; the dock stays as it is |
+| Request Re-inspection | `on_hold` | Still open, *"Awaiting a re-inspection"*; the order is blocked until a trailer inspection passes after the request |
+| Other | `supervisor_resolved` | As Accept, without the notes rule |
+
+The smallest model that keeps a pending call honest: one extra status, `on_hold`, open like
+`escalated`, with the decision in `resolution_type` and its time in `on_hold_at`. A later final
+decision replaces it; a second pending one may too. `issue_resolved` is sent for every decision, with
+`method` = the new status (`on_hold` or `supervisor_resolved`) and `resolution` = the decision.
+
+### 7.3 Quality hold and disposition
+
+`domain/quality_hold.py` (which issues, which dispositions), `wms/warehouse.py` → `select_for_hold`
+(which licence plates), through `WmsClient.hold_stock` / `dispose_stock` and the stock ledger —
+never around it.
+
+**Which issues hold stock:** a **Temperature Deviation** or **Product Quality Concern** filed against
+an order the WMS holds stock for (an order with a WMS reference; a person's own non-simulated order
+has none, so nothing moves but the disposition is still recorded).
+
+| Scope | Plates moved to `{room}-HOLD` |
+|---|---|
+| Temperature Deviation on an order | The plates received from (inbound) or picked for (outbound) that order, still in storage, on a dock lane or staged — only the issue's product when one is named |
+| Product Quality Concern on an order | The same, **and every other plate in storage of the same SKU and lot** (a quality concern is about the lot) |
+| Cold-room alarm (§12.12) | Every plate stored in that room whose product's `temp_max` is **below the alarm reading** — the product the excursion actually took over its own limit. Dry-room stock (no limit) is never held |
+| A planned damage or temperature exception at receiving (§12.8) | Its cases already come off the trailer onto their own plate bound for hold; that plate is recorded on the issue. So is a receiving-damage plate (§12.13) |
+
+Plates on hold, on a trailer or gone are never moved. A hold is a `hold` movement in the ledger, with
+the issue (`ISSUE-‹id›`) as its reference and the person (or `system`) as its actor. Any pick or
+replenishment counting on a held plate is cancelled and its line allocated again from pickable stock
+(first-expiring first; held stock is never pickable), and a staged pick that is held is taken off the
+load. The plates held are recorded on the issue (`held_pallets`). A person's report is on record
+before the hold is asked for; if the WMS is offline at that moment nothing is held and Quality can
+apply the hold later.
+
+**Disposition** — `PUT /api/issues/{id}/disposition`, **Quality only** (supervisors read it):
+`hold` (apply the hold again, e.g. after an outage), `release` (each held plate to the nearest free
+reserve slot for its SKU: a `release` movement), `destroy` or `return_to_vendor` (out of the building:
+an `adjust`). Notes are required. Release, destroy and return are **final** (409 afterwards). Who and
+when are stored (`disposition_by`, `disposition_at`) and shown on the issue. The disposition does not
+change the issue's status: the supervisor still decides the issue.
 
 **Dock lifecycle** (`dock_doors.lifecycle_phase`):
 
@@ -332,6 +512,28 @@ idle ──▶ inspection ──▶ loading | unloading ──▶ complete
 
 Dock `status` and `lifecycle_phase` change only through `domain/dock.py` → `transition()`.
 ⚠️ Resolving an issue still sets the dock back to `active` even if another issue is open on it.
+
+### 7.4 Decision targets: when an open issue is overdue
+
+`domain/lifecycle.py` → `DECISION_TARGET_MINUTES`, `is_overdue`; served by `GET /api/taxonomy` as
+`decision_targets` so the queue flags lateness without keeping its own copy.
+
+| Severity | Target (minutes) | Why this number |
+|---|---|---|
+| critical | **15** | Product or people at risk now. The cold-chain procedure re-probes in 10 minutes (§4.2); a supervisor has that window plus the walk to the door. A room alarm is itself 15 minutes over its limit (§1.10) |
+| high | **60** | Within the hour: a trailer at the door past 30 minutes already scores higher (§1.4), and a second half-hour is the most a reefer should wait with its doors worked |
+| medium | **240** | Half of the 8-hour shift (§12.1) |
+| low | **480** | The same shift: nothing low is handed to the next supervisor undecided |
+
+The clock runs from the moment the issue reached the queue — `escalated_at`, else `created_at` —
+to a supervisor's decision. An acknowledgement ("on my way") does **not** stop it: being on the way is
+not a decision. A pending decision (`on_hold`, §7.2) does: the wait is then on the carrier or the
+re-inspection, shown as its `pending_action`. Resolved issues are never overdue. The queue shows
+*Overdue* as a word with an icon, never by colour alone.
+
+**Dock open-issue count.** `GET /api/docks` carries `open_issues` per door — a count across every
+team — so a supervisor looking at another zone's door learns that it has open issues and that that
+zone's supervisor handles them, without the records leaving their team's scope.
 
 ---
 
@@ -359,6 +561,12 @@ it is implemented in full as **12 issue types with 87 subtypes** (`domain/taxono
 
 The **Quality** team is notified (and can see) every Temperature Deviation, Product Quality Concern
 and Lot/Expiry Issue, plus any issue that scores critical.
+
+**Reporting without an assignment.** A *people* or *systems* issue (Safety Incident, Equipment
+Failure, WMS/System Issue, Barcode Issue, Paperwork Mismatch) may be reported with no order, and with
+or without a dock. A *product* issue is about a load: a person's report names its order (**422**
+otherwise); when it names no dock, the order's dock is used. Issues DockIQ files itself (receiving
+discrepancies, the warehouse's alarms) are not bound by this.
 
 ### Discrepancies that require supervisor approval
 
@@ -415,15 +623,27 @@ scanner issues; and unsafe loading conditions or trailer defects.
 The reading is judged against the **strictest `temp_max` of any product on the load**, in the same
 bands as the severity temperature modifier (§1.4), so the guidance and the score always agree:
 
-| Over the limit by | Status | Guidance |
-|---|---|---|
-| ≤ 0°F | ok | Proceed |
-| > 0°F | marginal | Monitor, re-probe before continuing |
-| > 5°F | warning | Close the doors; re-probe the centre of a case in 10 minutes |
-| > 10°F | critical | **Do not unload. Close the doors. Do not sign the BOL.** Report it |
+| Over the limit by | Status | Guidance — receiving (inbound) | Guidance — loading (outbound) |
+|---|---|---|---|
+| ≤ 0°F | ok | Proceed | Proceed |
+| > 0°F | marginal | Monitor, re-probe before continuing | Monitor, re-probe before loading more |
+| > 5°F | warning | Close the doors; re-probe the centre of a case in 10 minutes | Stop loading it; move it back into the cold; re-probe in 10 minutes |
+| > 10°F | critical | **Do not unload. Close the doors. Do not sign the BOL.** Report it | **Do not load. Hold it at the dock, off the trailer, kept cold. Do not release the trailer.** Report it |
+
+The bands are the same in both directions; only the words change (`GUIDANCE` in `domain/receiving.py`),
+because the order's direction decides what "stop" means — an inbound load is not unloaded, an outbound
+one is not loaded. The assistant's temperature tool uses the same guidance for the order it checks.
 
 No temperature-controlled product on the load → `not_applicable`. *(Phase 2 — previously computed in
 the browser from the first line only.)*
+
+**Every reading is logged** (`temperature_checks`, the HACCP record: reading, limit, delta, status,
+who, when), served oldest first by `GET /api/orders/{id}/temperature-checks`. A **critical** reading
+files a *Temperature Deviation · Product temperature out of range* against the order, the strictest
+product on the load, the reading and the limit — through `file_issue`, so the formula scores it — or,
+if a critical probe on this order already filed one that is still open, joins it (the log entry
+carries its `issue_id`). The deviation holds stock like any other (§7.3) and holds sign-off until it
+is resolved (§11.3).
 
 ### 11.2 Count reconciliation on completion
 
@@ -432,6 +652,25 @@ than the customer's `count_tolerance` is filed automatically as a **Count Discre
 subtype *Short count* or *Overage* — scored by the normal formula, in the same transaction as the
 completion. Lines with `expected = 0` are skipped. *(Phase 2 — previously done in the browser, which
 filed overages as "Count Shortage" with a negative quantity.)*
+
+### 11.3 Receiving evidence before sign-off
+
+`domain/receiving.py` → `receiving_gaps`, the checks in `domain/taxonomy.py` → `RECEIVING_CHECKS`
+(served by `GET /api/taxonomy`). Answers are stored per order and check, with who and when
+(`PUT` / `GET /api/orders/{id}/receiving-checks`, inbound orders only).
+
+| Check | A "No" is reported as |
+|---|---|
+| Pallets intact? | Damaged Pallet · Damaged or broken pallet |
+| Packaging sealed, not punctured? | Damaged Pallet · Damaged cartons or packaging |
+| Labels readable and matching? | Barcode Issue · Barcode damaged or unreadable |
+| Product matches the BOL? | SKU Mismatch · Paperwork does not match product |
+| Lot and expiry verified? | Lot/Expiry Issue · Wrong lot or batch number |
+
+An **inbound** order signs off only when every check is answered (yes or no — a "no" is evidence,
+reported as its issue), at least **one probe reading** is logged if any product on the load has a
+temperature limit, and no critical probe's Temperature Deviation is still open. Each gap is a
+`completion_blockers` line (§7.1).
 
 ## 12. The shift simulation (Phase 3)
 
@@ -511,7 +750,10 @@ A high or critical injected issue is escalated at once.
 
 `simulated: true` on every order, issue and crew member the simulator creates; `SIM-` order numbers;
 a *Sim* tag in the UI; the demo login list leaves out simulated crew. `POST /api/sim/reset` removes
-all of it and rewinds to 06:00.
+all of it and rewinds to 06:00. **Reset is a supervisor's call** (Quality: 403), and it **never
+deletes an issue a person filed**: a report on a simulated trailer is detached from the order
+(`order_id` cleared) and keeps the order's number, trailer and BOL as they were when filed. The
+trailer's probe log and receiving checks go with it.
 
 *Known limitation:* the dwell modifier (§1.3) reads wall-clock time since the trailer arrived, so at
 15× a simulated trailer's dwell counts slower than its simulated time.
@@ -549,7 +791,7 @@ hour (pallets on departed trailers ÷ elapsed shift hours, at least a quarter ho
 | Other locations | quality hold `{room}-HOLD` (on hand, not pickable) · overflow floor `{room}-OVF` (when the racking is full; pickable) · dock lane `DOCK-{door}` · staging lane `STAGE-{door}` · a loaded trailer (its trailer number) |
 | Licence plate (LPN) | `00286` + seed (3 digits) + serial (7 digits); opening stock uses serials below **1,000,000**, receipts count up from it |
 | Opening stock | **6–10** full pallets per SKU; the earliest-expiring on the pick face, the rest in the nearest free reserve slots. Recorded at the start of the first shift as a *receive* to `DOCK-00` and a *put-away* per pallet, by `system` |
-| Movements | *receive* (nowhere → dock lane) · *put-away* · *replenish* (reserve → pick face) · *pick* (→ staging lane) · *load* (→ trailer) · *ship* (trailer → nowhere) · *adjust*; each with licence plate, SKU, lot, best-before, from, to, cases, simulated minute and actor (crew code, dock crew employee ID, or `system`) |
+| Movements | *receive* (nowhere → dock lane) · *put-away* · *replenish* (reserve → pick face) · *pick* (→ staging lane) · *load* (→ trailer) · *ship* (trailer → nowhere) · *adjust* · *hold* (→ `{room}-HOLD`) · *release* (hold → reserve slot), the last two for quality holds (§7.3); each with licence plate, SKU, lot, best-before, from, to, cases, simulated minute and actor (crew code, dock crew employee ID, a person, or `system`) |
 | Invariant | on hand per licence plate per location **equals** the sum of its movements in minus out; a test asserts it |
 | Exactly once | every movement, task, shipment and gate event has a unique key; the ledger keeps a watermark minute and applies events in (watermark, now] **in time order**, so one jump and many small steps write the same ledger (tested) |
 | Warehouse → trailers | one way: the warehouse reads the trailers' timelines; nothing in it moves a trailer |
@@ -600,6 +842,11 @@ as the yard board:
 |---|---|---|
 | Check-in | the gate arrival (§12.6 punctuality) | trailer, carrier, the yard spot it is given, the seal (inbound; an outbound trailer arrives empty), a reefer reading (§12.8), *late* if more than **15 min** after the appointment |
 | Yard move | when it reaches a door (§12.3: the door and a crew member both free) | the spot it left, the door, minutes waited in the yard (0 when the door was free) |
+
+The yard board (`GET /api/wms/appointments`) shows the door a trailer **actually** reached (or left
+from) as `door` once it is at one — a trailer rerouted to whichever door freed first (§12.3) shows
+that door — and the appointment's door as `booked_door`; until it reaches a door the two are the
+same.
 | Check-out | when it leaves | the seal (outbound), dwell from gate to gate, and *detention* when the dwell exceeds **120 min** (§12.6) |
 
 ### 12.12 Cold rooms
@@ -619,7 +866,11 @@ limit**, holds **10–40 min**, and recovers over 10 min; its cause is a door le
 defrost cycle, or a tripped compressor. When readings stay over the limit for **15 min** the alarm is
 raised — **once per excursion** — and filed as a *Temperature Deviation* (*Freezer door left open too
 long* for a door, otherwise *Cold chain compromised*) against the most temperature-sensitive product
-stored in the room, with the reading and the room's limit, through the ordinary scoring path.
+stored in the room, with the reading and the room's limit, through the ordinary scoring path. At
+the same simulated minute the room's exposed stock goes on quality hold (§7.3: every plate stored
+there whose product's limit is below the reading); the issue records the room and the plates. It is
+filed as **room-scoped** with 15 minutes over the limit, so it is always **critical** (§1.10) and
+escalated when filed.
 
 ### 12.13 Organic exceptions
 
@@ -647,6 +898,10 @@ unchanged.
 
 | Date | Change |
 |---|---|
+| 2026-09-25 | §11.1 probe guidance follows the order's direction: loading gets *do not load / hold at the dock*, never *do not unload*. |
+| 2026-09-25 | §7.4 decision targets (critical 15 · high 60 · medium 240 · low 480 minutes), overdue flag in the queue; per-door `open_issues` count. |
+| 2026-09-25 | Audit: §7 `on_hold`, who acknowledged vs who decided, the record as reported; §7.1 every filing path escalates a critical, migration 0006; §7.2 decisions take effect (reasons for accepting critical/temperature product, Full Reject blocks sign-off and flags the dock, pending decisions); §7.3 quality hold and disposition; §8 people and systems issues without an order; §11.1 the probe log and critical auto-filing; §11.3 receiving evidence before sign-off; §12.5 reset guard; §12.7 hold/release movements; §12.11 the yard's actual door; §12.12 the alarm holds exposed stock; §6 ordinals. |
+| 2026-09-25 | §1.9–§1.11 proportional damage (share of cases) and scope floors (cold room, product far over its limit), with worked examples; §3.1–§3.3 direction-aware procedures, temperature bands (+2 band bonus), the pallet-wrap procedure; 6 knowledge-base rows (41 → 47); §12.12 room alarms are critical. |
 | 2026-09-25 | Initial extraction from code and source documents. |
 | 2026-09-25 | §12.11–§12.13: the gate log, cold-room temperatures and excursion alarms, organic warehouse exceptions (short pick, pallet not at location, receiving damage, count variance). |
 | 2026-09-25 | §12.7–§12.10 the warehouse behind the WMS: layout, licence plates, the stock ledger, inbound, outbound waves and FEFO, the task queue, crew productivity. Opening stock 2–5 → 6–10 pallets per SKU, placed on pick faces and reserve slots. |

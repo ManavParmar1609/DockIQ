@@ -7,11 +7,12 @@ from starlette.websockets import WebSocketDisconnect
 
 from tests.conftest import Headers, token_of
 
-# Seed facts used below (see app/seed/data): OP-001 (user 1) runs order 1 at dock 1 for Crestline
+# Seed facts used below (see app/seed/data): OP-001 (user 1) runs order 1 (outbound) at dock 1 for Crestline
 # Markets (tier 1), in SUP-001's team (user 9, Zone A). OP-003 (user 3) is in SUP-002's team (user 10).
 # QA-001 (user 12) is Quality. Product 1 is CRM-FZ-1001: Frozen, $28.50/case, not an allergen.
 # Dock 1's trailer arrived 111 minutes before seeding; dock 12 has no trailer.
 FROZEN_TIER1_DAMAGE = {
+    "order_id": 1,
     "dock_door_id": 1,
     "issue_type": "Damaged Pallet",
     "issue_subtype": "Crushed or collapsed pallet",
@@ -44,7 +45,7 @@ def test_reporting_scores_the_issue_and_flags_the_dock(client: TestClient, login
     assert body["severity_score"] == 20.0
     assert "Trailer dwell time" in body["severity_reason"]
     assert body["estimated_cost_impact"] == 85.5  # 28.50 × 10 × 0.3
-    assert body["ai_resolution"]["source"].startswith("Company SOP")
+    assert "SOP" in body["ai_resolution"]["source"]  # a cited procedure (retrieval: business-rules §3)
     # Critical goes straight to the supervisor (business-rules §7.1).
     assert body["status"] == "escalated"
     assert dock(client, op, 1)["status"] == "critical"
@@ -67,6 +68,7 @@ def test_employee_injury_is_always_critical(client: TestClient, login: Login) ->
     body = report(
         client,
         login("OP-001"),
+        order_id=None,  # a people issue needs no order (business-rules §8)
         dock_door_id=12,
         issue_type="Safety Incident",
         issue_subtype="Employee injury",
@@ -220,7 +222,15 @@ def test_operator_sees_only_their_own_issues(client: TestClient, login: Login) -
 
 def test_third_issue_in_a_week_at_a_dock_reports_the_pattern(client: TestClient, login: Login) -> None:
     op = login("OP-001")
-    payload = {"dock_door_id": 12, "carrier_id": None}
+    payload = {
+        "order_id": None,
+        "dock_door_id": 12,
+        "carrier_id": None,
+        "issue_type": "Equipment Failure",
+        "issue_subtype": "Scanner not working",
+        "product_id": None,
+        "company_id": None,
+    }
     reports = [report(client, op, **payload)["recurring_patterns"] for _ in range(3)]
     assert reports[0] == [] or reports[0][0]["count"] >= 3  # seeded history may already count
     assert any(p["type"] == "dock" and p["count"] >= 3 for p in reports[-1])
@@ -354,7 +364,8 @@ def test_acknowledging_tells_the_operator_who_is_coming(client: TestClient, logi
         }
     stored = client.get(f"/api/issues/{issue_id}", headers=op).json()
     assert stored["acknowledged_at"] is not None
-    assert stored["supervisor_name"] == "Sarah Mitchell"
+    assert stored["acknowledged_by_name"] == "Sarah Mitchell"  # who is coming …
+    assert stored["supervisor_name"] is None  # … is not yet who decided (business-rules §7)
 
 
 def test_only_the_team_supervisor_acknowledges_an_open_issue(client: TestClient, login: Login) -> None:
@@ -362,7 +373,11 @@ def test_only_the_team_supervisor_acknowledges_an_open_issue(client: TestClient,
     issue_id = report(client, op)["id"]
     assert client.put(f"/api/issues/{issue_id}/acknowledge", headers=op).status_code == 403
     assert client.put(f"/api/issues/{issue_id}/acknowledge", headers=login("SUP-002")).status_code == 404
-    client.put(f"/api/issues/{issue_id}/supervisor-resolve", json={"resolution_type": "Accept"}, headers=sup)
+    client.put(
+        f"/api/issues/{issue_id}/supervisor-resolve",
+        json={"resolution_type": "Accept", "supervisor_notes": "Checked on the dock"},
+        headers=sup,
+    )
     assert client.put(f"/api/issues/{issue_id}/acknowledge", headers=sup).status_code == 409
 
 
@@ -381,3 +396,28 @@ def test_the_operator_hears_the_supervisors_decision(client: TestClient, login: 
             "method": "supervisor_resolved",
             "resolution": "Partial Accept",
         }
+
+
+def test_damage_severity_follows_the_cases_the_person_states(client: TestClient, login: Login) -> None:
+    # business-rules §1.9: 2 of CRM-FZ-1001's 48-case pallet → × 0.4; 18 × 0.4 + 2 dwell = 9.2 → medium.
+    op = login("OP-001")
+    torn = {**FROZEN_TIER1_DAMAGE, "order_id": 1, "issue_subtype": "Damaged cartons or packaging"}
+    stated = report(client, op, **{**torn, "quantity_affected": 2})
+    assert (stated["severity"], stated["severity_score"]) == ("medium", 9.2)
+    assert "2 of 48 cases on the pallet" in stated["severity_reason"]
+    # Left out, the schema's default of 1 is not a statement: the damage is scored in full.
+    unstated = {key: value for key, value in torn.items() if key != "quantity_affected"}
+    response = client.post("/api/issues", json=unstated, headers=op)
+    assert response.status_code == 200, response.text
+    assert (response.json()["severity"], response.json()["severity_score"]) == ("critical", 20.0)
+
+
+def test_a_door_counts_its_open_issues_for_every_team_without_showing_them(
+    client: TestClient, login: Login
+) -> None:
+    before = dock(client, login("SUP-002"), 1)["open_issues"]
+    body = report(client, login("OP-001"))
+    other_zone = login("SUP-002")
+    assert dock(client, other_zone, 1)["open_issues"] == before + 1
+    # The count crosses teams; the record does not.
+    assert client.get(f"/api/issues/{body['id']}", headers=other_zone).status_code == 404

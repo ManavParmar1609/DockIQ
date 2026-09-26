@@ -20,6 +20,7 @@ from app.wms.client import (
     ColdRoom,
     CrewProductivity,
     GateEvent,
+    HoldRequest,
     LedgerEntry,
     Pallet,
     RoomReading,
@@ -96,6 +97,7 @@ class SimulatedWms:
                 )
             }
             carriers = {code: carrier.name for code, carrier in reference.carriers.items()}
+            door_numbers = {door.id: number for number, door in reference.doors.items()}
             entries: list[YardEntry] = []
             for appointment in plan.appointments:
                 order = orders.get(appointment.key)
@@ -109,7 +111,11 @@ class SimulatedWms:
                     YardEntry(
                         ref=appointment.key,
                         order_number=appointment.order_number,
-                        door=appointment.door,
+                        # at or past a door: the door it actually used; until then, the booked one
+                        door=door_numbers.get(order.dock_door_id or -1, appointment.door)
+                        if order is not None
+                        else appointment.door,
+                        booked_door=appointment.door,
                         type=appointment.type,
                         customer=appointment.customer,
                         carrier=carriers.get(appointment.carrier, appointment.carrier),
@@ -489,3 +495,13 @@ class SimulatedWms:
                 )
             )
         return found
+
+    # ── Quality hold and disposition (business-rules §7.3): through the ledger, never around it ──
+
+    async def hold_stock(self, request: HoldRequest) -> list[str]:
+        await self._ready()
+        return await self._engine.hold_stock(request)
+
+    async def dispose_stock(self, pallet_ids: Sequence[str], action: str, ref: str, actor: str) -> list[str]:
+        await self._ready()
+        return await self._engine.dispose_stock(list(pallet_ids), action, ref, actor)

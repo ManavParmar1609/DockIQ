@@ -8,6 +8,7 @@ management system — trailer appointments, inventory by location, order write-b
 goes through here. Simulator concepts (seeds, virtual clocks) must never appear in a route handler.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Protocol
@@ -28,7 +29,8 @@ class WmsStatus:
 class YardEntry:
     ref: str
     order_number: str
-    door: int
+    door: int  # where it is: the door it actually reached, else the booked one
+    booked_door: int  # the door the appointment was booked onto
     type: str
     customer: str
     carrier: str
@@ -205,6 +207,20 @@ class ColdRoom:
     simulated: bool
 
 
+@dataclass(frozen=True, slots=True)
+class HoldRequest:
+    """Put stock on quality hold for an issue (business-rules §7.3). Plates already on hold, on a
+    trailer or gone are never moved."""
+
+    ref: str  # what the hold is for, e.g. "ISSUE-42": written on every movement
+    actor: str  # who asked (an employee ID)
+    order_ref: str | None = None  # the plates received from, or picked for, this order
+    sku: str | None = None  # only this product
+    same_lot: bool = False  # and every other plate in storage of the same SKU and lot
+    room: str | None = None  # a cold room: the plates stored there…
+    above: float | None = None  # …whose product limit (°F) is below this reading
+
+
 class WmsClient(Protocol):
     async def status(self) -> WmsStatus: ...
 
@@ -252,6 +268,16 @@ class WmsClient(Protocol):
         """Each temperature room: its latest readings and what is stored in it."""
         ...
 
+    async def hold_stock(self, request: HoldRequest) -> list[str]:
+        """Move the matching plates to their room's quality hold. Returns the plates moved.
+        Raises WmsUnavailable when offline."""
+        ...
+
+    async def dispose_stock(self, pallet_ids: Sequence[str], action: str, ref: str, actor: str) -> list[str]:
+        """Quality's disposition of held plates: `release` back to storage, `destroy` or
+        `return_to_vendor` out of the building. Returns the plates moved. Raises WmsUnavailable."""
+        ...
+
 
 class NoWms:
     """WMS_MODE=none: no warehouse system connected. Everything reads as unavailable."""
@@ -296,3 +322,9 @@ class NoWms:
 
     async def rooms(self, readings: int) -> list[ColdRoom]:
         raise WmsUnavailable("No WMS is connected")
+
+    async def hold_stock(self, request: HoldRequest) -> list[str]:
+        return []  # no WMS, no stock to move: the hold is recorded on the issue only
+
+    async def dispose_stock(self, pallet_ids: Sequence[str], action: str, ref: str, actor: str) -> list[str]:
+        return []

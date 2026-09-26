@@ -303,7 +303,7 @@ export function DockFloor({
                   <span className="telemetry text-ink">{doors.length - active}</span> free
                 </p>
               </header>
-              <ul className="zone-apron grid grid-cols-1 gap-2.5 rounded-3xl p-2.5 sm:grid-cols-2 lg:grid-cols-4">
+              <ul className="zone-apron grid grid-cols-1 gap-2.5 rounded-3xl p-2.5 sm:grid-cols-2 xl:grid-cols-4">
                 {doors.map((dock) => (
                   <li key={dock.id}>
                     <DoorTile dock={dock} now={now} onOpen={onOpen} register={register} />
@@ -314,7 +314,7 @@ export function DockFloor({
           );
         })}
       </div>
-      <DockSheet dock={selected} onClose={onClose} returnFocus={returnFocus} />
+      <DockSheet dock={selected} onClose={onClose} returnFocus={returnFocus} viewerZone={highlightZone} />
     </>
   );
 }

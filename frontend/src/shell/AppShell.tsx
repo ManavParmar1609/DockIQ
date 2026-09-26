@@ -8,7 +8,7 @@ import { useRealtime, type Connection } from '../api/realtime';
 import { useAuth } from '../auth/AuthProvider';
 import { ErrorBlock, SimulatedTag } from '../components/ui';
 import { initials } from '../lib/format';
-import { AlertStack, BroadcastBanner, useAlerts } from './Alerts';
+import { AlertButton, AlertInbox, AlertStack, BroadcastBanner, useAlerts, useTitleCount } from './Alerts';
 import { NAV, ROLE_LABEL } from './nav';
 import { QuickRequest } from './QuickRequest';
 
@@ -62,21 +62,32 @@ function Wordmark({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// Words first: the dot only repeats what the label says. Never "Live" without an open socket.
 const CONNECTION = {
-  live: { label: 'Live', dot: 'bg-green' },
-  connecting: { label: 'Connecting', dot: 'bg-amber' },
-  offline: { label: 'Reconnecting', dot: 'bg-ink-mute' },
+  live: { label: 'Live', dot: 'bg-green', title: 'Updates arrive as they happen' },
+  connecting: { label: 'Connecting', dot: 'bg-amber', title: 'Opening the live channel' },
+  reconnecting: {
+    label: 'Reconnecting',
+    dot: 'bg-amber',
+    title: 'The live channel dropped; screens refresh when it is back',
+  },
+  offline: { label: 'Offline', dot: 'bg-ink-mute', title: 'This device has no network connection' },
 } as const;
 
 function LiveIndicator({ connection }: { connection: Connection }) {
-  const { label, dot } = CONNECTION[connection];
+  const { label, dot, title } = CONNECTION[connection];
   return (
     <span
       className="flex items-center gap-2 text-sm font-medium text-ink-mute"
       role="status"
       aria-live="polite"
+      title={title}
     >
-      <span aria-hidden="true" className={`h-2 w-2 rounded-full ${dot}`} />
+      {connection === 'offline' ? (
+        <CloudOff size={14} aria-hidden="true" />
+      ) : (
+        <span aria-hidden="true" className={`h-2 w-2 rounded-full ${dot}`} />
+      )}
       {label}
     </span>
   );
@@ -153,7 +164,13 @@ function SignedInShell({
   zone: string | null | undefined;
   onLogout: () => void;
 }) {
-  const { alerts, dismiss, broadcast, onEvent } = useAlerts(role);
+  const { alerts, inbox, urgent, unseen, markSeen, dismiss, broadcast, onEvent } = useAlerts(role);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const openInbox = () => {
+    setInboxOpen(true);
+    markSeen();
+  };
+  useTitleCount(urgent);
   const onAssistant = useLocation().pathname.startsWith('/app/chat');
   const connection = useRealtime(onEvent);
   const broadcasts = useBroadcasts();
@@ -187,6 +204,9 @@ function SignedInShell({
         <div className="flex flex-col gap-3 px-5 pt-3 pb-5">
           <div className="flex items-center justify-between gap-2">
             <LiveIndicator connection={connection} />
+            <AlertButton unseen={unseen} onOpen={openInbox} />
+          </div>
+          <div>
             <SimulatedTag />
           </div>
           <div className="flex items-center gap-3 rounded-lg bg-surface p-2.5 shadow-card">
@@ -208,6 +228,7 @@ function SignedInShell({
           <Wordmark compact />
           <div className="flex items-center gap-2">
             <LiveIndicator connection={connection} />
+            <AlertButton unseen={unseen} onOpen={openInbox} />
             <SignOut onLogout={onLogout} />
           </div>
         </header>
@@ -254,7 +275,8 @@ function SignedInShell({
 
       {/* The assistant has its own input along the bottom; the floating button would cover it. */}
       {role === 'operator' && !onAssistant && <QuickRequest />}
-      <AlertStack alerts={alerts} dismiss={dismiss} />
+      <AlertStack alerts={alerts} dismiss={dismiss} onOpenInbox={openInbox} />
+      <AlertInbox open={inboxOpen} onClose={() => setInboxOpen(false)} inbox={inbox} role={role} />
     </div>
   );
 }

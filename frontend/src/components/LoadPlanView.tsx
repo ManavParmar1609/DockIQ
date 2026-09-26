@@ -63,14 +63,24 @@ function stacksOf(pallets: PlacedPallet[]): Stack[] {
   return [...map.values()];
 }
 
-/** The step the operator is on, remembered for this order for the rest of the session. */
-function useLoadStep(orderId: number, total: number, persist: boolean): [number, (step: number) => void] {
+/**
+ * The step the operator is on. It starts where the server says (`initial`, the order's `load_step`);
+ * this session's own memory is only the fallback when the server has none.
+ */
+function useLoadStep(
+  orderId: number,
+  total: number,
+  persist: boolean,
+  initial: number | null,
+): [number, (step: number) => void] {
   const key = `dockiq.load-step.${String(orderId)}`;
+  const valid = (value: number) => Number.isInteger(value) && value >= 1 && value <= total + 1;
   const [step, setStep] = useState(() => {
+    if (initial !== null && valid(initial)) return initial;
     if (!persist) return 1;
     try {
       const saved = Number(sessionStorage.getItem(key));
-      return saved >= 1 && saved <= total + 1 ? saved : 1;
+      return valid(saved) ? saved : 1;
     } catch {
       return 1;
     }
@@ -955,9 +965,20 @@ function NowLoading({
   fills: Map<string, Fill>;
   products: Product[];
   step: number;
-  onStep: (step: number) => void;
+  onStep: (step: number, count: boolean) => void;
 }) {
   const total = plan.pallets.length;
+  const actions = useRef<HTMLDivElement>(null);
+  const shown = useRef(step);
+  // After a step change, bring the buttons back under the thumb: the picture above can push them away.
+  useEffect(() => {
+    if (shown.current === step) return;
+    shown.current = step;
+    const row = actions.current;
+    if (row && typeof row.scrollIntoView === 'function') {
+      row.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    }
+  }, [step]);
   const current = plan.pallets.find((pallet) => pallet.load_sequence === step);
   const loaded = Math.min(step - 1, total);
   const share = Math.round((loaded / total) * 100);
@@ -976,7 +997,7 @@ function NowLoading({
     } catch {
       /* no haptics on this device */
     }
-    onStep(step + 1);
+    onStep(step + 1, true);
   };
 
   return (
@@ -1039,13 +1060,13 @@ function NowLoading({
         </p>
       )}
 
-      <div className="flex flex-wrap gap-3">
+      <div ref={actions} className="flex flex-wrap gap-3">
         <button
           type="button"
           className="btn btn-secondary px-5"
           aria-label="Previous step"
           disabled={step <= 1}
-          onClick={() => onStep(current ? step - 1 : total)}
+          onClick={() => onStep(current ? step - 1 : total, true)}
         >
           <ChevronLeft size={18} aria-hidden="true" /> Back
         </button>
@@ -1069,8 +1090,22 @@ function Rule({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   );
 }
 
-/** `persist` remembers the step per order; the landing page's sample passes false. */
-export function LoadPlanView({ plan, persist = true }: { plan: LoadPlan; persist?: boolean }) {
+/**
+ * `persist` remembers the step per order; the landing page's sample passes false and needs no API.
+ * `initialStep` is where the server says the operator is; `onStep` reports each move — `count` for
+ * "Loaded, next pallet" and Back (one pallet on or off), not for a jump from the map.
+ */
+export function LoadPlanView({
+  plan,
+  persist = true,
+  initialStep = null,
+  onStep,
+}: {
+  plan: LoadPlan;
+  persist?: boolean;
+  initialStep?: number | null;
+  onStep?: (step: number, count: boolean) => void;
+}) {
   const stacks = useMemo(() => stacksOf(plan.pallets), [plan.pallets]);
   const products = useMemo(() => {
     const seen = new Map<string, Product>();
@@ -1090,7 +1125,13 @@ export function LoadPlanView({ plan, persist = true }: { plan: LoadPlan; persist
   }, [plan.pallets]);
   const fills = useMemo(() => new Map(products.map((product) => [product.sku, product.fill])), [products]);
   const total = plan.pallets.length;
-  const [step, setStep] = useLoadStep(plan.order_id, total, persist);
+  const [step, setStep] = useLoadStep(plan.order_id, total, persist, initialStep);
+  const go = (next: number, count: boolean) => {
+    const target = Math.min(total + 1, Math.max(1, next));
+    if (target === step) return;
+    setStep(target);
+    onStep?.(target, count);
+  };
 
   if (total === 0) {
     return <Notice title="Nothing to load">This order has no pallets.</Notice>;
@@ -1106,7 +1147,7 @@ export function LoadPlanView({ plan, persist = true }: { plan: LoadPlan; persist
 
       <div className="grid items-start gap-5 xl:grid-cols-7">
         <div className="xl:col-span-5">
-          <NowLoading plan={plan} fills={fills} products={products} step={step} onStep={setStep} />
+          <NowLoading plan={plan} fills={fills} products={products} step={step} onStep={go} />
         </div>
 
         <aside
@@ -1118,7 +1159,13 @@ export function LoadPlanView({ plan, persist = true }: { plan: LoadPlan; persist
               <span className="heading text-lg">From above</span>
               <span className="label">Tap to jump</span>
             </figcaption>
-            <TrailerMap plan={plan} stacks={stacks} fills={fills} step={step} onPick={setStep} />
+            <TrailerMap
+              plan={plan}
+              stacks={stacks}
+              fills={fills}
+              step={step}
+              onPick={(next) => go(next, false)}
+            />
           </figure>
 
           <section className="card flex flex-col gap-4 p-5" aria-label="Products on this load">

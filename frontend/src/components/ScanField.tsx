@@ -111,19 +111,40 @@ export function ScanField({
   label = 'Scan or type a case barcode',
 }: {
   onScan: (code: string) => void;
+  /** A scan is being checked. The field stays usable: codes entered meanwhile wait their turn. */
   disabled?: boolean;
   label?: string;
 }) {
   const [value, setValue] = useState('');
   const [camera, setCamera] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  // Codes scanned while the previous one is being checked: sent next, in order, never dropped.
+  const waiting = useRef<string[]>([]);
+  // Held in a ref so only a finished check, not a new callback, releases the next code.
+  const handler = useRef(onScan);
+  useEffect(() => {
+    handler.current = onScan;
+  }, [onScan]);
   const hasCamera = detectorCtor() !== null && 'mediaDevices' in navigator;
+
+  // Ready on open, and again after every result: a keyboard-wedge scanner types into the focus.
+  useEffect(() => {
+    if (disabled) return;
+    const next = waiting.current.shift();
+    if (next !== undefined) handler.current(next);
+    input.current?.focus({ preventScroll: true });
+  }, [disabled]);
+
+  const take = (raw: string) => {
+    const code = raw.trim();
+    if (!code) return;
+    if (disabled) waiting.current.push(code);
+    else onScan(code);
+  };
 
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
-    const code = value.trim();
-    if (!code || disabled) return;
-    onScan(code);
+    take(value);
     setValue('');
     input.current?.focus();
   };
@@ -149,13 +170,12 @@ export function ScanField({
             placeholder={label}
             autoComplete="off"
             inputMode="text"
-            // Read-only, not disabled, while a scan is checked: a disabled field drops focus, and a
-            // keyboard-wedge scanner would type the next code into nothing.
-            readOnly={disabled}
+            // Never disabled or read-only while a scan is checked: a keyboard-wedge scanner keeps typing,
+            // and what it types is queued, not lost.
             aria-busy={disabled}
           />
         </div>
-        <button type="submit" className="btn btn-primary" disabled={disabled || !value.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={!value.trim()}>
           Check
         </button>
         {hasCamera && (
@@ -173,7 +193,7 @@ export function ScanField({
         <CameraScanner
           onCode={(code) => {
             setCamera(false);
-            onScan(code);
+            take(code);
           }}
           onClose={() => setCamera(false)}
         />

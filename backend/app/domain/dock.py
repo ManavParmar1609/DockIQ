@@ -17,6 +17,7 @@ class DockEvent(StrEnum):
     ISSUE_REPORTED = "issue_reported"
     ISSUE_ESCALATED = "issue_escalated"
     ISSUE_RESOLVED = "issue_resolved"
+    LOAD_REJECTED = "load_rejected"  # a supervisor's Full Reject: the door stays flagged
     ORDER_COMPLETED = "order_completed"
 
 
@@ -43,5 +44,7 @@ def transition(
             return (DockStatus.CRITICAL if severity == Severity.CRITICAL else DockStatus.ISSUE), phase
         case DockEvent.ISSUE_RESOLVED:
             return DockStatus.ACTIVE, phase
+        case DockEvent.LOAD_REJECTED:
+            return DockStatus.ISSUE, phase
         case DockEvent.ORDER_COMPLETED:
             return DockStatus.IDLE, LifecyclePhase.COMPLETE

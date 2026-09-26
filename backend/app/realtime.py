@@ -85,8 +85,10 @@ def order_complete(order_id: int) -> dict[str, Any]:
     return {"type": "order_complete", "order_id": order_id}
 
 
-def new_request(request_id: int, request_type: str) -> dict[str, Any]:
-    return {"type": "new_request", "request_id": request_id, "request_type": request_type}
+def new_request(request_id: int, request_type: str, status: str = "pending") -> dict[str, Any]:
+    """A quick request was made (`pending`, to the operator and their supervisor) or answered
+    (`fulfilled`, to the operator who asked and their supervisor)."""
+    return {"type": "new_request", "request_id": request_id, "request_type": request_type, "status": status}
 
 
 def broadcast_message(broadcast_id: int, message: str) -> dict[str, Any]:

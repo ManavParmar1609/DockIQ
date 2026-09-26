@@ -1,4 +1,4 @@
-import { ChevronRight, DoorOpen, X } from 'lucide-react';
+import { ChevronRight, DoorOpen, FileText, X } from 'lucide-react';
 import { useEffect, useRef, type KeyboardEvent, type MouseEvent, type SyntheticEvent } from 'react';
 import { Link } from 'react-router';
 
@@ -27,10 +27,13 @@ export function DockSheet({
   dock,
   onClose,
   returnFocus,
+  viewerZone = null,
 }: {
   dock: Dock | null;
   onClose: () => void;
   returnFocus: (door: number) => void;
+  /** The viewer's own zone: another zone's door names that zone's supervisor as its owner. */
+  viewerZone?: string | null;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -106,14 +109,14 @@ export function DockSheet({
               <X size={20} aria-hidden="true" />
             </button>
           </header>
-          <DockBody dock={dock} />
+          <DockBody dock={dock} viewerZone={viewerZone} />
         </div>
       )}
     </dialog>
   );
 }
 
-function DockBody({ dock }: { dock: Dock }) {
+function DockBody({ dock, viewerZone }: { dock: Dock; viewerZone: string | null }) {
   const now = useNow();
   const idle = dock.status === 'idle' && dock.current_order_id === null;
 
@@ -123,7 +126,7 @@ function DockBody({ dock }: { dock: Dock }) {
         <EmptyState title="This door is idle" icon={<DoorOpen size={26} aria-hidden="true" />}>
           No trailer and no order. It fills when the yard assigns the next appointment.
         </EmptyState>
-        <OpenIssues dock={dock} now={now} hideWhenEmpty />
+        <OpenIssues dock={dock} now={now} viewerZone={viewerZone} hideWhenEmpty />
       </div>
     );
   }
@@ -143,7 +146,7 @@ function DockBody({ dock }: { dock: Dock }) {
         </Definition>
       </dl>
       <CurrentOrder dock={dock} now={now} />
-      <OpenIssues dock={dock} now={now} />
+      <OpenIssues dock={dock} now={now} viewerZone={viewerZone} />
     </div>
   );
 }
@@ -256,34 +259,55 @@ function OrderSummary({ order, now }: { order: OrderDetail; now: number }) {
 function OpenIssues({
   dock,
   now,
+  viewerZone,
   hideWhenEmpty = false,
 }: {
   dock: Dock;
   now: number;
+  viewerZone: string | null;
   hideWhenEmpty?: boolean;
 }) {
   // The same query the floor already holds, so it is shared and invalidated by the realtime channel.
   const issues = useIssues({ status: 'active' });
   const here = (issues.data ?? []).filter((issue) => issue.dock_door_id === dock.id);
-  if (hideWhenEmpty && here.length === 0) return null;
+  // The door's count crosses teams; the records stay with the team they belong to.
+  const elsewhere = Math.max(0, (dock.open_issues ?? 0) - here.length);
+  if (hideWhenEmpty && here.length === 0 && elsewhere === 0) return null;
+  const owner = viewerZone === dock.zone ? 'another team' : `${dock.zone}’s supervisor`;
+  const noun = (count: number) => (count === 1 ? 'open issue' : 'open issues');
 
   return (
     <section aria-labelledby="dock-sheet-issues" className="flex flex-col gap-3">
-      <h3 id="dock-sheet-issues" className="heading text-xl">
-        Open issues
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="dock-sheet-issues" className="heading text-xl">
+          Open issues
+        </h3>
+        {(viewerZone === null || viewerZone === dock.zone || here.length > 0) && (
+          <Link to={`/app/log?dock=${String(dock.door_number)}`} className="btn btn-secondary">
+            <FileText size={18} aria-hidden="true" /> Open this dock’s issues
+          </Link>
+        )}
+      </div>
       <QueryBoundary query={issues} loading="Loading issues">
-        {() =>
-          here.length === 0 ? (
-            <p className="text-base text-ink-mute">No open issues at this door.</p>
-          ) : (
-            <ul className="-mx-2 flex flex-col">
-              {[...here].sort(bySeverityThenAge).map((issue) => (
-                <IssueRow key={issue.id} issue={issue} now={now} />
-              ))}
-            </ul>
-          )
-        }
+        {() => (
+          <>
+            {here.length === 0 && elsewhere === 0 && (
+              <p className="text-base text-ink-mute">No open issues at this door.</p>
+            )}
+            {here.length > 0 && (
+              <ul className="-mx-2 flex flex-col">
+                {[...here].sort(bySeverityThenAge).map((issue) => (
+                  <IssueRow key={issue.id} issue={issue} now={now} />
+                ))}
+              </ul>
+            )}
+            {elsewhere > 0 && (
+              <Notice title={`${String(elsewhere)} ${here.length > 0 ? 'more ' : ''}${noun(elsewhere)}`}>
+                Handled by {owner}. They are not in your view.
+              </Notice>
+            )}
+          </>
+        )}
       </QueryBoundary>
     </section>
   );

@@ -9,8 +9,8 @@ import {
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 
-import { useActiveOrder, useHandoffs, useIssues } from '../../api/hooks';
-import type { Issue } from '../../api/types';
+import { useActiveOrder, useHandoffs, useIssues, useOrder } from '../../api/hooks';
+import type { InspectionSummary, Issue } from '../../api/types';
 import { useUser } from '../../auth/AuthProvider';
 import { SeverityMark, severityLabel } from '../../components/Severity';
 import {
@@ -19,6 +19,7 @@ import {
   ErrorBlock,
   IssueStatusTag,
   LoadingBlock,
+  Notice,
   PageHeader,
   Panel,
   Stat,
@@ -80,6 +81,19 @@ function RecentIssue({ issue }: { issue: Issue }) {
   );
 }
 
+/** The trailer inspection in a few words, for the header and the step card. */
+function inspectionState(inspection: InspectionSummary | null | undefined): {
+  meta: string;
+  sub: string;
+} {
+  if (!inspection) return { meta: 'Not inspected yet', sub: 'Seal, cleanliness, damage, temperature' };
+  if (inspection.overall_pass) {
+    return { meta: 'Inspection passed', sub: 'Passed · inspect again if anything changes' };
+  }
+  const failed = inspection.failed_checks.join(', ');
+  return { meta: 'Inspection failed', sub: `Failed: ${failed} · report it, then re-inspect` };
+}
+
 export default function OperatorHome() {
   const user = useUser();
   const order = useActiveOrder();
@@ -94,6 +108,14 @@ export default function OperatorHome() {
 
   const assignment = order.data;
   const outbound = assignment?.type === 'outbound';
+  // The detail carries what stops sign-off and the last inspection, so a blocked order shows here first.
+  const detail = useOrder(assignment?.id).data;
+  const blockers = detail?.completion_blockers ?? [];
+  const inspection = inspectionState(detail?.inspection);
+  const inspectionFailed = detail?.inspection?.overall_pass === false;
+  const criticalHere = open.some(
+    (issue) => issue.order_id === assignment?.id && issue.severity === 'critical',
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -110,6 +132,12 @@ export default function OperatorHome() {
               <span className="telemetry">{assignment.order_number}</span>
               <span className="telemetry">Trailer {assignment.trailer_number}</span>
               <span>{assignment.carrier_name}</span>
+              {/* `undefined`: an API that does not report inspections. Say nothing rather than guess. */}
+              {detail?.inspection !== undefined && (
+                <Link to="/app/inspection" className="font-semibold text-ink underline">
+                  {inspection.meta}
+                </Link>
+              )}
             </>
           ) : (
             <span>Your dock assignment appears here as soon as a load is ready for you.</span>
@@ -118,6 +146,31 @@ export default function OperatorHome() {
       />
 
       {order.isError && <ErrorBlock error={order.error} onRetry={() => void order.refetch()} />}
+
+      {assignment && blockers.length > 0 && (
+        <Notice
+          tone={inspectionFailed || criticalHere ? 'alert' : 'info'}
+          title="Not ready to sign off"
+          action={
+            <span className="flex flex-wrap gap-2">
+              {inspectionFailed && (
+                <Link to="/app/inspection" className="btn btn-secondary">
+                  Inspection
+                </Link>
+              )}
+              <Link to="/app/order" className="btn btn-primary">
+                Open the order
+              </Link>
+            </span>
+          }
+        >
+          <ul className="flex flex-col gap-1">
+            {blockers.map((blocker) => (
+              <li key={blocker}>{blocker}</li>
+            ))}
+          </ul>
+        </Notice>
+      )}
 
       {handoff && (
         <Panel
@@ -136,7 +189,7 @@ export default function OperatorHome() {
             to="/app/inspection"
             icon={ClipboardCheck}
             title="1 · Inspect the trailer"
-            sub="Seal, cleanliness, damage, temperature"
+            sub={inspection.sub}
             index={1}
           />
           <Action

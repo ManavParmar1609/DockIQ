@@ -29,7 +29,9 @@ from app.wms.layout import (
     dock_lane,
     hold_area,
     nearest_free,
+    overflow,
     pick_faces,
+    room_of,
     stage_lane,
 )
 from app.wms.plan import (
@@ -221,6 +223,9 @@ class IssueRequest:
     ref: str | None = None  # the appointment it concerns
     door: int | None = None  # whose zone's crew reports it
     kind: str = "stock_exception"  # or "room_excursion"
+    room_minutes_over_limit: float | None = None  # a room excursion: how long it has been over
+    room: str | None = None  # a room excursion: which room
+    held: tuple[str, ...] = ()  # licence plates put on quality hold for it
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,6 +248,54 @@ class Trailer:
 
 def room_for(category: str) -> str:
     return STORAGE_ZONE.get(category, "D")
+
+
+# A quality hold takes plates from these areas; plates on hold, on a trailer or gone stay where they are.
+HOLDABLE_AREAS = (Area.STORAGE, Area.DOCK, Area.STAGE)
+
+
+def select_for_hold(
+    stock: Iterable[StockLine],
+    products: Mapping[str, ProductRef],
+    *,
+    plates: Iterable[str] = (),
+    sku: str | None = None,
+    same_lot: bool = False,
+    room: str | None = None,
+    above: float | None = None,
+) -> list[StockLine]:
+    """The plates a quality hold takes (business-rules §7.3), in plate order:
+
+    - the named `plates` (an order's receipts or picks) still in storage, on a dock lane or staged —
+      only those of `sku` when one is given;
+    - with `same_lot`, every other plate in storage of the same SKU and lot as those;
+    - with `room` and `above` (a cold-room alarm), every plate stored in that room whose product's
+      limit is below the reading `above`.
+    """
+    holdable = [line for line in stock if area_of(line.location) in HOLDABLE_AREAS]
+    named = set(plates)
+    chosen = {
+        (line.lpn, line.location): line
+        for line in holdable
+        if line.lpn in named and (sku is None or line.sku == sku)
+    }
+    if same_lot:
+        lots = {(line.sku, line.lot) for line in chosen.values()}
+        for line in holdable:
+            if area_of(line.location) is Area.STORAGE and (line.sku, line.lot) in lots:
+                chosen[(line.lpn, line.location)] = line
+    if room is not None and above is not None:
+        for line in holdable:
+            product = products.get(line.sku)
+            if (
+                area_of(line.location) is Area.STORAGE
+                and room_of(line.location) == room
+                and product is not None
+                and product.temp_max is not None
+                and product.temp_max < above
+            ):
+                chosen[(line.lpn, line.location)] = line
+    return [chosen[key] for key in sorted(chosen)]
 
 
 def task_minutes(kind: TaskKind, cases: int, whole_pallet: bool, room: str, experience: str) -> float:
@@ -997,15 +1050,15 @@ class Warehouse:
 
     def _receive(
         self, trailer: Trailer, k: int | None, sku: str, cases: int, minute: float, tag: str | None = None
-    ) -> None:
+    ) -> str:
         """One pallet off the trailer onto the door's dock lane, and a put-away task for it. `k` None
-        is the quality-hold pallet (§12.8)."""
+        is the quality-hold pallet (§12.8). Returns its licence plate."""
         a = trailer.appointment
         tag = tag or ("hold" if k is None else f"{k:02d}")
         dice = self._dice(f"{a.key}:rcv:{tag}:damage")
         if k is not None and cases > 1 and dice.random() < RECEIVING_DAMAGE_CHANCE:
             damaged = dice.randint(1, min(DAMAGED_CASES_MAX, cases - 1))
-            self._receive(trailer, None, sku, damaged, minute, tag=f"{tag}:damaged")
+            damaged_plate = self._receive(trailer, None, sku, damaged, minute, tag=f"{tag}:damaged")
             self._issue(
                 minute,
                 f"damage:{a.key}:{tag}",
@@ -1016,6 +1069,7 @@ class Warehouse:
                 quantity=damaged,
                 ref=a.key,
                 door=trailer.door or a.door,
+                held=(damaged_plate,),
             )
             cases -= damaged
         shipment = self._asn(trailer)
@@ -1043,6 +1097,7 @@ class Warehouse:
         room = room_for(self.products[sku].category)
         target = hold_area(room) if k is None else self._free_slot(sku)
         self._task(TaskKind.PUTAWAY, f"{a.key}:put:{tag}", minute, sku, plate, lane, target, cases, ref=a.key)
+        return plate
 
     def _picked(self, task: Task) -> None:
         shipment = self.shipments.get(task.ref or "")
@@ -1237,6 +1292,9 @@ class Warehouse:
         )
         sku = sensitive[0][1] if sensitive else None
         reading = rooms.reading(self.seed, room, minute)
+        tag = f"s{shift_of(minute)}-room-{room}"
+        exposed = select_for_hold(self.stock.values(), self.products, room=room, above=reading)
+        held = self.hold(exposed, minute, SYSTEM, tag, tag)
         self._issue(
             minute,
             f"room-{room}",
@@ -1251,4 +1309,103 @@ class Warehouse:
             temp_reading=reading,
             temp_limit=limit,
             kind="room_excursion",
+            room_minutes_over_limit=rooms.ALARM_AFTER,
+            room=room,
+            held=tuple(held),
         )
+
+    # ── Quality hold and disposition (business-rules §7.3) ──
+
+    def hold(self, lines: Sequence[StockLine], minute: float, actor: str, ref: str, tag: str) -> list[str]:
+        """Move each plate to its room's quality hold. Tasks counting on it are cancelled; a pick it
+        served (queued, or already staged) is allocated again from pickable stock — never held stock.
+        Returns the plates moved, in plate order."""
+        held: list[str] = []
+        again: list[Task] = []
+        skus: set[str] = set()
+        for chosen in lines:
+            place = (chosen.lpn, chosen.location)
+            line = self.stock.get(place)
+            if line is None or area_of(line.location) not in HOLDABLE_AREAS:
+                continue
+            for task in list(self.tasks.values()):
+                if task.lpn != line.lpn:
+                    continue
+                if task.status in OPEN_STATUSES and task.from_location == line.location:
+                    self._cancel(task, "Quality hold")
+                    if task.kind is TaskKind.PICK:
+                        again.append(task)
+                elif (
+                    task.kind is TaskKind.PICK
+                    and task.status is TaskStatus.DONE
+                    and task.cleared is None
+                    and task.to_location == line.location
+                ):
+                    task.cleared, task.note = minute, "quality hold"
+                    self.tasks_touched.add(task.key)
+                    again.append(task)
+            product = self.products.get(line.sku)
+            room = room_for(product.category) if product is not None else (room_of(line.location) or "D")
+            moved = self._move(
+                MovementKind.HOLD,
+                f"{tag}:hold:{line.lpn}:{line.location}",
+                minute,
+                line.lpn,
+                line.location,
+                hold_area(room),
+                line.cases,
+                actor,
+                ref,
+            )
+            if moved and line.lpn not in held:
+                held.append(line.lpn)
+                skus.add(line.sku)
+        for task in again:
+            self._reallocate(task, task.cases)
+        for sku in sorted(skus):
+            self._check_replenishment(sku, minute)
+        return sorted(held)
+
+    def dispose(
+        self, plates: Iterable[str], action: str, minute: float, actor: str, ref: str, tag: str
+    ) -> list[str]:
+        """Quality's call on held plates: `release` to the nearest free reserve slot (a pickable
+        location again), or `destroy` / `return_to_vendor` out of the building as an adjustment."""
+        wanted = set(plates)
+        moved: list[str] = []
+        for (plate, location), line in sorted(self.stock.items()):
+            if plate not in wanted or area_of(location) is not Area.HOLD:
+                continue
+            if action == "release":
+                slot = self._face_slots.get(line.sku)
+                target = (
+                    nearest_free(slot, set(self._occupied) | self._incoming)
+                    if slot
+                    else overflow(location[0])
+                )
+                done = self._move(
+                    MovementKind.RELEASE,
+                    f"{tag}:release:{plate}",
+                    minute,
+                    plate,
+                    location,
+                    target,
+                    line.cases,
+                    actor,
+                    ref,
+                )
+            else:
+                done = self._move(
+                    MovementKind.ADJUST,
+                    f"{tag}:{action}:{plate}",
+                    minute,
+                    plate,
+                    location,
+                    None,
+                    line.cases,
+                    actor,
+                    ref,
+                )
+            if done and plate not in moved:
+                moved.append(plate)
+        return sorted(moved)

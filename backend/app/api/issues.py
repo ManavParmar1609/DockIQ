@@ -1,33 +1,59 @@
-from typing import Annotated
+import csv
+import io
+from datetime import UTC, date, datetime, time, timedelta
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
 from fastapi import status as http
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import realtime
 from app.api.access import ensure, issue_audience, issue_scope, supervisor_of, visible_issue, visible_order
-from app.api.deps import CurrentUser, Operator, PathId, RealtimeDep, SessionDep, Supervisor, get_or_404
+from app.api.deps import (
+    CurrentUser,
+    Operator,
+    PathId,
+    Quality,
+    RealtimeDep,
+    SessionDep,
+    Supervisor,
+    WmsDep,
+    get_or_404,
+)
 from app.db import MAX_ID, utcnow
 from app.domain.dock import DockEvent, transition
-from app.domain.enums import IssueStatus, Role, Severity
+from app.domain.enums import Disposition, IssueStatus, Role, Severity
 from app.domain.evidence import MAX_PHOTO_BYTES, MAX_PHOTOS_PER_ISSUE, sniff_image_type
-from app.domain.lifecycle import OPEN_STATUSES, can_transition, requires_supervisor
-from app.domain.taxonomy import OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS
-from app.models import DockDoor, Issue, IssuePhoto
+from app.domain.lifecycle import (
+    FULL_REJECT,
+    OPEN_STATUSES,
+    can_transition,
+    decision_needs_notes,
+    decision_status,
+    requires_supervisor,
+)
+from app.domain.quality_hold import LEAVES_THE_BUILDING, can_dispose, holds_stock
+from app.domain.taxonomy import OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS, needs_order
+from app.models import DockDoor, Issue, IssuePhoto, Order, Product, User
 from app.queries import issue_select
 from app.schemas import (
     IssueCreate,
     IssueCreated,
+    IssueDispositionUpdate,
     IssueOut,
     IssueSelfResolve,
     IssueSupervisorResolve,
     PhotoOut,
     StatusOut,
 )
+from app.services.holds import hold_for_issue
 from app.services.issue_filing import file_issue
+from app.wms.client import WmsUnavailable
 
 router = APIRouter(tags=["issues"])
+
+EXPORT_LIMIT = 5000  # rows in one CSV export, at most
 
 
 def unprocessable(detail: str) -> HTTPException:
@@ -49,21 +75,35 @@ def _move(issue: Issue, target: IssueStatus) -> None:
     issue.status = target
 
 
-@router.get("/issues")
-async def list_issues(
-    user: CurrentUser,
-    session: SessionDep,
-    status: Annotated[str | None, Query(description="An issue status, or 'active' for open issues")] = None,
-    operator_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
-    severity: Severity | None = None,
-    limit: Annotated[int, Query(ge=1, le=500)] = 100,
-) -> list[IssueOut]:
-    stmt = (
-        issue_select()
-        .where(issue_scope(user))
-        .order_by(Issue.created_at.desc(), Issue.id.desc())
-        .limit(limit)
-    )
+# ── Reading: the list, the CSV export, one issue ──
+
+StatusFilter = Annotated[str | None, Query(description="An issue status, or 'active' for open issues")]
+DockFilter = Annotated[int | None, Query(ge=1, le=999, description="A door number")]
+IdFilter = Annotated[int | None, Query(ge=1, le=MAX_ID)]
+FromFilter = Annotated[date | None, Query(alias="from", description="Filed on or after this day (UTC)")]
+ToFilter = Annotated[date | None, Query(alias="to", description="Filed on or before this day (UTC)")]
+
+
+def day_range(date_from: date | None, date_to: date | None) -> tuple[datetime | None, datetime | None]:
+    """[start of `date_from`, start of the day after `date_to`) in UTC. 422 when they are reversed."""
+    if date_from is not None and date_to is not None and date_from > date_to:
+        raise unprocessable("'from' is after 'to'")
+    start = datetime.combine(date_from, time.min, UTC) if date_from is not None else None
+    end = datetime.combine(date_to + timedelta(days=1), time.min, UTC) if date_to is not None else None
+    return start, end
+
+
+def _filtered(
+    user: User,
+    status: str | None,
+    operator_id: int | None,
+    severity: Severity | None,
+    dock: int | None,
+    carrier_id: int | None,
+    date_from: date | None,
+    date_to: date | None,
+) -> Select[Any]:
+    stmt = issue_select().where(issue_scope(user)).order_by(Issue.created_at.desc(), Issue.id.desc())
     if status == "active":
         stmt = stmt.where(Issue.status.in_(OPEN_STATUSES))
     elif status is not None:
@@ -75,7 +115,119 @@ async def list_issues(
         stmt = stmt.where(Issue.operator_id == operator_id)
     if severity is not None:
         stmt = stmt.where(Issue.severity == severity)
+    if dock is not None:
+        stmt = stmt.where(DockDoor.door_number == dock)
+    if carrier_id is not None:
+        stmt = stmt.where(Issue.carrier_id == carrier_id)
+    start, end = day_range(date_from, date_to)
+    if start is not None:
+        stmt = stmt.where(Issue.created_at >= start)
+    if end is not None:
+        stmt = stmt.where(Issue.created_at < end)
+    return stmt
+
+
+@router.get("/issues")
+async def list_issues(
+    user: CurrentUser,
+    session: SessionDep,
+    status: StatusFilter = None,
+    operator_id: IdFilter = None,
+    severity: Severity | None = None,
+    dock: DockFilter = None,
+    carrier_id: IdFilter = None,
+    date_from: FromFilter = None,
+    date_to: ToFilter = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[IssueOut]:
+    stmt = _filtered(user, status, operator_id, severity, dock, carrier_id, date_from, date_to).limit(limit)
     return [IssueOut.model_validate(dict(row._mapping)) for row in await session.execute(stmt)]
+
+
+EXPORT_COLUMNS: tuple[str, ...] = (
+    "id",
+    "created_at",
+    "status",
+    "severity",
+    "severity_score",
+    "issue_type",
+    "issue_subtype",
+    "door_number",
+    "order_number",
+    "trailer_number",
+    "bol_number",
+    "company_name",
+    "product_sku",
+    "product_name",
+    "lot",
+    "quantity_affected",
+    "temp_reading",
+    "temp_limit",
+    "room",
+    "carrier_name",
+    "operator_name",
+    "escalated_at",
+    "acknowledged_by_name",
+    "acknowledged_at",
+    "resolution_type",
+    "supervisor_name",
+    "resolved_at",
+    "estimated_cost_impact",
+    "held_pallets",
+    "disposition",
+    "disposition_by_name",
+    "disposition_at",
+    "simulated",
+    "sim_time",
+    "description",
+)
+
+
+def _cell(value: object) -> str | float | int:
+    """One CSV cell. Text a spreadsheet would run as a formula is prefixed with an apostrophe."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int | float):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        value = " ".join(str(item) for item in value)
+    text = value.value if hasattr(value, "value") else str(value)
+    return f"'{text}" if str(text).startswith(("=", "+", "-", "@", "\t", "\r")) else str(text)
+
+
+@router.get("/issues/export.csv", response_class=Response)
+async def export_issues(
+    user: CurrentUser,
+    session: SessionDep,
+    status: StatusFilter = None,
+    operator_id: IdFilter = None,
+    severity: Severity | None = None,
+    dock: DockFilter = None,
+    carrier_id: IdFilter = None,
+    date_from: FromFilter = None,
+    date_to: ToFilter = None,
+    limit: Annotated[int, Query(ge=1, le=EXPORT_LIMIT)] = 1000,
+) -> Response:
+    """The issue list as CSV: the same filters and the same scope, newest first, bounded."""
+    stmt = _filtered(user, status, operator_id, severity, dock, carrier_id, date_from, date_to).limit(limit)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(EXPORT_COLUMNS)
+    for row in await session.execute(stmt):
+        issue = IssueOut.model_validate(dict(row._mapping)).model_dump()
+        writer.writerow([_cell(issue.get(column)) for column in EXPORT_COLUMNS])
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="dockiq-issues-{utcnow():%Y%m%d-%H%M}.csv"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/issues/{issue_id}")
@@ -84,18 +236,34 @@ async def get_issue(issue_id: PathId, user: CurrentUser, session: SessionDep) ->
     return await _issue_out(session, issue_id)
 
 
+# ── Reporting ──
+
+
 @router.post("/issues")
 async def create_issue(
-    body: IssueCreate, user: Operator, session: SessionDep, events: RealtimeDep
+    body: IssueCreate, user: Operator, session: SessionDep, events: RealtimeDep, wms: WmsDep
 ) -> IssueCreated:
     # The order must be one the operator may see (404 otherwise), and the report must be at its dock.
     order = await visible_order(session, user, body.order_id) if body.order_id is not None else None
-    if order is not None and order.dock_door_id != body.dock_door_id:
-        raise unprocessable("That order is not at this dock")
+    if order is None and needs_order(body.issue_type):
+        raise unprocessable("A product issue is reported against its order: choose the order first")
+    if order is not None:
+        if body.dock_door_id is None:
+            body = body.model_copy(update={"dock_door_id": order.dock_door_id})
+        elif order.dock_door_id != body.dock_door_id:
+            raise unprocessable("That order is not at this dock")
     issue = await file_issue(session, user.id, body)
+    product = await session.get(Product, issue.product_id) if issue.product_id is not None else None
     if order is not None:
         order.sim_managed = False  # a person reporting on a simulated trailer takes it over (§12)
     await session.commit()
+    if holds_stock(issue.issue_type) and order is not None:
+        # The WMS is a system of its own: the hold is asked for once the report is on record, and
+        # what it held is recorded on the report (business-rules §7.3).
+        held = await hold_for_issue(wms, issue, order, product, user.employee_id)
+        if held:
+            issue.held_pallets = held
+            await session.commit()
     created = await _issue_out(session, issue.id)
     await events.send(await issue_audience(session, issue), realtime.new_issue(created.model_dump()))
     return IssueCreated(
@@ -110,13 +278,14 @@ async def create_issue(
     )
 
 
-async def _reopen_dock(session: AsyncSession, issue: Issue) -> None:
+async def _dock_event(session: AsyncSession, issue: Issue, event: DockEvent) -> None:
     if issue.dock_door_id is None:
         return
     dock = await get_or_404(session, DockDoor, issue.dock_door_id, "Dock")
-    dock.status, dock.lifecycle_phase = transition(
-        dock.status, dock.lifecycle_phase, DockEvent.ISSUE_RESOLVED
-    )
+    dock.status, dock.lifecycle_phase = transition(dock.status, dock.lifecycle_phase, event)
+
+
+# ── Resolving ──
 
 
 @router.put("/issues/{issue_id}/self-resolve")
@@ -132,7 +301,7 @@ async def self_resolve_issue(
     issue.resolution_type = body.resolution_type
     issue.resolution_notes = body.resolution_notes
     issue.resolved_at = utcnow()
-    await _reopen_dock(session, issue)
+    await _dock_event(session, issue, DockEvent.ISSUE_RESOLVED)
     await session.commit()
     await events.send(
         await issue_audience(session, issue),
@@ -165,14 +334,16 @@ async def escalate_issue(
 async def acknowledge_issue(
     issue_id: PathId, user: Supervisor, session: SessionDep, events: RealtimeDep
 ) -> StatusOut:
-    """ "On my way": the supervisor takes the issue and the operator is told who is coming."""
+    """ "On my way": the supervisor takes the issue and the operator is told who is coming. Who
+    acknowledged is kept apart from who later decides (`acknowledged_by`, `supervisor_id`)."""
     issue = await visible_issue(session, user, issue_id)  # scoped: only this supervisor's team
     if issue.status not in OPEN_STATUSES:
         raise HTTPException(
             http.HTTP_409_CONFLICT, f"Issue is already {issue.status.value.replace('_', ' ')}"
         )
-    issue.acknowledged_at = issue.acknowledged_at or utcnow()
-    issue.supervisor_id = user.id
+    if issue.acknowledged_at is None:
+        issue.acknowledged_at = utcnow()
+        issue.acknowledged_by = user.id
     dock = await session.get(DockDoor, issue.dock_door_id) if issue.dock_door_id is not None else None
     await session.commit()
     await events.send(
@@ -186,23 +357,77 @@ async def acknowledge_issue(
 async def supervisor_resolve_issue(
     issue_id: PathId, body: IssueSupervisorResolve, user: Supervisor, session: SessionDep, events: RealtimeDep
 ) -> StatusOut:
+    """The supervisor's decision (business-rules §7.2). Accepting product on a critical or temperature
+    issue needs a reason; Contact Carrier and Request Re-inspection put the issue `on_hold` (still
+    open); Full Reject closes it and blocks the order's sign-off, and the door stays flagged."""
     issue = await visible_issue(session, user, issue_id)  # scoped: only this supervisor's team
-    if body.resolution_type not in SUPERVISOR_DECISIONS:
-        raise unprocessable(f"Unknown decision '{body.resolution_type}'")
-    _move(issue, IssueStatus.SUPERVISOR_RESOLVED)
+    decision = body.resolution_type
+    if decision not in SUPERVISOR_DECISIONS:
+        raise unprocessable(f"Unknown decision '{decision}'")
+    if (
+        decision_needs_notes(decision, issue.severity, issue.issue_type)
+        and not (body.supervisor_notes or "").strip()
+    ):
+        raise unprocessable(f"'{decision}' on a critical or temperature issue needs your reason in the notes")
+    target = decision_status(decision)
+    _move(issue, target)
     now = utcnow()
     issue.supervisor_id = user.id
-    issue.resolution_type = body.resolution_type
+    issue.resolution_type = decision
     issue.supervisor_notes = body.supervisor_notes
-    issue.acknowledged_at = issue.acknowledged_at or now
-    issue.resolved_at = now
-    await _reopen_dock(session, issue)
+    if target is IssueStatus.ON_HOLD:
+        issue.on_hold_at = now
+    else:
+        issue.resolved_at = now
+        await _dock_event(
+            session, issue, DockEvent.LOAD_REJECTED if decision == FULL_REJECT else DockEvent.ISSUE_RESOLVED
+        )
     await session.commit()
     await events.send(
-        await issue_audience(session, issue),
-        realtime.issue_resolved(issue_id, IssueStatus.SUPERVISOR_RESOLVED.value, body.resolution_type),
+        await issue_audience(session, issue), realtime.issue_resolved(issue_id, target.value, decision)
     )
-    return StatusOut(status=IssueStatus.SUPERVISOR_RESOLVED.value)
+    return StatusOut(status=target.value)
+
+
+# ── Quality: disposition of held product (business-rules §7.3) ──
+
+
+@router.put("/issues/{issue_id}/disposition")
+async def dispose_issue(
+    issue_id: PathId, body: IssueDispositionUpdate, user: Quality, session: SessionDep, wms: WmsDep
+) -> IssueOut:
+    """Quality's decision on the product held for an issue: hold (applied again), release to storage,
+    destroy, or return to the vendor. Supervisors read it; only Quality decides it."""
+    issue = await visible_issue(session, user, issue_id)
+    notes = body.notes.strip()
+    if not notes:
+        raise unprocessable("A disposition needs notes")
+    if not can_dispose(issue.disposition, body.disposition):
+        current = issue.disposition.value.replace("_", " ") if issue.disposition else "decided"
+        raise HTTPException(http.HTTP_409_CONFLICT, f"This product's disposition is final: {current}")
+    held = list(issue.held_pallets)
+    if body.disposition is Disposition.HOLD:
+        order = await session.get(Order, issue.order_id) if issue.order_id is not None else None
+        product = await session.get(Product, issue.product_id) if issue.product_id is not None else None
+        again = await hold_for_issue(wms, issue, order, product, user.employee_id)
+        if again is None:
+            raise HTTPException(http.HTTP_503_SERVICE_UNAVAILABLE, "The WMS is offline: nothing was held")
+        held = again
+    elif held:
+        action = body.disposition.value if body.disposition in LEAVES_THE_BUILDING else "release"
+        try:
+            await wms.dispose_stock(held, action, f"ISSUE-{issue.id}", user.employee_id)
+        except WmsUnavailable:
+            raise HTTPException(
+                http.HTTP_503_SERVICE_UNAVAILABLE, "The WMS is offline: the held stock was not moved"
+            ) from None
+    issue.held_pallets = held
+    issue.disposition = body.disposition
+    issue.disposition_notes = notes
+    issue.disposition_by = user.id
+    issue.disposition_at = utcnow()
+    await session.commit()
+    return await _issue_out(session, issue_id)
 
 
 # ── Photo evidence ──

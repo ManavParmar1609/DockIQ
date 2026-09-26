@@ -114,3 +114,56 @@ def test_the_projects_own_vercel_sites_are_allowed_without_listing_them(client: 
     )
     assert preflight("https://evil.vercel.app") is None
     assert preflight("https://dockiq.vercel.app.evil.example") is None
+
+
+def test_open_critical_issues_filed_before_the_rule_are_escalated_by_migration(empty_db: Settings) -> None:
+    """Migration 0006 (business-rules §7.1): a critical issue never waits on the operator."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from app.models import Issue
+
+    filed = datetime(2026, 9, 1, 8, 0, tzinfo=UTC)
+
+    def row(severity: str, status: str) -> dict[str, object]:
+        return {
+            "issue_type": "Damaged Pallet",
+            "severity": severity,
+            "status": status,
+            "quick_tags": [],
+            "recurring_patterns": [],
+            "held_pallets": [],
+            "estimated_cost_impact": 0,
+            "simulated": False,
+            "created_at": filed,
+        }
+
+    async def migrate() -> list[tuple[str, str, datetime | None]]:
+        database = Database(empty_db)
+        try:
+            await downgrade(database.engine, configure_logging=False)
+            await upgrade(database.engine, "0005", configure_logging=False)
+            async with database.engine.begin() as connection:
+                await connection.execute(
+                    Issue.__table__.insert(),
+                    [
+                        row("critical", "resolution_in_progress"),
+                        row("high", "resolution_in_progress"),
+                        row("critical", "self_resolved"),
+                    ],
+                )
+            await upgrade(database.engine, configure_logging=False)
+            async with database.engine.connect() as connection:
+                result = await connection.execute(
+                    select(Issue.severity, Issue.status, Issue.escalated_at).order_by(Issue.id)
+                )
+                return [(r.severity.value, r.status.value, r.escalated_at) for r in result]
+        finally:
+            await database.dispose()
+
+    assert asyncio.run(migrate()) == [
+        ("critical", "escalated", filed),
+        ("high", "resolution_in_progress", None),
+        ("critical", "self_resolved", None),  # closed history is left as it was
+    ]

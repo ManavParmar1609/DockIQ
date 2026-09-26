@@ -86,6 +86,7 @@ def require_roles(*roles: Role) -> Callable[[User], Awaitable[User]]:
 Operator = Annotated[User, Depends(require_roles(Role.OPERATOR))]
 Supervisor = Annotated[User, Depends(require_roles(Role.SUPERVISOR))]
 Staff = Annotated[User, Depends(require_roles(Role.SUPERVISOR, Role.QUALITY))]
+Quality = Annotated[User, Depends(require_roles(Role.QUALITY))]
 
 
 async def get_or_404[ModelT: Base](

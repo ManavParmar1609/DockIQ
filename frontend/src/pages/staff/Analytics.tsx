@@ -21,15 +21,63 @@ import {
   type BarShapeProps,
 } from 'recharts';
 
-import { useAnalytics } from '../../api/hooks';
+import { useSearchParams } from 'react-router';
+
+import { useAnalytics, type DateRange } from '../../api/hooks';
 import type { Analytics as Summary, Severity } from '../../api/types';
 import { useUser } from '../../auth/AuthProvider';
 import { SeverityMark, severityLabel } from '../../components/Severity';
-import { PageHeader, Panel, QueryBoundary, Stat, StatGrid } from '../../components/ui';
+import {
+  ChoiceGroup,
+  PageHeader,
+  Panel,
+  QueryBoundary,
+  SimulatedTag,
+  Stat,
+  StatGrid,
+} from '../../components/ui';
 import { duration, formatMoney, formatNumber } from '../../lib/format';
 import { SEVERITY_ORDER } from '../../lib/vocab';
 
-const TREND_DAYS = 30;
+/** Below this many, an average or a rate says "too few to say" rather than a number. */
+const MIN_SAMPLE = 5;
+
+type RangeKey = 'shift' | '7d' | '30d' | 'all';
+
+const RANGES: readonly { value: RangeKey; label: string }[] = [
+  { value: 'shift', label: 'This shift' },
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: 'all', label: 'All' },
+];
+
+/** Days back from today (UTC) for each preset; `null` is everything. The trend shows 30 days for "All". */
+const RANGE_DAYS: Record<RangeKey, number | null> = { shift: 1, '7d': 7, '30d': 30, all: null };
+
+const RANGE_WORDS: Record<RangeKey, string> = {
+  shift: 'filed today',
+  '7d': 'filed in the last 7 days',
+  '30d': 'filed in the last 30 days',
+  all: 'all time',
+};
+
+const RANGE_LABEL: Record<RangeKey, string> = {
+  shift: 'Filed today',
+  '7d': 'Filed in the last 7 days',
+  '30d': 'Filed in the last 30 days',
+  all: 'All time, in your scope',
+};
+
+function isRange(value: string | null): value is RangeKey {
+  return RANGES.some((range) => range.value === value);
+}
+
+function rangeFor(key: RangeKey, today = new Date()): DateRange {
+  const days = RANGE_DAYS[key];
+  if (days === null) return {};
+  const base = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return { from: new Date(base - (days - 1) * 86_400_000).toISOString().slice(0, 10) };
+}
 const AXIS = { fontFamily: 'var(--font-sans)', fontSize: 14, fill: 'var(--color-ink-mute)' };
 
 /** Severity bars wear the severity colour (status), always beside its shape and label. */
@@ -119,7 +167,7 @@ function BarList({
   max,
   empty,
 }: {
-  rows: { label: string; value: number; display: string; hint?: string }[];
+  rows: { label: string; value: number; display: string; hint?: string; simulated?: boolean }[];
   hue: Hue;
   max?: number;
   empty: string;
@@ -130,8 +178,11 @@ function BarList({
     <ul className="flex flex-col gap-3">
       {rows.map((row, index) => (
         <li key={row.label}>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="truncate font-semibold">{row.label}</span>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-semibold">{row.label}</span>
+              {row.simulated && <SimulatedTag compact />}
+            </span>
             <span className="telemetry shrink-0">
               {row.display}
               {row.hint && <span className="text-sm text-ink-mute"> · {row.hint}</span>}
@@ -175,6 +226,7 @@ function TrendTip({ active, payload }: { active?: boolean; payload?: { payload: 
 }
 
 function Trend({ points, reduced }: { points: DayPoint[]; reduced: boolean }) {
+  const days = points.length;
   const [table, setTable] = useState(false);
   const total = points.reduce((sum, point) => sum + point.count, 0);
   const peakIndex = points.reduce(
@@ -187,7 +239,7 @@ function Trend({ points, reduced }: { points: DayPoint[]; reduced: boolean }) {
   const labels = new Map(points.map((point) => [point.date, point.label]));
   const rows = (
     <table className={table ? 'w-full text-base' : 'sr-only'}>
-      <caption className="sr-only">Issues per day, last {TREND_DAYS} days</caption>
+      <caption className="sr-only">Issues per day, last {days} days</caption>
       <thead>
         <tr className="label text-left">
           <th scope="col" className="py-2 font-medium">
@@ -216,7 +268,7 @@ function Trend({ points, reduced }: { points: DayPoint[]; reduced: boolean }) {
       aside={
         <div className="flex items-center gap-3">
           <span className="label hidden sm:inline">
-            {formatNumber(total)} in {TREND_DAYS} days
+            {formatNumber(total)} in {days} days
           </span>
           <ViewToggle table={table} onChange={setTable} />
         </div>
@@ -228,7 +280,7 @@ function Trend({ points, reduced }: { points: DayPoint[]; reduced: boolean }) {
       ) : (
         <>
           <p className="label mb-3 sm:hidden">
-            {formatNumber(total)} in {TREND_DAYS} days
+            {formatNumber(total)} in {days} days
           </p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -388,6 +440,7 @@ function SeveritySpeed({ rows }: { rows: Summary['by_severity'] }) {
         const row = bySeverity.get(level);
         const count = row?.count ?? 0;
         const minutes = row?.avg_resolution_minutes ?? null;
+        const resolved = count - (row?.open ?? 0);
         return (
           <li key={level}>
             <div className="flex items-baseline justify-between gap-3">
@@ -405,7 +458,11 @@ function SeveritySpeed({ rows }: { rows: Summary['by_severity'] }) {
             </div>
             <p className="mt-1 text-sm text-ink-mute">
               {row?.open ?? 0} open ·{' '}
-              {minutes === null ? 'none resolved yet' : `${duration(minutes)} to resolve on average`}
+              {resolved === 0 || minutes === null
+                ? 'none resolved yet'
+                : resolved < MIN_SAMPLE
+                  ? `${String(resolved)} resolved · too few to say how fast`
+                  : `${duration(minutes)} to resolve on average`}
             </p>
           </li>
         );
@@ -591,9 +648,13 @@ function RepeatList({
 
 // ── The page ──
 
-function Dashboard({ data, scope }: { data: Summary; scope: string }) {
+function Dashboard({ data, range }: { data: Summary; range: RangeKey }) {
   const [reduced] = useState(prefersReducedMotion);
-  const points = lastDays(data.over_time, TREND_DAYS);
+  const trendDays = RANGE_DAYS[range] ?? 30;
+  const points = lastDays(data.over_time, trendDays);
+  const scope = data.scope === 'quality' ? 'facility' : 'team';
+  const within = RANGE_WORDS[range];
+  const resolved = data.total_issues - data.open_issues;
   const costRows = data.by_type
     .filter((row) => row.cost_impact > 0)
     .sort((a, b) => b.cost_impact - a.cost_impact)
@@ -601,7 +662,14 @@ function Dashboard({ data, scope }: { data: Summary; scope: string }) {
   const operators = data.by_operator
     .map((row) => {
       const rate = row.total ? Math.round((row.self_resolved / row.total) * 100) : 0;
-      return { label: row.name, value: rate, display: `${rate}%`, hint: `${row.total} issues` };
+      const few = row.total < MIN_SAMPLE;
+      return {
+        label: row.name,
+        value: few ? 0 : rate,
+        display: few ? '—' : `${String(rate)}%`,
+        hint: few ? `${String(row.total)} issues, too few to say` : `${String(row.total)} issues`,
+        simulated: row.simulated ?? false,
+      };
     })
     .sort((a, b) => b.value - a.value);
 
@@ -618,14 +686,14 @@ function Dashboard({ data, scope }: { data: Summary; scope: string }) {
           <Stat
             label="Open critical"
             value={formatNumber(data.open_critical)}
-            sub={data.open_critical > 0 ? 'Waiting on a supervisor' : 'Nothing critical open'}
+            sub={data.open_critical > 0 ? `Waiting on a supervisor · ${within}` : 'Nothing critical open'}
             alert={data.open_critical > 0}
             index={0}
           />
           <Stat
             label="Open issues"
             value={formatNumber(data.open_issues)}
-            sub="Still being worked"
+            sub={`Still being worked · ${within}`}
             index={1}
           />
           <Stat
@@ -651,32 +719,41 @@ function Dashboard({ data, scope }: { data: Summary; scope: string }) {
         }
       >
         <StatGrid>
-          <Stat
-            label="Issues"
-            value={formatNumber(data.total_issues)}
-            sub="All time, in your scope"
-            index={4}
-          />
+          <Stat label="Issues" value={formatNumber(data.total_issues)} sub={RANGE_LABEL[range]} index={4} />
           <Stat
             label="Self-resolved"
-            value={`${data.self_resolution_rate}%`}
-            sub={`${formatNumber(data.self_resolved)} without a supervisor`}
+            value={data.total_issues < MIN_SAMPLE ? '—' : `${String(data.self_resolution_rate)}%`}
+            sub={
+              data.total_issues < MIN_SAMPLE
+                ? `Too few issues to say (${String(data.total_issues)})`
+                : `${formatNumber(data.self_resolved)} without a supervisor`
+            }
             index={5}
           />
           <Stat
             label="Avg resolution"
-            value={duration(data.avg_resolution_minutes)}
-            sub="Report to resolved"
+            value={resolved < MIN_SAMPLE ? '—' : duration(data.avg_resolution_minutes)}
+            sub={
+              resolved < MIN_SAMPLE
+                ? `Too few resolved to say (${String(resolved)})`
+                : `Report to resolved · ${formatNumber(resolved)} resolved`
+            }
             index={6}
           />
           <Stat
             label="Cost impact"
             value={formatMoney(data.total_cost_impact)}
-            sub="Estimated, all issues"
+            sub={`Estimated · ${within}`}
             index={7}
           />
         </StatGrid>
-        <Trend points={points} reduced={reduced} />
+        {range === 'shift' ? (
+          <p className="text-base text-ink-mute">
+            The day-by-day trend needs more than one day: choose 7 days or longer.
+          </p>
+        ) : (
+          <Trend points={points} reduced={reduced} />
+        )}
       </Section>
 
       <Section
@@ -706,7 +783,7 @@ function Dashboard({ data, scope }: { data: Summary; scope: string }) {
           </Panel>
           <Panel
             title="Repeat problems"
-            aside={<span className="label">Last {TREND_DAYS} days</span>}
+            aside={<span className="label">{range === 'all' ? 'Last 30 days' : 'In this range'}</span>}
             index={13}
           >
             <div className="flex flex-col gap-5">
@@ -774,18 +851,37 @@ function Dashboard({ data, scope }: { data: Summary; scope: string }) {
   );
 }
 
+/** What the figures cover, from the server's own `scope`, never assumed from the role. */
+function scopeLine(data: Summary | undefined, zone: string | null | undefined): string {
+  if (!data) return 'Loading the scope…';
+  return data.scope === 'quality'
+    ? 'Quality scope: temperature, product-quality and lot issues, and every critical one, across all zones.'
+    : `Team scope: issues reported by ${zone ?? 'your'} team.`;
+}
+
 export default function Analytics() {
   const user = useUser();
-  const analytics = useAnalytics();
-  const scope = user.role === 'quality' ? 'facility' : 'team';
+  const [params, setParams] = useSearchParams();
+  const selected = params.get('range');
+  const range: RangeKey = isRange(selected) ? selected : '30d';
+  const analytics = useAnalytics(rangeFor(range));
+  const choose = (value: RangeKey) => {
+    const next = new URLSearchParams(params);
+    next.set('range', value);
+    setParams(next, { replace: true });
+  };
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         kicker={user.role === 'quality' ? 'Whole facility' : `${user.zone ?? 'Your'} team`}
         title="Analytics"
+        meta={<span>{scopeLine(analytics.data, user.zone)}</span>}
       />
+      <div className="max-w-2xl">
+        <ChoiceGroup label="Period" options={RANGES} value={range} onChange={choose} columns={4} />
+      </div>
       <QueryBoundary query={analytics} loading="Crunching the numbers">
-        {(data) => <Dashboard data={data} scope={scope} />}
+        {(data) => <Dashboard data={data} range={range} />}
       </QueryBoundary>
     </div>
   );

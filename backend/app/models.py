@@ -22,6 +22,7 @@ from app.db import Base, UTCDateTime, enum_column, utcnow
 from app.domain.enums import (
     ChatRole,
     Confidence,
+    Disposition,
     DockStatus,
     IssueStatus,
     LifecyclePhase,
@@ -144,6 +145,8 @@ class Order(Base):
     sim_arrived_minute: Mapped[float | None] = mapped_column(Float)
     sim_departed_minute: Mapped[float | None] = mapped_column(Float)
     wms_synced: Mapped[bool] = mapped_column(Boolean, default=True)
+    # The load guide's current pallet (1-based), kept on the server so it survives a tablet swap.
+    load_step: Mapped[int | None] = mapped_column(Integer)
 
 
 class OrderItem(Base):
@@ -191,6 +194,27 @@ class Issue(Base):
     acknowledged_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    # Who said "on my way" — distinct from `supervisor_id`, who decided (business-rules §7).
+    acknowledged_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    on_hold_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # What was reported, as reported: the reading and limit, the cases, the lot, the cold room.
+    temp_reading: Mapped[float | None] = mapped_column(Float)
+    temp_limit: Mapped[float | None] = mapped_column(Float)
+    quantity_affected: Mapped[int | None] = mapped_column(Integer)
+    lot: Mapped[str | None] = mapped_column(String(16))
+    room: Mapped[str | None] = mapped_column(String(4))
+    # The order as it was when filed, so the record stays traceable if the order goes (a sim reset).
+    order_number: Mapped[str | None] = mapped_column(String(32))
+    trailer_number: Mapped[str | None] = mapped_column(String(32))
+    bol_number: Mapped[str | None] = mapped_column(String(32))
+    # Simulated minute the issue was filed at, to line it up with the WMS clock (simulated issues).
+    sim_minute: Mapped[float | None] = mapped_column(Float)
+    # Quality hold and disposition (business-rules §7.3): the licence plates held, and Quality's call.
+    held_pallets: Mapped[list[str]] = mapped_column(JSON, default=list)
+    disposition: Mapped[Disposition | None] = mapped_column(enum_column(Disposition))
+    disposition_notes: Mapped[str | None] = mapped_column(Text)
+    disposition_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    disposition_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class KnowledgeBaseEntry(Base):
@@ -255,6 +279,9 @@ class ShiftHandoff(Base):
     shift: Mapped[str] = mapped_column(String(16))
     notes: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    # The read receipt: the first other supervisor of the zone to open it.
+    read_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class ChatMessage(Base):
@@ -295,6 +322,37 @@ class ScanEvent(Base):
     result: Mapped[ScanResult] = mapped_column(enum_column(ScanResult))
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+
+class TemperatureCheck(Base):
+    """Every probe reading taken at receiving: the HACCP log (business-rules §11.1)."""
+
+    __tablename__ = "temperature_checks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    reading: Mapped[float] = mapped_column(Float)
+    limit: Mapped[float | None] = mapped_column(Float)
+    delta: Mapped[float | None] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(16))
+    # The Temperature Deviation a critical reading filed (or joined).
+    issue_id: Mapped[int | None] = mapped_column(ForeignKey("issues.id", ondelete="SET NULL"), index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+
+class ReceivingCheck(Base):
+    """One answer to one receiving check on one order (business-rules §11.3)."""
+
+    __tablename__ = "receiving_checks"
+    __table_args__ = (UniqueConstraint("order_id", "check_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    check_id: Mapped[str] = mapped_column(String(32))
+    answer: Mapped[bool] = mapped_column(Boolean)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    answered_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 class SimState(Base):

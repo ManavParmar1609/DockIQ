@@ -2,7 +2,7 @@
  * The single place each status vocabulary is labelled. The old UI had four competing maps for the
  * same five issue statuses; this replaces all of them.
  */
-import type { Dock, IssueStatus, Severity } from '../api/types';
+import type { Disposition, Dock, IssueStatus, Severity } from '../api/types';
 
 export const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low'];
 
@@ -11,8 +11,17 @@ const SEVERITY_RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 
 export const ISSUE_STATUS: Record<IssueStatus, { label: string; open: boolean }> = {
   resolution_in_progress: { label: 'In progress', open: true },
   escalated: { label: 'Escalated', open: true },
+  on_hold: { label: 'On hold', open: true },
   self_resolved: { label: 'Self-resolved', open: false },
   supervisor_resolved: { label: 'Supervisor resolved', open: false },
+};
+
+/** Quality's decision on held product (business-rules §7.3). */
+export const DISPOSITION: Record<Disposition, string> = {
+  hold: 'On hold',
+  release: 'Released',
+  destroy: 'Destroyed',
+  return_to_vendor: 'Returned to vendor',
 };
 
 export const DOCK_STATUS: Record<Dock['status'], string> = {

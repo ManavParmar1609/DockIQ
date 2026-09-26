@@ -10,6 +10,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.expression import ColumnElement, FunctionElement
 
+from app.domain.lifecycle import OPEN_STATUSES
 from app.domain.retrieval import KbEntry
 from app.models import (
     Carrier,
@@ -29,12 +30,16 @@ from app.models import (
 def issue_select() -> Select[Any]:
     operator = aliased(User)
     supervisor = aliased(User)
+    acknowledger = aliased(User)
+    quality = aliased(User)
     photo_count = select(func.count(IssuePhoto.id)).where(IssuePhoto.issue_id == Issue.id).scalar_subquery()
     return (
         select(
             *Issue.__table__.c,
             operator.name.label("operator_name"),
             supervisor.name.label("supervisor_name"),
+            acknowledger.name.label("acknowledged_by_name"),
+            quality.name.label("disposition_by_name"),
             DockDoor.door_number,
             Company.name.label("company_name"),
             Product.name.label("product_name"),
@@ -44,6 +49,8 @@ def issue_select() -> Select[Any]:
         )
         .outerjoin(operator, Issue.operator_id == operator.id)
         .outerjoin(supervisor, Issue.supervisor_id == supervisor.id)
+        .outerjoin(acknowledger, Issue.acknowledged_by == acknowledger.id)
+        .outerjoin(quality, Issue.disposition_by == quality.id)
         .outerjoin(DockDoor, Issue.dock_door_id == DockDoor.id)
         .outerjoin(Company, Issue.company_id == Company.id)
         .outerjoin(Product, Issue.product_id == Product.id)
@@ -104,6 +111,12 @@ def dock_select() -> Select[Any]:
         .group_by(OrderItem.order_id)
         .subquery()
     )
+    # A count only: the door's open issues are visible as records only to the teams they belong to.
+    open_issues = (
+        select(func.count(Issue.id))
+        .where(Issue.dock_door_id == DockDoor.id, Issue.status.in_(list(OPEN_STATUSES)))
+        .scalar_subquery()
+    )
     return (
         select(
             *DockDoor.__table__.c,
@@ -114,6 +127,7 @@ def dock_select() -> Select[Any]:
             Order.type.label("order_type"),
             cases.c.cases_done,
             cases.c.cases_expected,
+            open_issues.label("open_issues"),
         )
         .outerjoin(User, DockDoor.current_operator_id == User.id)
         .outerjoin(Order, DockDoor.current_order_id == Order.id)

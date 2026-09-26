@@ -1,6 +1,6 @@
-import { CloudOff, Thermometer } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { CloudOff, Thermometer, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router';
 
 import { ApiError } from '../../api/client';
 import {
@@ -94,6 +94,8 @@ const MOVEMENT: Record<LedgerEntry['kind'], string> = {
   load: 'Load',
   ship: 'Ship',
   adjust: 'Adjust',
+  hold: 'Quality hold',
+  release: 'Release',
 };
 
 const AREA: Record<string, string> = {
@@ -588,13 +590,34 @@ function ColdRooms({ online }: { online: boolean }) {
 
 // ── Transactions: the movement ledger, newest first, paged ──
 
-function Ledger({ online }: { online: boolean }) {
+function Ledger({
+  online,
+  pallet,
+  onClearPallet,
+}: {
+  online: boolean;
+  pallet: string | null;
+  onClearPallet: () => void;
+}) {
   const [pages, setPages] = useState<number[]>([]);
   const before = pages.at(-1) ?? null;
-  const ledger = useLedger(before, online);
+  const ledger = useLedger(before, online, pallet);
   if (down(online, ledger.error)) return <Offline />;
   return (
-    <Panel title="Movement ledger" aside={<SimulatedTag compact />} flush>
+    <Panel
+      title={pallet ? `Movements of pallet ${pallet}` : 'Movement ledger'}
+      aside={
+        <span className="flex items-center gap-2">
+          {pallet && (
+            <button type="button" className="btn btn-secondary" onClick={onClearPallet}>
+              <X size={18} aria-hidden="true" /> All pallets
+            </button>
+          )}
+          <SimulatedTag compact />
+        </span>
+      }
+      flush
+    >
       <QueryBoundary query={ledger} loading="Reading the ledger">
         {(entries) => {
           const oldest = entries.at(-1);
@@ -660,11 +683,41 @@ function Ledger({ online }: { online: boolean }) {
   );
 }
 
-/** The simulated WMS's warehouse, one view at a time. `yard` is the page's yard board. */
+function isView(value: string | null): value is View {
+  return VIEWS.some((view) => view.id === value);
+}
+
+/**
+ * The simulated WMS's warehouse, one view at a time. `yard` is the page's yard board. The view and a
+ * pallet filter live in the URL (`?view=ledger&pallet=…`), so an issue's held pallet links straight to
+ * its movements.
+ */
 export function WarehouseTabs({ online, yard }: { online: boolean; yard: ReactNode }) {
-  const [view, setView] = useState<View>('yard');
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('view');
+  const view: View = isView(requested) ? requested : 'yard';
+  const palletParam = params.get('pallet')?.trim() ?? '';
+  const pallet = palletParam === '' ? null : palletParam;
+  const top = useRef<HTMLDivElement>(null);
+  const linked = useRef(pallet !== null);
+
+  // Arriving from an issue's held pallet: bring the ledger into view once.
+  useEffect(() => {
+    if (!linked.current) return;
+    linked.current = false;
+    top.current?.scrollIntoView({ block: 'start' });
+  }, []);
+
+  const change = (key: string, value: string | null) => {
+    const next = new URLSearchParams(params);
+    if (value === null) next.delete(key);
+    else next.set(key, value);
+    setParams(next, { replace: true });
+  };
+  const setView = (next: View) => change('view', next === 'yard' ? null : next);
+
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={top} className="flex flex-col gap-4">
       <Tabs tabs={VIEWS} active={view} onChange={setView} label="Warehouse views" panelId={PANEL_ID} />
       <div
         role="tabpanel"
@@ -682,7 +735,14 @@ export function WarehouseTabs({ online, yard }: { online: boolean; yard: ReactNo
         {view === 'inventory' && <Inventory online={online} />}
         {view === 'tasks' && <Tasks online={online} />}
         {view === 'rooms' && <ColdRooms online={online} />}
-        {view === 'ledger' && <Ledger online={online} />}
+        {view === 'ledger' && (
+          <Ledger
+            key={pallet ?? 'all'}
+            online={online}
+            pallet={pallet}
+            onClearPallet={() => change('pallet', null)}
+          />
+        )}
       </div>
       <p className="text-sm text-ink-mute">
         Problems the warehouse finds are filed as issues and appear in the{' '}

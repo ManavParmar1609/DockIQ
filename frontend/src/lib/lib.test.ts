@@ -58,8 +58,9 @@ describe('formatDate', () => {
 
 describe('vocabulary', () => {
   it('has one label per issue status and knows which are open', () => {
-    expect(Object.keys(ISSUE_STATUS)).toHaveLength(4);
+    expect(Object.keys(ISSUE_STATUS)).toHaveLength(5);
     expect(ISSUE_STATUS.escalated.open).toBe(true);
+    expect(ISSUE_STATUS.on_hold.open).toBe(true);
     expect(ISSUE_STATUS.self_resolved.open).toBe(false);
   });
   it('orders the queue critical first, then oldest', () => {

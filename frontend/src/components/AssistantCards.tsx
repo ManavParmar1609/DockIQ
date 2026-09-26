@@ -7,9 +7,16 @@ import { ArrowRight, BookOpen, Check, Megaphone, Thermometer, X } from 'lucide-r
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
-import type { AgentAction, AgentCard, BroadcastDraft, HandoffDraft, IssueDraft } from '../api/assistant';
-import { useReportIssue, useSendBroadcast } from '../api/hooks';
-import { duration, formatTemp } from '../lib/format';
+import type {
+  AgentAction,
+  AgentCard,
+  BroadcastDraft,
+  HandoffDraft,
+  IssueDraft,
+  SelfResolveDraft,
+} from '../api/assistant';
+import { useReportIssue, useSelfResolve, useSendBroadcast, useTaxonomy } from '../api/hooks';
+import { duration, formatDate, formatTemp } from '../lib/format';
 import { parseSeverityReason } from '../lib/vocab';
 import { PalletList } from './PalletList';
 import { ConfidenceMeter, SeverityBadge } from './Severity';
@@ -167,6 +174,86 @@ function IssuesView({ card }: { card: Extract<AgentCard, { kind: 'issues' }> }) 
   );
 }
 
+function RoomsView({ card }: { card: Extract<AgentCard, { kind: 'rooms' }> }) {
+  return (
+    <CardFrame kicker="Cold rooms · from the WMS">
+      {card.simulated && (
+        <p className="mb-3">
+          <SimulatedTag />
+        </p>
+      )}
+      {!card.wms_online ? (
+        <p className="text-base">WMS offline. Read the room displays directly.</p>
+      ) : (
+        <ul className="flex flex-col">
+          {card.rooms.map((room) => (
+            <li
+              key={room.code}
+              className="flex flex-wrap items-center gap-3 border-b border-hairline py-2 last:border-b-0"
+            >
+              <span className="min-w-0 flex-1 font-bold">{room.name}</span>
+              <span className="telemetry text-lg">{formatTemp(room.temp)}</span>
+              <span className="telemetry text-sm text-ink-mute">limit {formatTemp(room.limit)}</span>
+              <Tag tone={room.alarm ? 'hazard' : room.over_limit ? 'ink' : 'plain'}>
+                <Thermometer size={16} aria-hidden="true" className="mr-1" />
+                {room.alarm ? 'Alarm' : room.over_limit ? 'Over limit' : 'Within limit'}
+              </Tag>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CardFrame>
+  );
+}
+
+function TraceView({ card }: { card: Extract<AgentCard, { kind: 'trace' }> }) {
+  return (
+    <CardFrame kicker="Lot trace · from the WMS" title={card.sku}>
+      <p className="mb-3 flex flex-wrap items-center gap-2 font-bold">
+        {card.product_name}
+        <span className="telemetry text-sm text-ink-mute">{card.lot ? `lot ${card.lot}` : 'all lots'}</span>
+        {card.simulated && <SimulatedTag compact />}
+      </p>
+      {!card.wms_online ? (
+        <p className="text-base">WMS offline. Trace from the paper receiving log.</p>
+      ) : (
+        <>
+          <p className="label mb-1">On hand</p>
+          {card.on_hand.length === 0 ? (
+            <p className="text-base">None on hand.</p>
+          ) : (
+            <ul className="flex flex-col">
+              {card.on_hand.map((pallet) => (
+                <li key={pallet.pallet_id} className="border-b border-hairline py-2 last:border-b-0">
+                  <span className="telemetry text-lg">{pallet.location}</span>
+                  <p className="telemetry text-sm text-ink-mute">
+                    {pallet.pallet_id} · {pallet.cases} cs · lot {pallet.lot} · best before{' '}
+                    {formatDate(pallet.best_before)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {card.movements.length > 0 && (
+            <div className="mt-3 border-t border-hairline pt-3">
+              <p className="label mb-1">Latest movements</p>
+              <ul className="flex flex-col gap-1">
+                {card.movements.map((move) => (
+                  <li key={`${move.time}-${move.kind}-${move.pallet_id}`} className="telemetry text-sm">
+                    {move.time} · {move.kind} · {move.cases} cs · {move.from_location ?? '—'} →{' '}
+                    {move.to_location ?? '—'}
+                    {move.order_number && ` · ${move.order_number}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </CardFrame>
+  );
+}
+
 export function AgentCardView({ card }: { card: AgentCard }) {
   switch (card.kind) {
     case 'temperature':
@@ -179,6 +266,10 @@ export function AgentCardView({ card }: { card: AgentCard }) {
       return <ProcedureView card={card} />;
     case 'issues':
       return <IssuesView card={card} />;
+    case 'rooms':
+      return <RoomsView card={card} />;
+    case 'trace':
+      return <TraceView card={card} />;
   }
 }
 
@@ -313,6 +404,75 @@ function HandoffDraftView({ draft }: { draft: HandoffDraft }) {
   );
 }
 
+function SelfResolveDraftView({ draft }: { draft: SelfResolveDraft }) {
+  const taxonomy = useTaxonomy();
+  const resolve = useSelfResolve();
+  const [choice, setChoice] = useState<string | null>(draft.resolution_type);
+  const [discarded, setDiscarded] = useState(false);
+  if (discarded) return <Discarded what="Draft resolution" />;
+  const resolved = resolve.isSuccess;
+  return (
+    <CardFrame
+      kicker={resolved ? 'Issue resolved' : 'Draft resolution · not resolved yet'}
+      title={`#${String(draft.issue_id)}`}
+      draft={!resolved}
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <SeverityBadge severity={draft.severity} />
+        <p className="heading text-lg">{draft.title}</p>
+      </div>
+      {draft.resolution_notes && <p className="mt-2 text-base">{draft.resolution_notes}</p>}
+      {resolved ? (
+        <Link to={`/app/issues/${String(draft.issue_id)}`} className="btn btn-primary mt-4">
+          <Check size={20} aria-hidden="true" /> Resolved as {choice}: open it
+        </Link>
+      ) : (
+        <>
+          <p className="label mt-3 mb-1">What you did</p>
+          <div className="grid gap-2 sm:grid-cols-2" aria-label="Resolution">
+            {(taxonomy.data?.operator_resolutions ?? []).map((option) => (
+              <button
+                key={option}
+                type="button"
+                className="choice justify-center"
+                aria-pressed={choice === option}
+                disabled={resolve.isPending}
+                onClick={() => setChoice(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={choice === null || resolve.isPending}
+              onClick={() => {
+                if (choice !== null) {
+                  resolve.mutate({
+                    id: draft.issue_id,
+                    resolution_type: choice,
+                    resolution_notes: draft.resolution_notes,
+                  });
+                }
+              }}
+            >
+              <Check size={20} aria-hidden="true" /> Resolve issue #{draft.issue_id}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => setDiscarded(true)}>
+              <X size={20} aria-hidden="true" /> Discard
+            </button>
+          </div>
+        </>
+      )}
+      <div className="mt-2">
+        <MutationError error={resolve.error} />
+      </div>
+    </CardFrame>
+  );
+}
+
 export function AgentActionView({ action }: { action: AgentAction }) {
   switch (action.kind) {
     case 'file_issue':
@@ -321,5 +481,7 @@ export function AgentActionView({ action }: { action: AgentAction }) {
       return <BroadcastDraftView draft={action} />;
     case 'handoff_note':
       return <HandoffDraftView draft={action} />;
+    case 'self_resolve':
+      return <SelfResolveDraftView draft={action} />;
   }
 }

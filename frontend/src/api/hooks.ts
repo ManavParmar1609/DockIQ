@@ -3,18 +3,34 @@
  * data it changes, and the realtime channel (realtime.ts) invalidates what other people change.
  */
 import { QueryClient, useMutation, useQuery, useQueryClient, type Query } from '@tanstack/react-query';
+import { useEffect, useSyncExternalStore } from 'react';
 
 import { ApiError, api, unwrap } from './client';
+import {
+  applyWrite,
+  bindCountQueue,
+  countQueueState,
+  drainCounts,
+  enqueueCount,
+  queuedWrites,
+  subscribeCounts,
+  withQueuedWrites,
+  type CountRunner,
+  type CountWrite,
+} from './countQueue';
 import type {
   Analytics,
   Broadcast,
+  Carrier,
   ChatMessage,
   ColdRoom,
   CrewProductivity,
   DemoAccount,
+  Disposition,
   Dock,
   GateEvent,
   Handoff,
+  HandoffDraft,
   InspectionCreate,
   InspectionResult,
   Issue,
@@ -28,6 +44,7 @@ import type {
   Pallet,
   Photo,
   QuickRequest,
+  ReceivingChecks,
   RoomCode,
   ScanResult,
   Severity,
@@ -38,6 +55,7 @@ import type {
   StockRow,
   Taxonomy,
   TemperatureCheck,
+  TemperatureLog,
   WarehouseTask,
   WmsStatus,
   YardEntry,
@@ -62,6 +80,8 @@ export const keys = {
   orders: ['orders'] as const,
   order: (id: number) => ['orders', id] as const,
   loadPlan: (id: number) => ['orders', id, 'load-plan'] as const,
+  temperatureLog: (id: number) => ['orders', id, 'temperature-checks'] as const,
+  receivingChecks: (id: number) => ['orders', id, 'receiving-checks'] as const,
   /** A mutation key: an order's tap-counter writes. */
   count: (id: number) => ['count', id] as const,
   issues: ['issues'] as const,
@@ -69,9 +89,13 @@ export const keys = {
   issue: (id: number) => ['issues', id] as const,
   photos: (issueId: number) => ['issues', issueId, 'photos'] as const,
   requests: ['requests'] as const,
+  myRequests: ['requests', 'mine'] as const,
   broadcasts: ['broadcasts'] as const,
   handoffs: ['handoffs'] as const,
+  handoffDraft: ['handoffs', 'draft'] as const,
   analytics: ['analytics'] as const,
+  analyticsRange: (range: DateRange) => ['analytics', range] as const,
+  carriers: ['carriers'] as const,
   chat: ['chat'] as const,
   sim: ['sim'] as const,
   wms: ['wms'] as const,
@@ -80,7 +104,8 @@ export const keys = {
   stock: (room: string) => ['wms', 'stock', room] as const,
   tasks: ['wms', 'tasks'] as const,
   productivity: ['wms', 'productivity'] as const,
-  ledger: (before: number | null) => ['wms', 'transactions', before] as const,
+  ledger: (before: number | null, pallet: string | null = null) =>
+    ['wms', 'transactions', before, pallet] as const,
   shipments: ['wms', 'shipments'] as const,
   gate: ['wms', 'gate'] as const,
   rooms: ['wms', 'rooms'] as const,
@@ -123,6 +148,14 @@ export function useDocks() {
   return useQuery<Dock[]>({ queryKey: keys.docks, queryFn: () => unwrap(api.GET('/api/docks')) });
 }
 
+export function useCarriers() {
+  return useQuery<Carrier[]>({
+    queryKey: keys.carriers,
+    queryFn: () => unwrap(api.GET('/api/carriers')),
+    staleTime: Infinity,
+  });
+}
+
 // ── Orders ──
 
 /** An operator's current assignment: their order still in progress, if any. */
@@ -137,7 +170,11 @@ export function useActiveOrder() {
 export function useOrder(id: number | undefined) {
   return useQuery<OrderDetail>({
     queryKey: keys.order(id ?? 0),
-    queryFn: () => unwrap(api.GET('/api/orders/{order_id}', { params: { path: { order_id: id ?? 0 } } })),
+    // This tablet's unsent counts ride on top of the server's, so a refetch never undoes a tap.
+    queryFn: async () =>
+      withQueuedWrites(
+        await unwrap(api.GET('/api/orders/{order_id}', { params: { path: { order_id: id ?? 0 } } })),
+      ),
     enabled: id !== undefined,
   });
 }
@@ -160,7 +197,7 @@ export function isSettledQuery(client: QueryClient, query: Query): boolean {
   return !(
     root === keys.orders[0] &&
     typeof id === 'number' &&
-    client.isMutating({ mutationKey: keys.count(id) }) > 0
+    (client.isMutating({ mutationKey: keys.count(id) }) > 0 || queuedWrites(id) > 0)
   );
 }
 
@@ -172,26 +209,68 @@ export function invalidateOrders(client: QueryClient) {
   });
 }
 
+/** Sends one queued count write as a `keys.count` mutation, so `isMutating` sees it. */
+function countRunner(client: QueryClient): CountRunner {
+  return {
+    send: (orderId, write) =>
+      client
+        .getMutationCache()
+        .build(client, {
+          mutationKey: keys.count(orderId),
+          scope: { id: `count-${String(orderId)}` },
+          // The queue decides when to retry; a request made offline fails at once instead of pausing.
+          networkMode: 'always',
+          mutationFn: (): Promise<unknown> =>
+            write.kind === 'count'
+              ? unwrap(
+                  api.PUT('/api/orders/{order_id}/items', {
+                    params: { path: { order_id: orderId } },
+                    body: { product_id: write.product_id, actual_quantity: write.actual_quantity },
+                  }),
+                )
+              : unwrap(
+                  api.PUT('/api/orders/{order_id}/load-step', {
+                    params: { path: { order_id: orderId } },
+                    body: { step: write.step, count: write.count },
+                  }),
+                ),
+        })
+        .execute(undefined),
+    resync: (orderId) => void client.invalidateQueries({ queryKey: keys.order(orderId), exact: true }),
+  };
+}
+
+/** Apply a write to the cached order at once, then queue it for the server. */
+function queueWrite(client: QueryClient, orderId: number, detail: OrderDetail, write: CountWrite) {
+  // Cancel an in-flight refetch first, so a stale server count cannot land on top of this tap.
+  void client.cancelQueries({ queryKey: keys.order(orderId), exact: true });
+  client.setQueryData<OrderDetail>(keys.order(orderId), applyWrite(detail, write));
+  bindCountQueue(countRunner(client));
+  enqueueCount(orderId, write);
+}
+
+/**
+ * An order's unsent count writes (`api/countQueue.ts`): how many, why they are stuck, and a way to
+ * send them now. Mounting it replays anything left from before a reload.
+ */
+export function useCountQueue(orderId: number) {
+  const client = useQueryClient();
+  useEffect(() => {
+    bindCountQueue(countRunner(client));
+    void drainCounts(orderId);
+  }, [client, orderId]);
+  const state = useSyncExternalStore(subscribeCounts, () => countQueueState(orderId));
+  return { ...state, retry: () => void drainCounts(orderId) };
+}
+
 /**
  * Case counting from the tap counters. Each tap reads and writes the cache synchronously, so rapid
- * taps never compute from a stale count; the requests run one at a time, in order, and the server's
- * truth is re-fetched once the last tap settles.
+ * taps never compute from a stale count; the writes are queued (offline-safe), sent one at a time in
+ * order, and the server's truth is re-fetched once the queue empties.
  */
 export function useCounter(orderId: number) {
   const client = useQueryClient();
-  const mutationKey = keys.count(orderId);
-  const mutation = useMutation({
-    mutationKey,
-    scope: { id: `count-${orderId}` },
-    mutationFn: (vars: { product_id: number; actual_quantity: number }) =>
-      unwrap(
-        api.PUT('/api/orders/{order_id}/items', { params: { path: { order_id: orderId } }, body: vars }),
-      ),
-    onSettled: () => {
-      if (client.isMutating({ mutationKey }) <= 1)
-        void client.invalidateQueries({ queryKey: keys.order(orderId) });
-    },
-  });
+  const queue = useCountQueue(orderId);
 
   const adjust = (productId: number, next: (current: number) => number) => {
     const detail = client.getQueryData<OrderDetail>(keys.order(orderId));
@@ -200,18 +279,38 @@ export function useCounter(orderId: number) {
     const value = next(item.actual_quantity);
     // An unchanged value still counts once when the line was never verified: "Set 0" is a count.
     if (value === item.actual_quantity && item.verified) return;
-    // Cancel an in-flight refetch first, so a stale server count cannot land on top of this tap.
-    void client.cancelQueries({ queryKey: keys.order(orderId) });
-    client.setQueryData<OrderDetail>(keys.order(orderId), {
-      ...detail,
-      items: detail.items.map((line) =>
-        line.product_id === productId ? { ...line, actual_quantity: value, verified: true } : line,
-      ),
-    });
-    mutation.mutate({ product_id: productId, actual_quantity: value });
+    queueWrite(client, orderId, detail, { kind: 'count', product_id: productId, actual_quantity: value });
   };
 
-  return { adjust, error: mutation.error };
+  return { adjust, error: queue.refused };
+}
+
+/**
+ * The load guide's step, kept on the server. Stepping on or back by one counts or uncounts the pallet
+ * stepped over on its order line, so the Scan & count totals move with the guide; a jump only moves
+ * the place. Queued with the tap counts, so the two never race.
+ */
+export function useLoadStepSync(orderId: number) {
+  const client = useQueryClient();
+  return (step: number, count: boolean) => {
+    const detail = client.getQueryData<OrderDetail>(keys.order(orderId));
+    if (!detail) return;
+    const current = detail.load_step ?? 1;
+    if (step === current) return;
+    const plan = client.getQueryData<LoadPlan>(keys.loadPlan(orderId));
+    const sequence = step > current ? current : step;
+    const pallet =
+      count && Math.abs(step - current) === 1
+        ? plan?.pallets.find((candidate) => candidate.load_sequence === sequence)
+        : undefined;
+    queueWrite(client, orderId, detail, {
+      kind: 'step',
+      step,
+      count: pallet !== undefined,
+      sku: pallet?.sku ?? null,
+      cases: pallet?.cases ?? 0,
+    });
+  };
 }
 
 export function useScan(orderId: number) {
@@ -228,6 +327,7 @@ export function useScan(orderId: number) {
 }
 
 export function useTemperatureCheck(orderId: number) {
+  const client = useQueryClient();
   return useMutation<TemperatureCheck, Error, number>({
     mutationFn: (reading) =>
       unwrap(
@@ -236,6 +336,52 @@ export function useTemperatureCheck(orderId: number) {
           body: { reading },
         }),
       ),
+    onSuccess: (result) => {
+      // Logged: the probe log, the receiving evidence and the sign-off blockers changed.
+      void client.invalidateQueries({ queryKey: keys.temperatureLog(orderId) });
+      void client.invalidateQueries({ queryKey: keys.receivingChecks(orderId) });
+      void invalidateOrders(client);
+      // A critical probe filed (or joined) a Temperature Deviation.
+      if (result.issue_id != null) void client.invalidateQueries({ queryKey: keys.issues });
+    },
+  });
+}
+
+/** The order's probe readings, oldest first: the HACCP log (business-rules §11.1). */
+export function useTemperatureLog(orderId: number) {
+  return useQuery<TemperatureLog[]>({
+    queryKey: keys.temperatureLog(orderId),
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/orders/{order_id}/temperature-checks', { params: { path: { order_id: orderId } } }),
+      ),
+  });
+}
+
+/** The receiving checks' answers for an inbound order, with who and when (business-rules §11.3). */
+export function useReceivingChecks(orderId: number) {
+  return useQuery<ReceivingChecks>({
+    queryKey: keys.receivingChecks(orderId),
+    queryFn: () =>
+      unwrap(api.GET('/api/orders/{order_id}/receiving-checks', { params: { path: { order_id: orderId } } })),
+  });
+}
+
+export function useSaveReceivingChecks(orderId: number) {
+  const client = useQueryClient();
+  return useMutation<ReceivingChecks, Error, Record<string, boolean>>({
+    mutationFn: (answers) =>
+      unwrap(
+        api.PUT('/api/orders/{order_id}/receiving-checks', {
+          params: { path: { order_id: orderId } },
+          body: { answers },
+        }),
+      ),
+    onSuccess: (saved) => {
+      client.setQueryData(keys.receivingChecks(orderId), saved);
+      // An answered check can clear a sign-off blocker.
+      void invalidateOrders(client);
+    },
   });
 }
 
@@ -270,13 +416,28 @@ export function useInspection() {
 export interface IssueFilters {
   status?: IssueStatus | 'active';
   severity?: Severity;
+  /** A door number. */
+  dock?: number;
+  carrier_id?: number;
+  /** Filed on or after / on or before this day (UTC, "2026-09-25"). */
+  from?: string;
+  to?: string;
   limit?: number;
 }
 
-export function useIssues(filters: IssueFilters = {}) {
+export function useIssues(filters: IssueFilters = {}, enabled = true) {
   return useQuery<Issue[]>({
     queryKey: keys.issueList(filters),
     queryFn: () => unwrap(api.GET('/api/issues', { params: { query: filters } })),
+    enabled,
+  });
+}
+
+/** The issue log as CSV, with the log's filters and the viewer's scope, for a download. */
+export function useExportIssues() {
+  return useMutation<Blob, Error, IssueFilters>({
+    mutationFn: (filters) =>
+      unwrap(api.GET('/api/issues/export.csv', { params: { query: filters }, parseAs: 'blob' })),
   });
 }
 
@@ -353,6 +514,26 @@ export function useSupervisorResolve() {
   });
 }
 
+/** Quality decides what happens to the product held for an issue (business-rules §7.3). */
+export function useSetDisposition() {
+  const client = useQueryClient();
+  return useMutation<Issue, Error, { id: number; disposition: Disposition; notes: string }>({
+    mutationFn: ({ id, disposition, notes }) =>
+      unwrap(
+        api.PUT('/api/issues/{issue_id}/disposition', {
+          params: { path: { issue_id: id } },
+          body: { disposition, notes },
+        }),
+      ),
+    onSuccess: (issue) => {
+      client.setQueryData(keys.issue(issue.id), issue);
+      void client.invalidateQueries({ queryKey: keys.issues });
+      // Held plates moved: the stock and the ledger changed.
+      void client.invalidateQueries({ queryKey: keys.wms });
+    },
+  });
+}
+
 export function usePhotos(issueId: number, enabled = true) {
   return useQuery<Photo[]>({
     queryKey: keys.photos(issueId),
@@ -398,10 +579,22 @@ export function usePhotoBlob(photoId: number) {
 
 // ── Floor ──
 
-export function useRequests(status?: 'pending' | 'fulfilled') {
-  return useQuery<QuickRequest[]>({
-    queryKey: [...keys.requests, status ?? 'all'],
+export function requestsQuery(status?: 'pending' | 'fulfilled') {
+  return {
+    queryKey: [...keys.requests, status ?? 'all'] as const,
     queryFn: () => unwrap(api.GET('/api/requests', { params: { query: status ? { status } : {} } })),
+  };
+}
+
+export function useRequests(status?: 'pending' | 'fulfilled') {
+  return useQuery<QuickRequest[]>(requestsQuery(status));
+}
+
+/** The requests you made, newest first; `new_request` events keep it live. */
+export function useMyRequests() {
+  return useQuery<QuickRequest[]>({
+    queryKey: keys.myRequests,
+    queryFn: () => unwrap(api.GET('/api/requests/mine')),
   });
 }
 
@@ -445,6 +638,26 @@ export function useHandoffs() {
   });
 }
 
+/** A handoff pre-filled from the shift so far (supervisor only). Saves nothing. */
+export function useHandoffDraft(enabled = true) {
+  return useQuery<HandoffDraft>({
+    queryKey: keys.handoffDraft,
+    queryFn: () => unwrap(api.GET('/api/shift-handoffs/draft')),
+    enabled,
+    staleTime: Infinity,
+  });
+}
+
+/** The incoming supervisor opened the handoff: the read receipt. */
+export function useMarkHandoffRead() {
+  const client = useQueryClient();
+  return useMutation<Handoff, Error, number>({
+    mutationFn: (id) =>
+      unwrap(api.PUT('/api/shift-handoffs/{handoff_id}/read', { params: { path: { handoff_id: id } } })),
+    onSuccess: () => void client.invalidateQueries({ queryKey: keys.handoffs, exact: true }),
+  });
+}
+
 export function useSubmitHandoff() {
   const client = useQueryClient();
   return useMutation({
@@ -462,10 +675,15 @@ export function useChatHistory() {
   });
 }
 
-export function useAnalytics() {
+export interface DateRange {
+  from?: string;
+  to?: string;
+}
+
+export function useAnalytics(range: DateRange = {}) {
   return useQuery<Analytics>({
-    queryKey: keys.analytics,
-    queryFn: () => unwrap(api.GET('/api/analytics/summary')),
+    queryKey: keys.analyticsRange(range),
+    queryFn: () => unwrap(api.GET('/api/analytics/summary', { params: { query: range } })),
   });
 }
 
@@ -585,13 +803,17 @@ export function useCrewProductivity(enabled = true) {
   });
 }
 
-/** The movement ledger, newest first; `before` pages back (null = the latest). */
-export function useLedger(before: number | null, enabled = true) {
+/** The movement ledger, newest first; `before` pages back (null = the latest); `pallet` narrows it. */
+export function useLedger(before: number | null, enabled = true, pallet: string | null = null) {
   return useQuery<LedgerEntry[]>({
-    queryKey: keys.ledger(before),
+    queryKey: keys.ledger(before, pallet),
     enabled,
     queryFn: () =>
-      unwrap(api.GET('/api/wms/transactions', { params: { query: { limit: 50, before_id: before } } })),
+      unwrap(
+        api.GET('/api/wms/transactions', {
+          params: { query: { limit: 50, before_id: before, pallet_id: pallet } },
+        }),
+      ),
     retry: false,
   });
 }

@@ -7,6 +7,7 @@ import type { Issue } from '../../api/types';
 import { SeverityBadge } from '../../components/Severity';
 import { EmptyState, IssueStatusTag, PageHeader, QueryBoundary } from '../../components/ui';
 import { formatDateTime } from '../../lib/format';
+import { useNow } from '../../lib/useNow';
 import { ISSUE_STATUS } from '../../lib/vocab';
 
 const FILTERS = [
@@ -15,7 +16,21 @@ const FILTERS = [
   { id: 'all', label: 'All' },
 ] as const;
 
+/** "This shift": the last twelve hours, the same window as a supervisor's handoff draft. */
+const SHIFT_MS = 12 * 60 * 60 * 1000;
+
+/** What an open issue is waiting on, in the worker's words. */
+function waitingOn(issue: Issue): string | null {
+  if (issue.status === 'on_hold') return issue.pending_action ?? 'On hold: waiting on the next step';
+  if (issue.status === 'escalated' && issue.acknowledged_by_name) {
+    return `${issue.acknowledged_by_name} is on the way`;
+  }
+  if (issue.status === 'escalated') return 'Waiting for your supervisor';
+  return null;
+}
+
 function IssueCard({ issue }: { issue: Issue }) {
+  const waiting = waitingOn(issue);
   return (
     <li>
       <Link to={`/app/issues/${issue.id}`} className="block card hover:bg-paper-sunk">
@@ -27,6 +42,7 @@ function IssueCard({ issue }: { issue: Issue }) {
           <p className="heading text-xl">{issue.issue_subtype ?? issue.issue_type}</p>
           <p className="mt-0.5 text-ink-soft">{issue.issue_type}</p>
           {issue.description && <p className="mt-2 line-clamp-2 text-base">{issue.description}</p>}
+          {waiting && <p className="mt-2 text-base font-semibold">{waiting}</p>}
           {issue.status === 'resolution_in_progress' && issue.severity !== 'critical' && (
             <p className="mt-2 text-base font-semibold text-accent-ink">Open it to resolve it yourself</p>
           )}
@@ -54,8 +70,21 @@ function IssueCard({ issue }: { issue: Issue }) {
   );
 }
 
+function IssueGrid({ issues }: { issues: Issue[] }) {
+  return (
+    <ul className="grid gap-3 md:grid-cols-2">
+      {issues.map((issue) => (
+        <IssueCard key={issue.id} issue={issue} />
+      ))}
+    </ul>
+  );
+}
+
+const newestFirst = (a: Issue, b: Issue) => b.created_at.localeCompare(a.created_at);
+
 export default function MyIssues() {
   const issues = useIssues({ limit: 200 });
+  const now = useNow(60_000);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('open');
   return (
     <div className="flex flex-col gap-6">
@@ -80,21 +109,41 @@ export default function MyIssues() {
       </div>
       <QueryBoundary query={issues}>
         {(list) => {
-          const shown = list.filter((issue) =>
-            filter === 'all'
-              ? true
-              : filter === 'open'
-                ? ISSUE_STATUS[issue.status].open
-                : !ISSUE_STATUS[issue.status].open,
-          );
-          return shown.length === 0 ? (
-            <EmptyState title={filter === 'open' ? 'Nothing open' : 'Nothing here'} />
-          ) : (
-            <ul className="grid gap-3 md:grid-cols-2">
-              {shown.map((issue) => (
-                <IssueCard key={issue.id} issue={issue} />
-              ))}
-            </ul>
+          const shown = list
+            .filter((issue) =>
+              filter === 'all'
+                ? true
+                : filter === 'open'
+                  ? ISSUE_STATUS[issue.status].open
+                  : !ISSUE_STATUS[issue.status].open,
+            )
+            .sort(newestFirst);
+          if (shown.length === 0) {
+            return <EmptyState title={filter === 'open' ? 'Nothing open' : 'Nothing here'} />;
+          }
+          if (filter !== 'open') return <IssueGrid issues={shown} />;
+          // Open: this shift's first, then anything older still waiting.
+          const recent = shown.filter((issue) => now - Date.parse(issue.created_at) < SHIFT_MS);
+          const earlier = shown.filter((issue) => now - Date.parse(issue.created_at) >= SHIFT_MS);
+          return (
+            <div className="flex flex-col gap-6">
+              {recent.length > 0 && (
+                <section aria-labelledby="open-this-shift" className="flex flex-col gap-3">
+                  <h2 id="open-this-shift" className="heading text-lg">
+                    This shift <span className="telemetry text-base text-ink-mute">{recent.length}</span>
+                  </h2>
+                  <IssueGrid issues={recent} />
+                </section>
+              )}
+              {earlier.length > 0 && (
+                <section aria-labelledby="open-earlier" className="flex flex-col gap-3">
+                  <h2 id="open-earlier" className="heading text-lg">
+                    Earlier <span className="telemetry text-base text-ink-mute">{earlier.length}</span>
+                  </h2>
+                  <IssueGrid issues={earlier} />
+                </section>
+              )}
+            </div>
           );
         }}
       </QueryBoundary>

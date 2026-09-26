@@ -31,6 +31,7 @@ from app.domain.enums import (
     ProductCategory,
     Role,
 )
+from app.domain.lifecycle import PENDING_DECISIONS, requires_supervisor
 from app.domain.severity import classify_severity
 from app.domain.taxonomy import ISSUE_TAXONOMY, OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS
 from app.models import (
@@ -51,6 +52,8 @@ DATA_DIR = Path(__file__).parent / "data"
 DOCK_COUNT = 12
 HISTORICAL_ISSUES = 50
 QUICK_TAGS = ("Crushed", "Wet", "Torn Label", "Short Count", "Wrong Product", "Bad Odor")
+# A historical decision is a final one: Contact Carrier and Request Re-inspection leave an issue open.
+FINAL_DECISIONS = tuple(d for d in SUPERVISOR_DECISIONS[:-1] if d not in PENDING_DECISIONS)
 HISTORICAL_STATUSES = (
     IssueStatus.SELF_RESOLVED,
     IssueStatus.SUPERVISOR_RESOLVED,
@@ -254,12 +257,14 @@ def _seed_history(
             is_allergen=product.is_allergen if product else False,
             issue_subtype=subtype,
         )
+        if requires_supervisor(scored.severity) and status is IssueStatus.SELF_RESOLVED:
+            status = IssueStatus.SUPERVISOR_RESOLVED  # history keeps the §7.1 guardrail too
         escalated = status in (IssueStatus.ESCALATED, IssueStatus.SUPERVISOR_RESOLVED)
         escalated_at = created + timedelta(minutes=rng.randint(1, 5)) if escalated else None
         resolution = (
             rng.choice(OPERATOR_RESOLUTIONS[:-1])
             if status is IssueStatus.SELF_RESOLVED
-            else rng.choice(SUPERVISOR_DECISIONS[:-1])
+            else rng.choice(FINAL_DECISIONS)
             if status is IssueStatus.SUPERVISOR_RESOLVED
             else None
         )
@@ -268,6 +273,7 @@ def _seed_history(
                 dock_door_id=dock.id,
                 operator_id=operator.id,
                 supervisor_id=operator.supervisor_id if status is IssueStatus.SUPERVISOR_RESOLVED else None,
+                acknowledged_by=operator.supervisor_id if status is IssueStatus.SUPERVISOR_RESOLVED else None,
                 issue_type=spec.name,
                 issue_subtype=subtype,
                 description=f"{subtype} at Dock {dock.door_number}",

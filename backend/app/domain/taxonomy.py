@@ -208,6 +208,16 @@ SEVERITY_FLOORS: dict[str, dict[str | None, Severity]] = {
     },
 }
 
+# Damage whose severity scales with the share of cases it touches (business-rules §1.9). `None` = the
+# type reported without a subtype. Structural and handling subtypes — a crushed, leaning or stuck
+# pallet — are about whether the pallet is safe to move, not how many cases are hurt: never scaled.
+QUANTITY_SCALED_SUBTYPES: dict[str, frozenset[str | None]] = {
+    "Damaged Pallet": frozenset(
+        {None, "Damaged cartons or packaging", "Torn or loose shrink wrap", "Product fallen off pallet"}
+    ),
+    "Product Quality Concern": frozenset({"Water damage from condensation"}),
+}
+
 # Issues the Quality team is notified about (in addition to any critical issue).
 QUALITY_ISSUE_TYPES: frozenset[str] = frozenset(
     {"Temperature Deviation", "Product Quality Concern", "Lot/Expiry Issue"}
@@ -247,6 +257,34 @@ REQUEST_TYPES: tuple[str, ...] = (
 )
 
 
+# Receiving checks answered per inbound order before sign-off (business-rules §11.3). A "No" answer is
+# reported as the issue named beside it.
+@dataclass(frozen=True, slots=True)
+class ReceivingCheckSpec:
+    id: str
+    question: str
+    issue_type: str
+    issue_subtype: str
+
+
+RECEIVING_CHECKS: tuple[ReceivingCheckSpec, ...] = (
+    ReceivingCheckSpec("pallets", "Pallets intact?", "Damaged Pallet", "Damaged or broken pallet"),
+    ReceivingCheckSpec(
+        "packaging", "Packaging sealed, not punctured?", "Damaged Pallet", "Damaged cartons or packaging"
+    ),
+    ReceivingCheckSpec(
+        "labels", "Labels readable and matching?", "Barcode Issue", "Barcode damaged or unreadable"
+    ),
+    ReceivingCheckSpec("bol", "Product matches the BOL?", "SKU Mismatch", "Paperwork does not match product"),
+    ReceivingCheckSpec("lot", "Lot and expiry verified?", "Lot/Expiry Issue", "Wrong lot or batch number"),
+)
+
+RECEIVING_CHECK_IDS: tuple[str, ...] = tuple(check.id for check in RECEIVING_CHECKS)
+
+# A person may report these without an order: they concern people or systems, not a load.
+ORDERLESS_GROUPS: frozenset[str] = frozenset({"people", "systems"})
+
+
 def is_valid_subtype(issue_type: str, subtype: str | None) -> bool:
     if subtype is None:
         return True
@@ -263,5 +301,15 @@ def severity_floor(issue_type: str, subtype: str | None) -> Severity | None:
     return floors.get(None)
 
 
+def is_quantity_scaled(issue_type: str, subtype: str | None) -> bool:
+    return subtype in QUANTITY_SCALED_SUBTYPES.get(issue_type, frozenset())
+
+
 def is_quality_relevant(issue_type: str, severity: Severity) -> bool:
     return issue_type in QUALITY_ISSUE_TYPES or severity == Severity.CRITICAL
+
+
+def needs_order(issue_type: str) -> bool:
+    """A product issue is about a load: a person's report of one names its order (§8)."""
+    spec = ISSUE_TYPES.get(issue_type)
+    return spec is not None and spec.group not in ORDERLESS_GROUPS

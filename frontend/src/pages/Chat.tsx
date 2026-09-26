@@ -148,6 +148,14 @@ function suggestions(role: Role, sku: string | undefined): string[] {
   }
 }
 
+/** Who makes the call, by role: a supervisor is never told to ask their supervisor. */
+const FOOTER: Record<Role, string> = {
+  operator: 'Confirm anything food-safety critical with your supervisor.',
+  supervisor: 'Food-safety decisions are yours: check the SOP it cites and the readings before you decide.',
+  quality:
+    'Cold-chain and disposition decisions stay with Quality: check the cited SOP and the probe log first.',
+};
+
 const INTRO: Record<Role, string> = {
   operator: 'Checks your order, temperatures and stock. Drafts reports for you to file.',
   supervisor: 'Knows your team’s queue. Drafts broadcasts and handoffs for you to send.',
@@ -163,6 +171,7 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [openedAt] = useState(() => Date.now());
   const bottom = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLInputElement>(null);
 
   const latest = exchanges.at(-1);
   useEffect(() => {
@@ -245,6 +254,7 @@ export default function Chat() {
           </label>
           <input
             id="chat-input"
+            ref={field}
             className="field text-lg"
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -252,7 +262,13 @@ export default function Chat() {
             autoComplete="off"
             maxLength={2000}
           />
-          <VoiceButton onText={(text) => send(text)} />
+          {/* Dictation fills the box for the worker to read back and send: a mis-heard word is not a question. */}
+          <VoiceButton
+            onText={(text) => {
+              setInput((current) => (current ? `${current} ${text}` : text).slice(0, 2000));
+              field.current?.focus();
+            }}
+          />
           <button
             type="submit"
             className="btn btn-primary"
@@ -264,8 +280,8 @@ export default function Chat() {
         </form>
       </div>
       <p className="text-sm text-ink-mute">
-        Figures come from DockIQ&apos;s rules and your records. Severity is never decided by the assistant.
-        Confirm anything food-safety critical with your supervisor.
+        Figures come from DockIQ&apos;s rules and your records. Severity is never decided by the assistant.{' '}
+        {FOOTER[user.role]}
       </p>
     </div>
   );

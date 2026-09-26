@@ -10,8 +10,47 @@ from app.domain.enums import Confidence
 
 CATEGORY_BONUS = 2
 COMPANY_BONUS = 1
+BAND_BONUS = 2  # the reading's temperature band matches the procedure's (§3.2)
 HIGH_CONFIDENCE_AT = 4
 MEDIUM_CONFIDENCE_AT = 2
+
+INBOUND = "inbound"  # receiving: the trailer is being unloaded
+OUTBOUND = "outbound"  # loading: the trailer is being loaded
+
+# Procedures written for one direction of work, by scenario (business-rules §3.1). The knowledge base
+# has no direction column; a scenario not listed here applies to both. When the direction is known,
+# the other direction's procedures are never offered: a loading job must not be told to "continue
+# unloading" or to "partial accept".
+SCENARIO_DIRECTION: dict[str, str] = {
+    "Less than 5% of cases damaged": INBOUND,
+    "More than 5% of cases damaged": INBOUND,
+    "Packaging is punctured on food items": INBOUND,
+    "Temperature within 5°F of threshold (marginal)": INBOUND,
+    "Temperature more than 5°F above threshold": INBOUND,
+    "BOL doesn't match physical product": INBOUND,
+    "Count is within customer tolerance": INBOUND,
+    "Count exceeds customer tolerance": INBOUND,
+    "Overage — received more than expected": INBOUND,
+    "Damaged cases found while loading": OUTBOUND,
+    "Punctured or open food packaging found while loading": OUTBOUND,
+    "Product within 5°F of its limit while loading (marginal)": OUTBOUND,
+    "Product more than 5°F above its limit while loading": OUTBOUND,
+    "Staged count does not match the order": OUTBOUND,
+    "Missing or extra pallet": OUTBOUND,
+}
+
+# Temperature procedures written for one band of reading (business-rules §3.2): within MARGINAL_BAND_MAX
+# °F over the limit is marginal (close up, re-probe); beyond it is critical (do not unload or load).
+MARGINAL = "marginal"
+CRITICAL = "critical"
+MARGINAL_BAND_MAX = 5.0
+SCENARIO_TEMPERATURE_BAND: dict[str, str] = {
+    "Temperature within 5°F of threshold (marginal)": MARGINAL,
+    "Temperature more than 5°F above threshold": CRITICAL,
+    "Product within 5°F of its limit while loading (marginal)": MARGINAL,
+    "Product more than 5°F above its limit while loading": CRITICAL,
+}
+TEMPERATURE_BANDS: tuple[str, ...] = (MARGINAL, CRITICAL)
 
 FALLBACK_RESOLUTION: dict[str, Any] = {
     "found": False,
@@ -52,14 +91,34 @@ def confidence_for(score: int) -> Confidence:
     return Confidence.LOW
 
 
+def temperature_band(delta: float | None) -> str | None:
+    """The band of a reading `delta` °F over its limit; None when there is no reading or it is within."""
+    if delta is None or delta <= 0:
+        return None
+    return MARGINAL if delta <= MARGINAL_BAND_MAX else CRITICAL
+
+
+def applies(entry: KbEntry, direction: str | None, temp_band: str | None) -> bool:
+    entry_direction = SCENARIO_DIRECTION.get(entry.scenario)
+    if direction is not None and entry_direction is not None and entry_direction != direction:
+        return False
+    entry_band = SCENARIO_TEMPERATURE_BAND.get(entry.scenario)
+    return temp_band is None or entry_band is None or entry_band == temp_band
+
+
 def find_resolution(
     entries: Sequence[KbEntry],
     issue_type: str,
     description: str | None = "",
     product_category: str | None = None,
     company_name: str | None = None,
+    direction: str | None = None,
+    temp_band: str | None = None,
 ) -> dict[str, Any]:
-    candidates = [entry for entry in entries if entry.issue_type == issue_type]
+    """`direction` is the order's type (inbound or outbound); `temp_band` comes from temperature_band()."""
+    candidates = [
+        entry for entry in entries if entry.issue_type == issue_type and applies(entry, direction, temp_band)
+    ]
     if not candidates:
         return {**FALLBACK_RESOLUTION, "steps": list(FALLBACK_RESOLUTION["steps"])}
 
@@ -72,6 +131,8 @@ def find_resolution(
             company_name in entry.applicable_companies or "all" in entry.applicable_companies
         ):
             score += COMPANY_BONUS
+        if temp_band is not None and SCENARIO_TEMPERATURE_BAND.get(entry.scenario) == temp_band:
+            score += BAND_BONUS
         scored.append((score, entry))
 
     # Stable sort: ties keep knowledge-base order, as before.

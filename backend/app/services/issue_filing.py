@@ -6,24 +6,24 @@ the transaction (this adds to the session and flushes, it never commits) and the
 the report endpoint checks the named order against the person's orders and its dock before calling.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException
 from fastapi import status as http
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_or_404
-from app.db import utcnow
+from app.db import Base, utcnow
 from app.domain.cost import estimate_cost_impact
 from app.domain.dock import DockEvent, transition
 from app.domain.enums import Confidence, IssueStatus
 from app.domain.lifecycle import requires_supervisor
 from app.domain.recurrence import RECURRENCE_WINDOW_DAYS, carrier_pattern, dock_pattern
-from app.domain.retrieval import find_resolution
-from app.domain.severity import classify_severity
+from app.domain.retrieval import find_resolution, temperature_band
+from app.domain.severity import SeverityResult, classify_severity
 from app.domain.taxonomy import ISSUE_TYPES, is_valid_subtype
-from app.models import Carrier, Company, DockDoor, Issue, Product
+from app.models import Carrier, Company, DockDoor, Issue, Order, OrderItem, Product
 from app.queries import count_recent_issues, load_kb_entries
 from app.schemas import IssueCreate
 
@@ -32,16 +32,105 @@ def _unprocessable(detail: str) -> HTTPException:
     return HTTPException(http.HTTP_422_UNPROCESSABLE_CONTENT, detail)
 
 
+async def get_or_404[ModelT: Base](
+    session: AsyncSession, model: type[ModelT], ident: int, label: str
+) -> ModelT:
+    """As `app.api.deps.get_or_404`, kept here so services never import the API layer (the assistant's
+    tools import this module, and `deps` imports the assistant)."""
+    instance = await session.get(model, ident)
+    if instance is None:
+        raise HTTPException(http.HTTP_404_NOT_FOUND, f"{label} not found")
+    return instance
+
+
 class SystemFiling(IssueCreate):
     """An issue DockIQ files itself. Unlike a person's report it may have no dock: an inbound order
     signed off before it was given a door still records its count discrepancies."""
 
-    dock_door_id: int | None = None  # type: ignore[assignment]
+    # A cold-room excursion: the whole room, not one load. Minutes the room has read over its limit.
+    room_minutes_over_limit: float | None = None
+
+
+def given_quantity(body: IssueCreate) -> int | None:
+    """Cases affected as the person stated them. The schema's default of 1 is not a statement, so an
+    unstated quantity never scales a score down (business-rules §1.9)."""
+    return body.quantity_affected if "quantity_affected" in body.model_fields_set else None
+
+
+async def score_issue(
+    session: AsyncSession,
+    body: IssueCreate,
+    *,
+    product: Product | None,
+    company: Company | None,
+    dock: DockDoor | None,
+    now: datetime,
+) -> SeverityResult:
+    """The severity inputs, built one way for a filing and for the assistant's preview of one."""
+    dwell_minutes = (
+        int((now - dock.trailer_arrived_at).total_seconds() // 60)
+        if dock is not None and dock.trailer_arrived_at is not None
+        else None
+    )
+    line_cases = (
+        await session.scalar(
+            select(OrderItem.expected_quantity).where(
+                OrderItem.order_id == body.order_id, OrderItem.product_id == product.id
+            )
+        )
+        if body.order_id is not None and product is not None
+        else None
+    )
+    return classify_severity(
+        body.issue_type,
+        product_category=product.category.value if product else None,
+        customer_tier=company.tier if company else None,
+        temp_reading=body.temp_reading,
+        temp_threshold_max=body.temp_threshold_max,
+        count_expected=body.count_expected,
+        count_actual=body.count_actual,
+        is_allergen=product.is_allergen if product else False,
+        trailer_dwell_minutes=dwell_minutes,
+        issue_subtype=body.issue_subtype,
+        quantity_affected=given_quantity(body),
+        cases_per_pallet=product.cases_per_pallet if product else None,
+        line_cases=line_cases,
+        room_minutes_over_limit=body.room_minutes_over_limit if isinstance(body, SystemFiling) else None,
+    )
+
+
+async def find_procedure_for(
+    session: AsyncSession, body: IssueCreate, *, product: Product | None, company: Company | None
+) -> dict[str, Any]:
+    """The knowledge-base procedure for this report: its words, its product, customer, the order's
+    direction (loading or receiving) and the band of any temperature reading (business-rules §3)."""
+    order = await session.get(Order, body.order_id) if body.order_id is not None else None
+    delta = (
+        body.temp_reading - body.temp_threshold_max
+        if body.temp_reading is not None and body.temp_threshold_max is not None
+        else None
+    )
+    return find_resolution(
+        await load_kb_entries(session),
+        body.issue_type,
+        " ".join(filter(None, [body.issue_subtype, body.description])),
+        product_category=product.category.value if product else None,
+        company_name=company.name if company else None,
+        direction=order.type.value if order is not None else None,
+        temp_band=temperature_band(delta),
+    )
 
 
 async def file_issue(
-    session: AsyncSession, reporter_id: int, body: IssueCreate, *, simulated: bool = False
+    session: AsyncSession,
+    reporter_id: int,
+    body: IssueCreate,
+    *,
+    simulated: bool = False,
+    sim_minute: float | None = None,
 ) -> Issue:
+    """`sim_minute`: the simulated minute a simulated issue happened at, so its record lines up with
+    the WMS clock."""
     if body.issue_type not in ISSUE_TYPES:
         raise _unprocessable(f"Unknown issue type '{body.issue_type}'")
     if not is_valid_subtype(body.issue_type, body.issue_subtype):
@@ -67,34 +156,11 @@ async def file_issue(
         if body.carrier_id is not None
         else None
     )
+    order = await get_or_404(session, Order, body.order_id, "Order") if body.order_id is not None else None
 
     now = utcnow()
-    dwell_minutes = (
-        int((now - dock.trailer_arrived_at).total_seconds() // 60)
-        if dock is not None and dock.trailer_arrived_at is not None
-        else None
-    )
-    category = product.category.value if product else None
-    scored = classify_severity(
-        body.issue_type,
-        product_category=category,
-        customer_tier=company.tier if company else None,
-        temp_reading=body.temp_reading,
-        temp_threshold_max=body.temp_threshold_max,
-        count_expected=body.count_expected,
-        count_actual=body.count_actual,
-        is_allergen=product.is_allergen if product else False,
-        trailer_dwell_minutes=dwell_minutes,
-        issue_subtype=body.issue_subtype,
-    )
-    kb_query = " ".join(filter(None, [body.issue_subtype, body.description]))
-    resolution = find_resolution(
-        await load_kb_entries(session),
-        body.issue_type,
-        kb_query,
-        product_category=category,
-        company_name=company.name if company else None,
-    )
+    scored = await score_issue(session, body, product=product, company=company, dock=dock, now=now)
+    resolution = await find_procedure_for(session, body, product=product, company=company)
     cost = estimate_cost_impact(
         product.case_value if product else None,
         body.quantity_affected or 1,
@@ -135,6 +201,16 @@ async def file_issue(
         estimated_cost_impact=cost,
         simulated=simulated,
         created_at=now,
+        # The record as reported, and the order as it is now: traceable if the order later goes.
+        temp_reading=body.temp_reading,
+        temp_limit=body.temp_threshold_max,
+        quantity_affected=given_quantity(body),
+        lot=body.lot,
+        order_number=order.order_number if order is not None else None,
+        trailer_number=order.trailer_number if order is not None else None,
+        bol_number=order.bol_number if order is not None else None,
+        sim_minute=sim_minute,
+        held_pallets=[],
     )
     session.add(issue)
     if requires_supervisor(issue.severity):  # critical: straight to the supervisor (§7.1)

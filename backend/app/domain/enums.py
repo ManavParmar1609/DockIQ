@@ -33,6 +33,8 @@ class IssueStatus(StrEnum):
     RESOLUTION_IN_PROGRESS = "resolution_in_progress"
     SELF_RESOLVED = "self_resolved"
     ESCALATED = "escalated"
+    # A supervisor's decision that waits on someone else — the carrier, or a re-inspection. Still open.
+    ON_HOLD = "on_hold"
     SUPERVISOR_RESOLVED = "supervisor_resolved"
 
 
@@ -67,6 +69,15 @@ class RequestStatus(StrEnum):
     FULFILLED = "fulfilled"
 
 
+class Disposition(StrEnum):
+    """Quality's decision on product held for an issue (business-rules §7.3)."""
+
+    HOLD = "hold"
+    RELEASE = "release"
+    DESTROY = "destroy"
+    RETURN_TO_VENDOR = "return_to_vendor"
+
+
 class ChatRole(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"
@@ -89,6 +100,8 @@ class MovementKind(StrEnum):
     LOAD = "load"
     SHIP = "ship"
     ADJUST = "adjust"
+    HOLD = "hold"  # onto quality hold, for an issue (business-rules §7.3)
+    RELEASE = "release"  # off quality hold, back to storage
 
 
 class TaskKind(StrEnum):

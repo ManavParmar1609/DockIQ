@@ -9,14 +9,16 @@ import {
   SkipForward,
   Siren,
   Truck,
+  X,
   type LucideIcon,
 } from 'lucide-react';
-import { useState, type SyntheticEvent } from 'react';
+import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { Link } from 'react-router';
 
 import { ApiError } from '../../api/client';
 import { useInjectScenario, useSimControl, useSimStatus, useYard } from '../../api/hooks';
 import type { SimScenario, SimSpeed, SimStatus, YardEntry } from '../../api/types';
+import { useUser } from '../../auth/AuthProvider';
 import {
   EmptyState,
   MutationError,
@@ -91,15 +93,79 @@ const EVENT_KIND: Record<string, string> = {
   room_excursion: 'Cold room',
 };
 
-function Controls({ status }: { status: SimStatus }) {
+/** "Are you sure?" for the one control that removes data: the existing centred-sheet dialog. */
+function ConfirmReset({
+  open,
+  seed,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  seed: string;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = dialog.current;
+    if (!element) return;
+    if (open && !element.open) element.showModal();
+    if (!open && element.open) element.close();
+  }, [open]);
+  return (
+    <dialog
+      ref={dialog}
+      onClose={onCancel}
+      aria-labelledby="reset-title"
+      className="sheet m-auto rounded-2xl bg-surface p-0 text-ink shadow-float"
+    >
+      <div className="flex items-center justify-between px-5 pt-4">
+        <h2 id="reset-title" className="heading text-xl">
+          Reset the simulation?
+        </h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close"
+          className="grid h-11 w-11 place-items-center rounded-full bg-paper-sunk text-ink-mute"
+        >
+          <X size={20} aria-hidden="true" />
+        </button>
+      </div>
+      <div className="flex flex-col gap-4 p-5">
+        <p className="text-base">
+          Every simulated trailer, order, issue and movement is removed and the clock goes back to 06:00,
+          paused{seed ? `, with seed ${seed}` : ''}. Reports people filed on simulated trailers are kept. This
+          cannot be undone.
+        </p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>
+            Keep the shift
+          </button>
+          <button type="button" className="btn btn-hazard" disabled={busy} onClick={onConfirm}>
+            <RotateCcw size={20} aria-hidden="true" /> Reset to 06:00
+          </button>
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
+function Controls({ status, canReset }: { status: SimStatus; canReset: boolean }) {
   const control = useSimControl();
   const [seed, setSeed] = useState('');
+  const [confirming, setConfirming] = useState(false);
   const busy = control.isPending;
 
-  const reset = (event: SyntheticEvent) => {
+  const askReset = (event: SyntheticEvent) => {
     event.preventDefault();
+    setConfirming(true);
+  };
+  const reset = () => {
     const value = seed.trim() === '' ? null : Number(seed);
-    control.mutate({ action: 'reset', seed: value });
+    control.mutate({ action: 'reset', seed: value }, { onSettled: () => setConfirming(false) });
   };
 
   return (
@@ -170,26 +236,35 @@ function Controls({ status }: { status: SimStatus }) {
           </div>
         </fieldset>
 
-        <form onSubmit={reset} className="flex flex-wrap items-end gap-2 border-t border-hairline pt-4">
-          <div className="flex-1">
-            <label htmlFor="seed" className="heading mb-2 block text-base">
-              Reset to 06:00
-            </label>
-            <input
-              id="seed"
-              className="field telemetry w-full"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder={`Seed ${status.seed} (same seed, same shift)`}
-              value={seed}
-              onChange={(event) => setSeed(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            />
-          </div>
-          <button type="submit" className="btn btn-secondary" disabled={busy}>
-            <RotateCcw size={20} aria-hidden="true" /> Reset
-          </button>
-        </form>
+        {canReset && (
+          <form onSubmit={askReset} className="flex flex-wrap items-end gap-2 border-t border-hairline pt-4">
+            <div className="flex-1">
+              <label htmlFor="seed" className="heading mb-2 block text-base">
+                Reset to 06:00
+              </label>
+              <input
+                id="seed"
+                className="field telemetry w-full"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder={`Seed ${status.seed} (same seed, same shift)`}
+                value={seed}
+                onChange={(event) => setSeed(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              />
+            </div>
+            <button type="submit" className="btn btn-secondary" disabled={busy}>
+              <RotateCcw size={20} aria-hidden="true" /> Reset…
+            </button>
+          </form>
+        )}
         <MutationError error={control.error} />
+        <ConfirmReset
+          open={confirming}
+          seed={seed}
+          busy={busy}
+          onConfirm={reset}
+          onCancel={() => setConfirming(false)}
+        />
       </div>
     </Panel>
   );
@@ -298,6 +373,11 @@ function YardBoard({ online }: { online: boolean }) {
                       <tr key={entry.ref} className="border-b border-hairline">
                         <td className="px-4 py-2.5">
                           <p className="telemetry text-lg">{String(entry.door).padStart(2, '0')}</p>
+                          {entry.booked_door != null && entry.booked_door !== entry.door && (
+                            <p className="telemetry whitespace-nowrap text-sm text-ink-mute">
+                              Booked {String(entry.booked_door).padStart(2, '0')}
+                            </p>
+                          )}
                           {entry.yard_spot && (
                             <p className="telemetry text-sm text-ink-mute">{entry.yard_spot}</p>
                           )}
@@ -380,6 +460,7 @@ function EventFeed({ status }: { status: SimStatus }) {
 }
 
 export default function Simulator() {
+  const user = useUser();
   const status = useSimStatus();
   return (
     <QueryBoundary query={status} loading="Starting the simulator">
@@ -433,7 +514,7 @@ export default function Simulator() {
 
             <div className="grid items-start gap-6 xl:grid-cols-5">
               <div className="xl:col-span-3">
-                <Controls status={sim} />
+                <Controls status={sim} canReset={user.role === 'supervisor'} />
               </div>
               <div className="xl:col-span-2">
                 <Scenarios />

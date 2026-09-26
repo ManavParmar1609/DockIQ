@@ -1,4 +1,4 @@
-import { useIssues } from '../../api/hooks';
+import { useIssues, useTaxonomy } from '../../api/hooks';
 import { useUser } from '../../auth/AuthProvider';
 import { IssueQueue } from '../../components/IssueQueue';
 import { PageHeader, Panel, QueryBoundary, Stat, StatGrid } from '../../components/ui';
@@ -9,9 +9,11 @@ import { ISSUE_STATUS } from '../../lib/vocab';
 export default function QualityBoard() {
   const user = useUser();
   const issues = useIssues({ limit: 300 });
+  const coldChain = useTaxonomy().data?.cold_chain_issue_types ?? [];
   const list = issues.data ?? [];
   const open = list.filter((issue) => ISSUE_STATUS[issue.status].open);
-  const temperature = list.filter((issue) => issue.issue_type === 'Temperature Deviation');
+  const temperature = open.filter((issue) => coldChain.includes(issue.issue_type));
+  const awaiting = temperature.filter((issue) => (issue.held_pallets?.length ?? 0) > 0 && !issue.disposition);
   const exposure = open.reduce((sum, issue) => sum + issue.estimated_cost_impact, 0);
 
   return (
@@ -34,7 +36,16 @@ export default function QualityBoard() {
           alert={open.some((issue) => issue.severity === 'critical')}
           index={1}
         />
-        <Stat label="Temperature" value={temperature.length} sub="Deviations on record" index={2} />
+        <Stat
+          label="Temperature"
+          value={temperature.length}
+          sub={
+            awaiting.length > 0
+              ? `Open deviations · ${String(awaiting.length)} awaiting your disposition`
+              : 'Open deviations'
+          }
+          index={2}
+        />
         <Stat label="Open exposure" value={formatMoney(exposure)} sub="Estimated" index={3} />
       </StatGrid>
       <Panel

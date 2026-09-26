@@ -1250,5 +1250,201 @@
     "applicable_companies": [
       "all"
     ]
+  },
+  {
+    "issue_type": "Damaged Pallet",
+    "scenario": "Torn or loose shrink wrap",
+    "keywords": [
+      "torn or loose shrink wrap",
+      "shrink wrap",
+      "shrink-wrap",
+      "stretch wrap",
+      "stretch-wrap",
+      "torn wrap",
+      "loose wrap",
+      "wrap is torn",
+      "wrap is loose",
+      "wrap came off",
+      "re-wrap",
+      "rewrap",
+      "wrap"
+    ],
+    "resolution_steps": [
+      "Check the cases under the wrap: if any case is crushed, punctured or open, report damaged cartons instead",
+      "If every case is intact, the product is fine: torn or loose wrap alone is not a reason to reject",
+      "Square up any cases that shifted so the stack is straight and stable",
+      "Re-wrap the pallet: pallet wrap is at your dock station, extra rolls in Aisle 12, Bay A",
+      "Wrap from the base up, with at least three turns around the pallet base and each layer overlapping",
+      "Keep the pallet label readable: do not wrap over it",
+      "Continue loading or receiving, and note \"re-wrapped\" on the report"
+    ],
+    "confidence": "high",
+    "source_reference": "Company SOP 4.5 — Pallet Wrap Integrity",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Damaged Pallet",
+    "scenario": "Damaged cases found while loading",
+    "keywords": [
+      "damaged",
+      "crushed",
+      "broken",
+      "bent",
+      "dented",
+      "minor",
+      "loading"
+    ],
+    "resolution_steps": [
+      "Do not load damaged cases: the customer receives intact product only",
+      "Stop loading this pallet and move it to the staging lane at your door",
+      "Count the damaged and the intact cases",
+      "Take the damaged cases to the damage and quarantine area, Zone D, Rows 1-3",
+      "Ask the pick team for replacement cases of the same SKU, first-expiring stock first",
+      "Re-stack and re-wrap the pallet to the customer's load pattern, then load it",
+      "If no replacement stock is available: tell your supervisor before the trailer is sealed"
+    ],
+    "confidence": "high",
+    "source_reference": "Loading SOP 3.2 — Damaged Product at Loading",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Damaged Pallet",
+    "scenario": "Punctured or open food packaging found while loading",
+    "keywords": [
+      "punctured",
+      "torn",
+      "open",
+      "exposed",
+      "hole",
+      "ripped",
+      "leaking"
+    ],
+    "resolution_steps": [
+      "STOP — do not load punctured or open food packaging",
+      "Exposed food is a contamination risk: do not tape it closed or re-pack it",
+      "Move the affected cases to the quarantine area, Zone D, Rows 1-3, away from good product",
+      "Check the neighbouring cases on the pallet for leaks or contamination",
+      "Quality decides what happens to the quarantined cases",
+      "Ask the pick team for replacement cases before the trailer is sealed"
+    ],
+    "confidence": "high",
+    "source_reference": "FDA Food Safety Guidelines / Loading SOP 3.3",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Temperature Deviation",
+    "scenario": "Product within 5°F of its limit while loading (marginal)",
+    "keywords": [
+      "warm",
+      "marginal",
+      "borderline",
+      "close",
+      "almost"
+    ],
+    "resolution_steps": [
+      "Product is near its limit — not yet critical",
+      "Stop loading this product and return the pallet to its cold room, not the open dock",
+      "Check the trailer: reefer running, set to the load's set-point, and pre-cooled",
+      "Re-probe the CENTER of a case in 10 minutes (edge cases warm faster)",
+      "If the reading is back within the limit: continue loading and keep door-open time short",
+      "If it is still over the limit: do not load it — escalate to your supervisor",
+      "Log both readings on the report"
+    ],
+    "confidence": "high",
+    "source_reference": "Cold Chain SOP 2.2 — Outbound Marginal Temperature",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Temperature Deviation",
+    "scenario": "Product more than 5°F above its limit while loading",
+    "keywords": [
+      "hot",
+      "too warm",
+      "way above",
+      "critical temp",
+      "exceeds",
+      "out of range"
+    ],
+    "resolution_steps": [
+      "CRITICAL — do not load this product",
+      "Return the pallet to its cold room now and place it on quality hold",
+      "If any of it is already on the trailer: stop loading and close the trailer doors",
+      "Do not seal or release the trailer with this product on it",
+      "Supervisor and Quality Manager are being notified automatically",
+      "Quality decides the product's disposition; wait for your supervisor before loading it"
+    ],
+    "confidence": "high",
+    "source_reference": "Cold Chain SOP 2.4 — Outbound Critical Temperature",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
+  },
+  {
+    "issue_type": "Count Discrepancy",
+    "scenario": "Staged count does not match the order",
+    "keywords": [
+      "short",
+      "missing",
+      "fewer",
+      "less than expected",
+      "under count",
+      "short pick",
+      "overage",
+      "extra",
+      "too many",
+      "over count"
+    ],
+    "resolution_steps": [
+      "Recount the cases staged for the line against the pick list",
+      "Check your staging lane and the lanes next to it for the missing cases",
+      "Short: ask the pick team to pick the difference, first-expiring stock first",
+      "Over: load exactly the ordered quantity and return the extra cases to stock",
+      "Do not seal the trailer short without your supervisor's approval",
+      "Record the ordered and the loaded counts on the report"
+    ],
+    "confidence": "high",
+    "source_reference": "Loading SOP 3.5 — Load Count Reconciliation",
+    "applicable_categories": [
+      "Frozen",
+      "Refrigerated",
+      "Produce",
+      "Dry"
+    ],
+    "applicable_companies": [
+      "all"
+    ]
   }
 ]
