@@ -446,7 +446,6 @@ function AlertCard({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
       // Critical banners are solid: no translucency on a critical alert (rules §2.3).
       className={`flex overflow-hidden rounded-2xl shadow-float ${critical ? 'bg-surface ring-2 ring-hazard' : 'material-thick'}`}
     >
-      {critical && <div className="hazard-tape w-1.5 shrink-0" aria-hidden="true" />}
       <Link to={alert.href} onClick={onDismiss} className="flex-1 px-4 py-3">
         <p className="text-sm font-semibold text-ink-mute">{alert.kicker}</p>
         <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -454,7 +453,7 @@ function AlertCard({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
           {alert.severity && alert.icon === 'room' && <Thermometer size={18} aria-hidden="true" />}
           <span className="text-base font-semibold">{alert.title}</span>
         </div>
-        {alert.detail && <p className="telemetry mt-0.5 text-sm font-medium text-ink-mute">{alert.detail}</p>}
+        {alert.detail && <p className="mt-0.5 text-sm font-medium text-ink-mute">{alert.detail}</p>}
       </Link>
       <button
         type="button"
@@ -488,7 +487,7 @@ export function AlertStack({
         <AlertCard key={alert.key} alert={alert} onDismiss={() => dismiss(alert.key)} />
       ))}
       {hidden > 0 && (
-        <button type="button" className="btn btn-secondary shadow-float" onClick={onOpenInbox}>
+        <button type="button" className="btn btn-secondary" onClick={onOpenInbox}>
           <Bell size={18} aria-hidden="true" /> {hidden} more in your alerts
         </button>
       )}
@@ -606,7 +605,7 @@ export function AlertInbox({
                       <AlertGlyph alert={alert} size={18} />
                       <span className="text-base font-semibold">{alert.title}</span>
                     </span>
-                    {alert.detail && <span className="telemetry text-sm text-ink-mute">{alert.detail}</span>}
+                    {alert.detail && <span className="text-sm text-ink-mute">{alert.detail}</span>}
                   </Link>
                 </li>
               ))}

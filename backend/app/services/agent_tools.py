@@ -22,8 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import issue_scope, order_scope
 from app.db import MAX_ID
-from app.domain.enums import IssueStatus, OrderStatus, ProductCategory, Role, Severity
-from app.domain.lifecycle import OPEN_STATUSES, can_self_resolve, requires_supervisor
+from app.domain.enums import IssueStatus, OrderStatus, ProductCategory, Role
+from app.domain.lifecycle import (
+    OPEN_STATUSES,
+    can_self_resolve,
+    self_resolve_needs_note,
+    why_not_self_resolve,
+)
 from app.domain.receiving import check_probe_temperature
 from app.domain.retrieval import (
     CRITICAL,
@@ -606,17 +611,12 @@ async def draft_handoff(ctx: ToolContext, args: dict[str, Any]) -> ToolOutcome:
     return ToolOutcome(data, "Drafted the handoff note", actions=[draft])
 
 
-# ── Self-resolve: the worker closes their own issue, with a button (business-rules §7, §7.1) ──
+# ── Self-resolve: the worker closes their own issue, with a button (business-rules §7.1, §7.5) ──
 
-
-def _why_not_self_resolve(status: IssueStatus, severity: Severity) -> str | None:
-    if can_self_resolve(status, severity):
-        return None
-    if status not in OPEN_STATUSES:
-        return "Already resolved."
-    if requires_supervisor(severity):
-        return "Critical: your supervisor decides. A critical issue cannot be resolved on your own."
-    return "It is with your supervisor now, and they close it."
+NOTE_REQUIRED = (
+    "It is escalated to the supervisor, so the person must write what they did in the note on the card; "
+    "the supervisor is told it was resolved."
+)
 
 
 async def my_open_issues(ctx: ToolContext, _: dict[str, Any]) -> ToolOutcome:
@@ -625,14 +625,17 @@ async def my_open_issues(ctx: ToolContext, _: dict[str, Any]) -> ToolOutcome:
     for line in lines:
         issue = _line_data(line)
         issue["can_self_resolve"] = can_self_resolve(line.status, line.severity)
-        if why := _why_not_self_resolve(line.status, line.severity):
+        if why := why_not_self_resolve(line.status, line.severity):
             issue["why_not"] = why
+        elif self_resolve_needs_note(line.status):
+            issue["note_required"] = True
         issues.append(issue)
     resolvable = sum(1 for issue in issues if issue["can_self_resolve"])
     data = {
         "open_issues": issues,
         "resolution_options": list(OPERATOR_RESOLUTIONS),
-        "next": "To close one, use draft_self_resolve; the person confirms it with a button.",
+        "next": "To close one, use draft_self_resolve; the person confirms it with a button. "
+        + "An issue marked note_required is escalated: the person writes a note on the card.",
     }
     cards: list[AgentCard] = [IssuesCard(title="Your open issues", issues=lines)] if lines else []
     return ToolOutcome(data, f"{len(lines)} open, {resolvable} you can resolve", cards)
@@ -649,23 +652,27 @@ async def draft_self_resolve(ctx: ToolContext, args: dict[str, Any]) -> ToolOutc
     if resolution is not None and resolution not in OPERATOR_RESOLUTIONS:
         raise ToolError(f"resolution_type must be one of: {', '.join(OPERATOR_RESOLUTIONS)}")
     title = issue.issue_subtype or issue.issue_type
-    if why := _why_not_self_resolve(issue.status, issue.severity):
-        # Nothing to confirm: a critical or escalated issue is the supervisor's decision.
+    if why := why_not_self_resolve(issue.status, issue.severity):
+        # Nothing to confirm: a critical or on-hold issue is the supervisor's decision.
         data = {"issue": issue.id, "can_self_resolve": False, "why": why, "offer_nothing_to_confirm": True}
         return ToolOutcome(data, f"#{issue.id} cannot be resolved by you")
+    note_required = self_resolve_needs_note(issue.status)
     draft = SelfResolveDraft(
         issue_id=issue.id,
         title=title,
         severity=issue.severity,
         resolution_type=resolution,
         resolution_notes=" ".join(str(args.get("note") or "").split())[:500],
+        note_required=note_required,
     )
-    data = {
+    data: dict[str, Any] = {
         "draft_ready": True,
         "not_resolved_yet": "The person must press Resolve to close it.",
         "issue": issue.id,
         "resolution_type": resolution or "not chosen: the person picks one on the card",
     }
+    if note_required:
+        data["note_required"] = NOTE_REQUIRED
     return ToolOutcome(data, f"Drafted: resolve #{issue.id}", actions=[draft])
 
 
@@ -1066,9 +1073,11 @@ TOOLS: tuple[Tool, ...] = (
         "my_open_issues",
         "Checking your open issues",
         "Lists the issues the signed-in operator reported that are still open, newest first, each with "
-        "can_self_resolve and, when false, why not (critical issues and escalated issues are the "
-        "supervisor's decision), plus the resolution options an operator may choose. Use it when an "
-        "operator wants to close, resolve or finish an issue, or says they fixed something. Read-only.",
+        "can_self_resolve and, when false, why not (critical issues and issues on hold are the "
+        "supervisor's decision). An escalated issue that is not critical can be closed by the operator "
+        "with a note (note_required). Also lists the resolution options an operator may choose. Use it "
+        "when an operator wants to close, resolve or finish an issue, or says they fixed something. "
+        "Read-only.",
         NO_ARGS,
         my_open_issues,
         frozenset({Role.OPERATOR}),
@@ -1078,9 +1087,11 @@ TOOLS: tuple[Tool, ...] = (
         "Drafting the resolution",
         "Prepares closing one of the operator's own open issues, WITHOUT closing it. The operator checks "
         "the card, picks or confirms the resolution, and presses Resolve. Only for issues my_open_issues "
-        "marks can_self_resolve; for a critical or escalated issue it returns why not and there is nothing "
-        "to confirm: tell the person the supervisor decides. resolution_type must be one of the "
-        "resolution options, matched to what the person said they did; leave it out if unclear.",
+        "marks can_self_resolve; for a critical or on-hold issue it returns why not and there is nothing "
+        "to confirm: tell the person the supervisor decides. For an escalated issue the draft is made but "
+        "the person must write a note on the card saying what they did (note_required), and their "
+        "supervisor is told. resolution_type must be one of the resolution options, matched to what the "
+        "person said they did; leave it out if unclear.",
         {
             "type": "object",
             "properties": {
@@ -1090,7 +1101,11 @@ TOOLS: tuple[Tool, ...] = (
                     "enum": list(OPERATOR_RESOLUTIONS),
                     "description": "Optional: what the operator did.",
                 },
-                "note": {"type": "string", "description": "Optional: one plain sentence in their words."},
+                "note": {
+                    "type": "string",
+                    "description": "Optional: one plain sentence in their words. The person can edit it, "
+                    "and must write one on the card for an escalated issue.",
+                },
             },
             "required": ["issue_id"],
         },

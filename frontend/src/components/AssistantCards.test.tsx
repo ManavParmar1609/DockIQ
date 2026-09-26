@@ -59,6 +59,21 @@ describe('Self-resolve draft', () => {
   });
 });
 
+describe('Self-resolve draft on an escalated issue', () => {
+  it('asks the worker for their own note before it can be confirmed', async () => {
+    const user = userEvent.setup();
+    renderWith(
+      <AgentActionView
+        action={{ ...DRAFT, resolution_type: 'Manual Entry', resolution_notes: '', note_required: true }}
+      />,
+    );
+    const confirm = screen.getByRole('button', { name: /Resolve issue #42/ });
+    expect(confirm).toBeDisabled();
+    await user.type(screen.getByLabelText(/Note for the record/), 'Typed the code in by hand');
+    expect(confirm).toBeEnabled();
+  });
+});
+
 describe('Cold rooms card', () => {
   it('names an alarm in words, not colour alone, and marks simulated data', () => {
     renderWith(

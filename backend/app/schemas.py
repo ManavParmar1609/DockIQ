@@ -25,7 +25,7 @@ from app.domain.enums import (
     TaskStatus,
     YardEventKind,
 )
-from app.domain.lifecycle import PENDING_DECISIONS
+from app.domain.lifecycle import PENDING_DECISIONS, can_self_resolve, self_resolve_needs_note
 from app.wms.clock import shift_of, time_of
 
 
@@ -41,6 +41,8 @@ Id = Annotated[int, Field(ge=1, le=MAX_ID)]
 FreeText = Annotated[str, Field(max_length=2000)]
 Tag = Annotated[str, Field(min_length=1, max_length=32)]
 Choice = Annotated[str, Field(max_length=32)]  # a short vocabulary value, stored as VARCHAR(32)
+# A measurement a person enters: NaN and ±Infinity are a 422, never a stored reading or a 500.
+Finite = Annotated[float, Field(allow_inf_nan=False)]
 
 
 class IssueCreate(BaseModel):
@@ -55,8 +57,8 @@ class IssueCreate(BaseModel):
     company_id: Id | None = None
     carrier_id: Id | None = None
     quantity_affected: int | None = Field(default=1, ge=0)
-    temp_reading: float | None = None
-    temp_threshold_max: float | None = None
+    temp_reading: Finite | None = None
+    temp_threshold_max: Finite | None = None
     count_expected: int | None = Field(default=None, ge=0)
     count_actual: int | None = Field(default=None, ge=0)
     lot: str | None = Field(default=None, max_length=16)
@@ -64,6 +66,7 @@ class IssueCreate(BaseModel):
 
 class IssueSelfResolve(BaseModel):
     resolution_type: str = Field(min_length=1, max_length=64)
+    # Required (non-blank) when the issue is escalated: business-rules §7.5.
     resolution_notes: FreeText | None = ""
 
 
@@ -77,7 +80,7 @@ class InspectionCreate(BaseModel):
     dock_door_id: Id
     seal_condition: Choice
     interior_cleanliness: Choice
-    interior_temperature: float | None = None
+    interior_temperature: Finite | None = None
     visible_damage: Choice
     notes: FreeText | None = ""
 
@@ -118,7 +121,7 @@ class ScanCreate(BaseModel):
 
 
 class TemperatureCheckCreate(BaseModel):
-    reading: float = Field(ge=-80, le=150)
+    reading: float = Field(ge=-80, le=150, allow_inf_nan=False)
 
 
 class IssueDispositionUpdate(BaseModel):
@@ -360,6 +363,9 @@ class IssueOut(Schema):
     disposition_by: int | None = None
     disposition_by_name: str | None = None
     disposition_at: datetime | None = None
+    # Whether the reporting worker may close it themselves, and whether that needs their note (§7.5).
+    can_self_resolve: bool = False
+    self_resolve_needs_note: bool = False
 
     @model_validator(mode="after")
     def _derived(self) -> "IssueOut":
@@ -367,6 +373,8 @@ class IssueOut(Schema):
             self.sim_time, self.sim_shift = time_of(self.sim_minute), shift_of(self.sim_minute) + 1
         if self.status is IssueStatus.ON_HOLD and self.resolution_type in PENDING_DECISIONS:
             self.pending_action = PENDING_DECISIONS[self.resolution_type]
+        self.can_self_resolve = can_self_resolve(self.status, self.severity)
+        self.self_resolve_needs_note = self.can_self_resolve and self_resolve_needs_note(self.status)
         return self
 
 
@@ -385,6 +393,14 @@ class IssueCreated(BaseModel):
     ai_resolution: dict[str, Any]
     estimated_cost_impact: float
     recurring_patterns: list[RecurringPattern]
+    can_self_resolve: bool = False  # business-rules §7.5
+    self_resolve_needs_note: bool = False
+
+    @model_validator(mode="after")
+    def _derived(self) -> "IssueCreated":
+        self.can_self_resolve = can_self_resolve(self.status, self.severity)
+        self.self_resolve_needs_note = self.can_self_resolve and self_resolve_needs_note(self.status)
+        return self
 
 
 class InspectionResult(BaseModel):
@@ -689,6 +705,8 @@ class SelfResolveDraft(BaseModel):
     severity: Severity
     resolution_type: str | None  # one of the taxonomy's operator_resolutions; None: the worker picks
     resolution_notes: str
+    # Escalated: the worker writes the note on the card before confirming (business-rules §7.5).
+    note_required: bool = False
 
 
 AgentAction = Annotated[
@@ -946,7 +964,7 @@ class SimSpeed(BaseModel):
 
 
 class SimStep(BaseModel):
-    minutes: float = Field(gt=0, le=480)
+    minutes: float = Field(gt=0, le=480, allow_inf_nan=False)
 
 
 class SimReset(BaseModel):

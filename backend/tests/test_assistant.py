@@ -466,7 +466,7 @@ def file(client: TestClient, headers: dict[str, str], body: dict[str, Any]) -> d
 def clear_open_issues(client: TestClient, headers: dict[str, str]) -> None:
     """Close the seeded open issues the operator may close, so a test starts from a known queue."""
     for issue in client.get("/api/issues?limit=200", headers=headers).json():
-        if issue["status"] == "resolution_in_progress" and issue["severity"] != "critical":
+        if issue["can_self_resolve"]:
             client.put(
                 f"/api/issues/{issue['id']}/self-resolve",
                 json={"resolution_type": "Other", "resolution_notes": "setup"},
@@ -519,6 +519,32 @@ def test_a_critical_issue_is_the_supervisors_decision_with_nothing_to_confirm(
     assert reply["actions"] == []
     assert "supervisor decides" in reply["response"]
     assert "nothing for you to confirm" in reply["response"]
+
+
+def test_an_escalated_issue_is_drafted_with_the_workers_note_required(
+    client: TestClient, login: Login
+) -> None:
+    """business-rules §7.5: escalated but not critical, the worker may close it with their own note."""
+    op = login("OP-001")
+    issue = file(client, op, MINOR)
+    assert client.put(f"/api/issues/{issue['id']}/escalate", headers=op).status_code == 200
+    reply = ask(client, op, f"close issue {issue['id']}")
+    [draft] = reply["actions"]
+    assert (draft["kind"], draft["issue_id"], draft["note_required"]) == ("self_resolve", issue["id"], True)
+    assert draft["resolution_notes"] == ""  # never a stock phrase standing in for the worker's words
+    assert "Write what you did in the note" in reply["response"]
+    assert client.get(f"/api/issues/{issue['id']}", headers=op).json()["status"] == "escalated"
+
+
+def test_my_open_issues_marks_an_escalated_issue_note_required(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    minor = file(client, op, MINOR)
+    client.put(f"/api/issues/{minor['id']}/escalate", headers=op)
+    model = ScriptedModel([[_chunk(calls=_call(0, "my_open_issues", "{}", "o1"))], [_chunk("Here.")]])
+    use_model(client, model)
+    ask(client, op, "resolve my issue")
+    listed = {issue["id"]: issue for issue in tool_result(model)["open_issues"]}
+    assert (listed[minor["id"]]["can_self_resolve"], listed[minor["id"]]["note_required"]) == (True, True)
 
 
 def test_i_fixed_it_drafts_the_one_issue_the_worker_may_close(client: TestClient, login: Login) -> None:

@@ -1,9 +1,10 @@
-import { Camera } from 'lucide-react';
+import { Camera, Check } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { useIssues } from '../../api/hooks';
 import type { Issue } from '../../api/types';
+import { SelfResolveForm } from '../../components/SelfResolve';
 import { SeverityBadge } from '../../components/Severity';
 import { EmptyState, IssueStatusTag, PageHeader, QueryBoundary } from '../../components/ui';
 import { formatDateTime } from '../../lib/format';
@@ -29,11 +30,45 @@ function waitingOn(issue: Issue): string | null {
   return null;
 }
 
+/** Close it here, without opening it: any open issue of theirs that is not critical or on hold (§7.5). */
+function ResolveInline({ issue }: { issue: Issue }) {
+  const [open, setOpen] = useState(false);
+  if (issue.severity === 'critical' && ISSUE_STATUS[issue.status].open) {
+    return (
+      <p className="border-t border-hairline px-4 py-3 text-base font-semibold">
+        Your supervisor decides — critical
+      </p>
+    );
+  }
+  if (!issue.can_self_resolve) return null;
+  return (
+    <div className="border-t border-hairline px-4 py-3">
+      {open ? (
+        <SelfResolveForm
+          issueId={issue.id}
+          needsNote={issue.self_resolve_needs_note === true}
+          onResolved={() => setOpen(false)}
+          onCancel={() => setOpen(false)}
+        />
+      ) : (
+        <button
+          type="button"
+          className="btn btn-secondary w-full"
+          aria-label={`Resolve it yourself: issue #${String(issue.id)}`}
+          onClick={() => setOpen(true)}
+        >
+          <Check size={20} aria-hidden="true" /> Resolve it yourself
+        </button>
+      )}
+    </div>
+  );
+}
+
 function IssueCard({ issue }: { issue: Issue }) {
   const waiting = waitingOn(issue);
   return (
-    <li>
-      <Link to={`/app/issues/${issue.id}`} className="block card hover:bg-paper-sunk">
+    <li className="card overflow-hidden">
+      <Link to={`/app/issues/${issue.id}`} className="block hover:bg-paper-sunk">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline px-4 py-2">
           <SeverityBadge severity={issue.severity} size="sm" />
           <IssueStatusTag status={issue.status} />
@@ -43,9 +78,6 @@ function IssueCard({ issue }: { issue: Issue }) {
           <p className="mt-0.5 text-ink-soft">{issue.issue_type}</p>
           {issue.description && <p className="mt-2 line-clamp-2 text-base">{issue.description}</p>}
           {waiting && <p className="mt-2 text-base font-semibold">{waiting}</p>}
-          {issue.status === 'resolution_in_progress' && issue.severity !== 'critical' && (
-            <p className="mt-2 text-base font-semibold text-accent-ink">Open it to resolve it yourself</p>
-          )}
           <p className="telemetry mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-mute">
             <span>#{issue.id}</span>
             <span>Dock {issue.door_number ?? '—'}</span>
@@ -66,6 +98,7 @@ function IssueCard({ issue }: { issue: Issue }) {
           )}
         </div>
       </Link>
+      <ResolveInline issue={issue} />
     </li>
   );
 }

@@ -9,7 +9,6 @@ import {
   useEscalate,
   useOrder,
   useReportIssue,
-  useSelfResolve,
   useTaxonomy,
   useUploadPhoto,
 } from '../../api/hooks';
@@ -17,8 +16,8 @@ import { aiResolutionOf, type IssueCreated, type IssueTypeSpec, type OrderDetail
 import { PhotoPicker, VoiceButton } from '../../components/Evidence';
 import { issueIcon } from '../../components/icons';
 import { ProcedureCard, RecurringPatterns, SeverityDerivation } from '../../components/Resolution';
+import { SelfResolveForm } from '../../components/SelfResolve';
 import {
-  ChoiceGroup,
   ErrorBlock,
   FieldLabel,
   LoadingBlock,
@@ -442,11 +441,7 @@ function ResultStep({
   photoProblem: string | null;
   onDone: (outcome: 'resolved' | 'escalated') => void;
 }) {
-  const taxonomy = useTaxonomy();
-  const selfResolve = useSelfResolve();
   const escalate = useEscalate();
-  const [choice, setChoice] = useState<string | null>(null);
-  const [note, setNote] = useState('');
   const resolution = aiResolutionOf(created);
   const critical = created.severity === 'critical';
 
@@ -472,88 +467,44 @@ function ResultStep({
         </Notice>
       )}
 
-      {created.status === 'escalated' ? (
+      {created.can_self_resolve ? (
+        <Panel title="Resolve it yourself" index={2}>
+          <SelfResolveForm
+            issueId={created.id}
+            needsNote={created.self_resolve_needs_note === true}
+            columns={4}
+            disabled={escalate.isPending}
+            onResolved={() => onDone('resolved')}
+          />
+          {created.status === 'resolution_in_progress' && (
+            <div className="mt-5 border-t border-hairline pt-5">
+              <button
+                type="button"
+                className="btn btn-hazard w-full text-lg"
+                disabled={escalate.isPending}
+                onClick={() => escalate.mutate(created.id, { onSuccess: () => onDone('escalated') })}
+              >
+                <ArrowUpRight size={22} aria-hidden="true" /> No — escalate to my supervisor
+              </button>
+              <p className="mt-2 text-sm text-ink-mute">
+                They get the full context, the procedure you were shown, and your photos.
+              </p>
+              <div className="mt-3">
+                <MutationError error={escalate.error} />
+              </div>
+            </div>
+          )}
+        </Panel>
+      ) : (
         <Panel title="What happens now" index={2}>
           <p className="text-lg">
+            {critical ? <strong>Your supervisor decides — critical. </strong> : null}
             Your supervisor has the full context, the procedure you were shown, and your photos. Keep the
             product where it is until they decide.
           </p>
           <button type="button" className="btn btn-primary mt-4" onClick={() => onDone('escalated')}>
             Done
           </button>
-        </Panel>
-      ) : (
-        <Panel title="Resolve it yourself" index={2}>
-          <p className="mb-3 text-base">
-            Did the procedure fix it? Pick what you did, add a note if it helps, and confirm.
-          </p>
-          <ChoiceGroup
-            label="What you did"
-            options={(taxonomy.data?.operator_resolutions ?? []).map((option) => ({
-              value: option,
-              label: option,
-            }))}
-            value={choice}
-            onChange={setChoice}
-            columns={4}
-          />
-          <div className="mt-4">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div className="flex-1">
-                <FieldLabel htmlFor="resolution-note" hint="Optional">
-                  Note for the record
-                </FieldLabel>
-              </div>
-              <div className="mb-2">
-                <VoiceButton
-                  onText={(text) =>
-                    setNote((current) => (current ? `${current} ${text}` : text).slice(0, 2000))
-                  }
-                />
-              </div>
-            </div>
-            <textarea
-              id="resolution-note"
-              rows={2}
-              className="field text-lg"
-              maxLength={2000}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="What you did, what you saw"
-            />
-          </div>
-          <button
-            type="button"
-            className="btn btn-primary mt-4 w-full text-lg"
-            disabled={!choice || selfResolve.isPending || escalate.isPending}
-            onClick={() => {
-              if (!choice) return;
-              selfResolve.mutate(
-                { id: created.id, resolution_type: choice, resolution_notes: note.trim() },
-                { onSuccess: () => onDone('resolved') },
-              );
-            }}
-          >
-            <Check size={22} aria-hidden="true" />
-            {selfResolve.isPending ? 'Closing…' : 'Yes — mark it resolved'}
-          </button>
-          <div className="mt-5 border-t border-hairline pt-5">
-            <button
-              type="button"
-              className="btn btn-hazard w-full text-lg"
-              disabled={escalate.isPending || selfResolve.isPending}
-              onClick={() => escalate.mutate(created.id, { onSuccess: () => onDone('escalated') })}
-            >
-              <ArrowUpRight size={22} aria-hidden="true" /> No — escalate to my supervisor
-            </button>
-            <p className="mt-2 text-sm text-ink-mute">
-              They get the full context, the procedure you were shown, and your photos.
-            </p>
-          </div>
-          <div className="mt-3 flex flex-col gap-2">
-            <MutationError error={selfResolve.error} />
-            <MutationError error={escalate.error} />
-          </div>
         </Panel>
       )}
     </div>

@@ -39,6 +39,9 @@ mirrors this list 1:1; no `fetch` call exists elsewhere in the frontend.
   a path, query or body (the range of a Postgres `INTEGER`).
 - Free text a person types (`description`, notes, `details`) is at most **2000** characters;
   `quick_tags` is at most 10 tags of at most 32 characters. Longer is **422**.
+- A validation error is **422** `{"detail": [{"loc", "msg", "type"}]}` — where and what, never the
+  input echoed back. Numbers a person enters (temperatures, readings, counts, quantities) must be
+  finite: `NaN` or `±Infinity` is **422**, never a 500 and never a stored value.
 - Each request runs in one database transaction, committed once. WebSocket events are emitted only
   after the commit succeeds.
 
@@ -95,9 +98,9 @@ token** — no request body carries `operator_id`, `supervisor_id` or `user_id`.
 |---|---|---|---|---|
 | GET | `/api/issues` | scoped | Filters: `status` (or `active`; `on_hold` is open), `operator_id`, `severity`, `dock` (a door number), `carrier_id`, `from` / `to` (UTC days, inclusive; `from` after `to` **422**), `limit` | — |
 | GET | `/api/issues/export.csv` | scoped | The same list, the same filters and scope, as CSV (`text/csv`, an attachment), newest first; `limit` 1–5000 (default 1000). Text a spreadsheet would run as a formula is prefixed with `'` | — |
-| GET | `/api/issues/{id}` | scoped | Full issue with joined context, `issue_subtype`, `recurring_patterns`, `photo_count` — and the record as reported: `order_number`, `trailer_number`, `bol_number` (as when filed), `temp_reading`, `temp_limit`, `quantity_affected`, `lot`, `room`; `acknowledged_by(_name)`; `on_hold_at`, `pending_action`; `sim_minute`, `sim_time`, `sim_shift` (simulated issues); `held_pallets`, `disposition`, `disposition_notes`, `disposition_by(_name)`, `disposition_at`. Printable as is | — |
+| GET | `/api/issues/{id}` | scoped | Full issue with joined context, `issue_subtype`, `recurring_patterns`, `photo_count` — and the record as reported: `order_number`, `trailer_number`, `bol_number` (as when filed), `temp_reading`, `temp_limit`, `quantity_affected`, `lot`, `room`; `acknowledged_by(_name)`; `on_hold_at`, `pending_action`; `sim_minute`, `sim_time`, `sim_shift` (simulated issues); `held_pallets`, `disposition`, `disposition_notes`, `disposition_by(_name)`, `disposition_at`; `can_self_resolve` and `self_resolve_needs_note` (business-rules §7.5; also on the filing response). Printable as is | — |
 | POST | `/api/issues` | operator | **Create and classify** — see below. `issue_type` and `issue_subtype` must come from the taxonomy (422). A **product** issue names an order (**422** without); a people or systems issue may name neither order nor dock. An `order_id` must be one of the caller's orders (**404** otherwise) and at `dock_door_id` (**422** otherwise; omitted → the order's dock); naming a simulated order takes it over from the simulator. A Temperature Deviation or Product Quality Concern on an order with WMS stock puts that stock on quality hold (business-rules §7.3), recorded in `held_pallets` | `issues`, dock → `issue`, WMS hold; emits `new_issue` |
-| PUT | `/api/issues/{id}/self-resolve` | the reporter | `resolution_type` must be an operator resolution (422). A critical issue answers 409: its supervisor decides | `status='self_resolved'`, dock → `active`; emits `issue_resolved` |
+| PUT | `/api/issues/{id}/self-resolve` | the reporter | Business-rules §7.5. `resolution_type` must be an operator resolution (422). Allowed on the reporter's own open issue that is not critical, `resolution_in_progress` or `escalated` (acknowledged or not); on an **escalated** one `resolution_notes` is required (**422** when blank). Critical, `on_hold` and resolved answer **409**; another worker's issue **404** | `status='self_resolved'`, `resolution_notes` (trimmed), dock → `active`; emits `issue_resolved` to the reporter, their supervisor, whoever acknowledged it, and Quality if quality-relevant |
 | PUT | `/api/issues/{id}/acknowledge` | the team supervisor | "On my way": stamps `acknowledged_at` and `acknowledged_by` (the first to acknowledge; `supervisor_id` is left for whoever decides). 409 once resolved | emits `issue_acknowledged` (who is coming, to which door) |
 | PUT | `/api/issues/{id}/escalate` | the reporter or their supervisor | Hand to the supervisor. No body. Critical issues arrive already escalated (business-rules §7.1) | `status='escalated'`; dock → `critical` if severity is critical; emits `issue_escalated` |
 | PUT | `/api/issues/{id}/supervisor-resolve` | the reporter's supervisor | `resolution_type` must be a supervisor decision (422). Accept, Partial Accept and Override on a critical or temperature issue need `supervisor_notes` (**422** without). Contact Carrier and Request Re-inspection → `on_hold` (open). Full Reject blocks the order's sign-off and flags the dock (business-rules §7.2). Returns the new status | `status='supervisor_resolved'` or `'on_hold'`; dock → `active` (or `issue` on Full Reject; unchanged on hold); emits `issue_resolved` (`method` = the new status) |
@@ -148,8 +151,8 @@ arguments), rolled back, and reported as a failed step; the conversation continu
 | `locate_stock` | all | Pallet locations through `WmsClient`; says so when the WMS is offline |
 | `look_up` | all | One order, issue or product, row-scoped |
 | `draft_issue_report` | operator | A report for the active order with the formula's severity preview, built by the same `score_issue()` as filing; cases affected only when the person said so. **Not filed** |
-| `my_open_issues` | operator | The operator's own open issues, each with `can_self_resolve` and why not (critical or escalated: the supervisor decides), and the resolution options (`operator_resolutions`) |
-| `draft_self_resolve` | operator | Closing one of the operator's own issues: `self_resolve` action with the resolution (or none: the worker picks it on the card). For a critical or escalated issue: why not, and **nothing to confirm**. **Not resolved** until the worker presses *Resolve issue #N*, which calls `PUT /api/issues/{id}/self-resolve` |
+| `my_open_issues` | operator | The operator's own open issues, each with `can_self_resolve` and why not (critical or on hold: the supervisor decides), `note_required` on an escalated one, and the resolution options (`operator_resolutions`) |
+| `draft_self_resolve` | operator | Closing one of the operator's own issues: `self_resolve` action with the resolution (or none: the worker picks it on the card). An escalated issue is drafted with `note_required`: the worker writes the note on the card (the rules router never fills it in). For a critical or on-hold issue: why not, and **nothing to confirm**. **Not resolved** until the worker presses *Resolve issue #N*, which calls `PUT /api/issues/{id}/self-resolve` |
 | `shift_summary` | staff | Last 12 hours of issues: severity, status, types, carriers, still escalated |
 | `draft_broadcast` | supervisor | A team message. **Not sent** |
 | `draft_handoff` | supervisor | A handoff note, opened pre-filled on the Handoff screen. **Not saved** |
@@ -242,8 +245,11 @@ an order calls `WmsClient.confirm_order`; while the WMS is down the completion i
 ## 3. Realtime — `WS /ws`
 
 **Authenticated and addressed.** The client opens `new WebSocket(url, ["dockiq", <token>])`; a
-missing or invalid token is refused with close code **1008**. Each event goes only to the users it
-concerns:
+missing or invalid token is refused with close code **1008**. A socket lives no longer than its
+token: once the token's `exp` passes it is closed with **1008** — on the next event addressed to it,
+or by a sweep every 30 seconds, whichever is first. The client's retry with the same token is refused
+too, and its next API call answers 401, which signs the person out.
+Each event goes only to the users it concerns:
 
 | Event | Emitted by |
 |---|---|

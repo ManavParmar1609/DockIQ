@@ -504,7 +504,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Self Resolve Issue */
+        /**
+         * Self Resolve Issue
+         * @description The reporter closes their own issue (business-rules §7.5): any open one that is not critical,
+         *     `resolution_in_progress` or `escalated`. An escalated one needs the worker's note, and the
+         *     supervisor who acknowledged it (and the team supervisor) are told through `issue_resolved`.
+         */
         put: operations["self_resolve_issue_api_issues__issue_id__self_resolve_put"];
         post?: never;
         delete?: never;
@@ -1873,6 +1878,16 @@ export interface components {
             estimated_cost_impact: number;
             /** Recurring Patterns */
             recurring_patterns: components["schemas"]["RecurringPattern"][];
+            /**
+             * Can Self Resolve
+             * @default false
+             */
+            can_self_resolve?: boolean;
+            /**
+             * Self Resolve Needs Note
+             * @default false
+             */
+            self_resolve_needs_note?: boolean;
         };
         /** IssueDispositionUpdate */
         IssueDispositionUpdate: {
@@ -2040,6 +2055,16 @@ export interface components {
             disposition_by_name?: string | null;
             /** Disposition At */
             disposition_at?: string | null;
+            /**
+             * Can Self Resolve
+             * @default false
+             */
+            can_self_resolve?: boolean;
+            /**
+             * Self Resolve Needs Note
+             * @default false
+             */
+            self_resolve_needs_note?: boolean;
         };
         /** IssueSelfResolve */
         IssueSelfResolve: {
@@ -2800,6 +2825,11 @@ export interface components {
             resolution_type: string | null;
             /** Resolution Notes */
             resolution_notes: string;
+            /**
+             * Note Required
+             * @default false
+             */
+            note_required?: boolean;
         };
         /**
          * Severity

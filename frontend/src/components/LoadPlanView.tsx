@@ -628,7 +628,7 @@ function TrailerView({
                 x={numberX + size * 0.25}
                 y={numberY + size * 0.35}
                 textAnchor="start"
-                fontSize={Math.min(size, 28)}
+                fontSize={Math.min(size, 22)}
                 fontWeight="700"
                 fontFamily="var(--font-sans)"
                 fill={onRow ? 'var(--color-ink)' : 'var(--color-ink-mute)'}
@@ -742,39 +742,6 @@ function TrailerView({
           </text>
         </g>
       )}
-      {(['left', 'right'] as const).map((side) => {
-        const width = 124;
-        const x = side === 'left' ? 14 : VIEW_W - 14 - width;
-        const y = VIEW_H - 50;
-        return (
-          <g key={side} transform={`translate(${x} ${y})`}>
-            <rect width={width} height="36" rx="18" className="lp-side-pill" />
-            <path
-              d={
-                side === 'left'
-                  ? 'M24 11 L17 18 L24 25'
-                  : `M${width - 24} 11 L${width - 17} 18 L${width - 24} 25`
-              }
-              fill="none"
-              stroke="var(--color-ink)"
-              strokeWidth="2.25"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <text
-              x={side === 'left' ? 32 : width - 32}
-              y="23.5"
-              textAnchor={side === 'left' ? 'start' : 'end'}
-              fontSize="16"
-              fontWeight="600"
-              fontFamily="var(--font-sans)"
-              fill="var(--color-ink)"
-            >
-              {side === 'left' ? 'Your left' : 'Your right'}
-            </text>
-          </g>
-        );
-      })}
     </svg>
   );
 }
@@ -1007,7 +974,8 @@ function NowLoading({
           <div className="meter-fill" style={{ width: `${share}%` }} />
         </div>
         <p className="telemetry shrink-0 text-base">
-          {loaded} of {total} loaded
+          {current ? `Step ${String(step)} of ${String(total)} · ` : ''}
+          {loaded} loaded
         </p>
       </div>
 
@@ -1015,10 +983,7 @@ function NowLoading({
         <div className="flex items-start gap-4">
           {product && <Swatch fill={product.fill} prefix={`now-${product.sku}`} size={48} />}
           <div className="min-w-0">
-            <h3 className="label">
-              Load step {step} of {total}
-            </h3>
-            <p className="heading mt-0.5 text-2xl">{current.product_name}</p>
+            <h3 className="heading text-2xl">{current.product_name}</h3>
             <p className="telemetry mt-1 text-sm text-ink-soft">
               {current.sku} · {current.cases} cs · {formatWeight(current.weight_lbs)}
               {current.partial && ' · part pallet'}
@@ -1040,8 +1005,14 @@ function NowLoading({
         </div>
       )}
 
-      <div className="lp-frame -mx-5 sm:mx-0 sm:overflow-hidden sm:rounded-2xl">
+      <div className="lp-frame relative -mx-5 sm:mx-0 sm:overflow-hidden sm:rounded-2xl">
         <TrailerView plan={plan} step={step} fills={fills} current={current} />
+        <span className="pill absolute bottom-3 left-3 border border-hairline bg-surface text-sm text-ink">
+          <ChevronLeft size={16} aria-hidden="true" /> Your left
+        </span>
+        <span className="pill absolute right-3 bottom-3 border border-hairline bg-surface text-sm text-ink">
+          Your right <ChevronRight size={16} aria-hidden="true" />
+        </span>
       </div>
 
       {current && (

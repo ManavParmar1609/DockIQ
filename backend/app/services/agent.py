@@ -94,8 +94,9 @@ ROLE_LINES: dict[Role, RoleLines] = {
         drafts=(
             "To report a problem use draft_issue_report. To close one of your own issues use "
             "my_open_issues, then draft_self_resolve. Then tell the person to check the draft and press "
-            "its button. A critical or escalated issue is the supervisor's decision: say so and offer "
-            "nothing to confirm."
+            "its button. A critical issue, or one on hold, is the supervisor's decision: say so and offer "
+            "nothing to confirm. An escalated issue that is not critical can still be closed: the person "
+            "writes what they did in the note on the card, and the supervisor is told."
         ),
         unsafe="**Stop and call your supervisor now.**",
         cannot_answer="suggest asking your supervisor",
@@ -393,10 +394,10 @@ async def _resolve_flow(ctx: ToolContext, message: str) -> AsyncIterator[Event]:
     if target is not None:
         lowered = message.lower()
         resolution = next((option for word, option in RESOLUTION_WORDS if word in lowered), None)
-        args: dict[str, Any] = {
-            "issue_id": target,
-            "note": "Resolved by the operator, confirmed in the assistant",
-        }
+        args: dict[str, Any] = {"issue_id": target}
+        # An escalated issue needs the worker's own note (business-rules §7.5): never a stock phrase.
+        if not any(issue.get("id") == target and issue.get("note_required") for issue in resolvable):
+            args["note"] = "Resolved by the operator, confirmed in the assistant"
         if resolution is not None:
             args["resolution_type"] = resolution
         text = _describe("draft_self_resolve", await _run(ctx, "draft_self_resolve", args, events))
@@ -491,6 +492,11 @@ def _describe(tool: str, data: dict[str, Any]) -> str:
         case "draft_self_resolve":
             if not data.get("draft_ready"):
                 return f"**Issue #{data['issue']}: {data['why']}** There is nothing for you to confirm."
+            if data.get("note_required"):
+                return (
+                    f"Issue #{data['issue']} is with your supervisor. **Write what you did in the note**, "
+                    f"then press **Resolve issue #{data['issue']}**. Your supervisor is told."
+                )
             if data["resolution_type"].startswith("not chosen"):
                 return f"Pick what you did on the card, then press **Resolve issue #{data['issue']}**."
             return f"Check the card, then press **Resolve issue #{data['issue']}**."

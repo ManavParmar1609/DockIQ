@@ -42,9 +42,8 @@ export function SeverityDerivation({
       </div>
       {factors.length > 0 && (
         <ol className="mt-4 divide-y divide-hairline border-t border-hairline">
-          {factors.map((factor, i) => (
+          {factors.map((factor) => (
             <li key={factor} className="flex gap-3 py-2 text-base">
-              <span className="telemetry text-ink-mute">{String(i + 1).padStart(2, '0')}</span>
               <span>{factor}</span>
             </li>
           ))}

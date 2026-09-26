@@ -1,6 +1,7 @@
 import time
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Path, Request
@@ -50,7 +51,10 @@ UNAUTHORIZED = HTTPException(
 )
 
 
-async def user_from_token(session: AsyncSession, settings: Settings, token: str | None) -> User | None:
+async def session_from_token(
+    session: AsyncSession, settings: Settings, token: str | None
+) -> tuple[User, datetime] | None:
+    """The token's active user and when the token expires; None for any token that is not good now."""
     if not token:
         return None
     claims = decode_access_token(settings, token)
@@ -59,7 +63,12 @@ async def user_from_token(session: AsyncSession, settings: Settings, token: str 
     user = await session.get(User, claims.user_id)
     if user is None or not user.is_active:
         return None
-    return user
+    return user, claims.expires_at
+
+
+async def user_from_token(session: AsyncSession, settings: Settings, token: str | None) -> User | None:
+    found = await session_from_token(session, settings, token)
+    return found[0] if found is not None else None
 
 
 async def get_current_user(

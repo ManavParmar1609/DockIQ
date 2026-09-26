@@ -33,26 +33,25 @@ DockIQ runs on a tablet on a forklift in a **cold-storage warehouse**. Gloved ha
 glare, and decisions that are sometimes food-safety critical. Whatever the style, the interface has
 to be legible at arm's length, unmistakable about severity, and calm under pressure.
 
-### 2.2 The committed direction — Botanical / Organic Serif *(chosen 2026-09-25)*
+### 2.2 The committed direction — Grafbase, exactly *(chosen 2026-09-25)*
 
-The product owner supplied this design system after judging the Apple-style pass generic. Its
-character — rice paper and grain, deep forest ink, sage and terracotta, Playfair Display with italic
-emphasis, soft 24px cards, pills, arches, slow graceful motion — answers Part 1 directly: a
-distinctive serif pairing, a committed earthy palette with sharp accents, atmosphere from texture,
-one orchestrated reveal. Calm is also the right emotion for a stressful dock.
+The owner pinned the Grafbase style reference ("engineering blueprint on cool marble") and asked for
+it exactly, light only, with their own type spec: an editorial display serif over tightened Inter,
+a grotesk for captions and a mono for telemetry. Values: `docs/specs/ui-ux-spec.md` §2 and
+`DESIGN.md`.
 
-### 2.3 Where DockIQ departs from the design system
+### 2.3 Where DockIQ departs from the reference
 
-| The design system says | DockIQ does instead | Why |
+| Grafbase says | DockIQ does instead | Why |
 |---|---|---|
-| "No artificial brights"; muted palette only | Critical is a **brick red** (`#A8322A`), still earthy but unmistakable; high/medium get ochre and olive | A food-safety alert must never be timid |
-| Grain overlay fixed on top, `z-50` | Grain sits **beneath** the opaque cards | No texture may touch a badge, a reading or an alert |
-| Sage and terracotta as text/interactive colours | Used for decoration; **deeper `-ink` variants** carry text | They fail AA on rice paper (2.8 and 3.3:1) |
-| Slow 500–700ms motion everywhere | Reveals and hovers are slow; **press feedback is instant** | A gloved tap must feel answered at once |
-| Small uppercase button labels | 14px floor, 50px pill height | Gloves, distance, glare |
-| Staggered cards (`translate-y-12`) | On the landing page only, not in working screens | Scanning a queue needs straight rows |
-| One sans for everything read at work | Source Sans 3 for reading, **Spline Sans Mono** for telemetry (IDs, codes, times, counts) | The product owner asked for more type voices; a soft mono keeps codes unambiguous (0/O, 1/l) |
-| One orchestrated moment, no scattered micro-interactions | Micro-interactions **where they explain**: the load guide's breathing spot, flowing arrow, settling pallet, gliding view; sheets sliding in | Requested by the product owner; each one carries information. Never on an alert; reduced motion honoured |
+| 99% achromatic; no status colour | Critical **brick red**, high saffron, medium olive — each with a word and a shape | A food-safety alert must never be grey |
+| One family, Inter | Playfair Display (for Heldane Display), Inter, Hanken Grotesk (for Aktiv Grotesk), Geist Mono | The owner's type spec; Heldane and Aktiv are paid, the project is free |
+| 13px captions | **14px floor** | Gloves, distance, glare |
+| Ash `#7C7C7C` for tertiary text | Steel for all small text | Ash fails AA for small text |
+| Announcement gradient `#19A05F → #0D7F8C` | Same angle, each stop one step deeper | White text on the light end is 3.3:1; the strip must pass AA |
+| Theme toggle | Light only | The owner's instruction |
+| Part 1 lists Inter among fonts to avoid | Inter for all UI | The owner's brief names it; the brief outranks the general directive |
+| One orchestrated moment, no scattered micro-interactions | Micro-interactions where they explain (load guide, bays, sheets) | Requested by the owner; never on an alert |
 
 ### 2.4 Non-negotiables that outrank any aesthetic
 
@@ -68,8 +67,9 @@ one orchestrated reveal. Calm is also the right emotion for a stressful dock.
 ### 2.5 History
 
 - Phase 0: an Apple-derived look with Inter. Phase 2: "Freight Manifest" (industrial print).
-- 2026-09-25: an Apple design-language pass, then **Botanical / Organic Serif**, the current system
-  (`docs/specs/ui-ux-spec.md` §2).
+- 2026-09-25: an Apple design-language pass, then Botanical / Organic Serif, then the dock ledger
+  (Grafbase × Lattice × Altitude), then **Grafbase, exactly** — light only, with the owner's type
+  spec — the current system (`docs/specs/ui-ux-spec.md` §2, `DESIGN.md`).
 
 ### 2.6 Skills to load for frontend work
 

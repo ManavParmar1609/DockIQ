@@ -340,7 +340,7 @@ def test_quality_relevance() -> None:
 def test_resolved_issues_are_terminal() -> None:
     assert can_transition(IssueStatus.RESOLUTION_IN_PROGRESS, IssueStatus.ESCALATED)
     assert can_transition(IssueStatus.ESCALATED, IssueStatus.SUPERVISOR_RESOLVED)
-    assert not can_transition(IssueStatus.ESCALATED, IssueStatus.SELF_RESOLVED)
+    assert can_transition(IssueStatus.ESCALATED, IssueStatus.SELF_RESOLVED)  # business-rules §7.5
     assert not can_transition(IssueStatus.SELF_RESOLVED, IssueStatus.ESCALATED)
 
 
@@ -457,7 +457,44 @@ def test_only_critical_requires_a_supervisor() -> None:
     assert [requires_supervisor(s) for s in Severity] == [s is Severity.CRITICAL for s in Severity]
     assert can_self_resolve(IssueStatus.RESOLUTION_IN_PROGRESS, Severity.HIGH)
     assert not can_self_resolve(IssueStatus.RESOLUTION_IN_PROGRESS, Severity.CRITICAL)
-    assert not can_self_resolve(IssueStatus.ESCALATED, Severity.LOW)
+    assert not can_self_resolve(IssueStatus.ESCALATED, Severity.CRITICAL)
+
+
+# ── Self-resolve (business-rules §7.5) ──
+
+
+def test_a_worker_may_self_resolve_any_open_issue_that_is_not_critical_or_on_hold() -> None:
+    from app.domain.enums import IssueStatus, Severity
+    from app.domain.lifecycle import can_self_resolve
+
+    allowed = {
+        (status, severity)
+        for status in IssueStatus
+        for severity in Severity
+        if can_self_resolve(status, severity)
+    }
+    assert allowed == {
+        (status, severity)
+        for status in (IssueStatus.RESOLUTION_IN_PROGRESS, IssueStatus.ESCALATED)
+        for severity in (Severity.LOW, Severity.MEDIUM, Severity.HIGH)
+    }
+
+
+def test_self_resolving_an_escalated_issue_needs_the_workers_note() -> None:
+    from app.domain.enums import IssueStatus
+    from app.domain.lifecycle import self_resolve_needs_note
+
+    assert [status for status in IssueStatus if self_resolve_needs_note(status)] == [IssueStatus.ESCALATED]
+
+
+def test_why_a_worker_may_not_self_resolve_is_said_in_words() -> None:
+    from app.domain.enums import IssueStatus, Severity
+    from app.domain.lifecycle import why_not_self_resolve
+
+    assert why_not_self_resolve(IssueStatus.ESCALATED, Severity.HIGH) is None
+    assert "Critical" in (why_not_self_resolve(IssueStatus.ESCALATED, Severity.CRITICAL) or "")
+    assert "on hold" in (why_not_self_resolve(IssueStatus.ON_HOLD, Severity.LOW) or "")
+    assert why_not_self_resolve(IssueStatus.SELF_RESOLVED, Severity.LOW) == "Already resolved."
 
 
 def test_completion_blockers() -> None:

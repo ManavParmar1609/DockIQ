@@ -2,6 +2,7 @@
 
 resolution_in_progress ──┬──▶ self_resolved
                          ├──▶ escalated ──┬──▶ supervisor_resolved
+                         │                ├──▶ self_resolved   (not critical; the worker's note, §7.5)
                          │                └──▶ on_hold ──▶ supervisor_resolved
                          ├──▶ on_hold      (a decision that waits on the carrier or a re-inspection)
                          └──▶ supervisor_resolved   (a supervisor may close it directly)
@@ -22,7 +23,10 @@ ALLOWED_TRANSITIONS: dict[IssueStatus, frozenset[IssueStatus]] = {
             IssueStatus.SUPERVISOR_RESOLVED,
         }
     ),
-    IssueStatus.ESCALATED: frozenset({IssueStatus.ON_HOLD, IssueStatus.SUPERVISOR_RESOLVED}),
+    # The reporter may still close an escalated issue that is not critical, with a note (§7.5).
+    IssueStatus.ESCALATED: frozenset(
+        {IssueStatus.SELF_RESOLVED, IssueStatus.ON_HOLD, IssueStatus.SUPERVISOR_RESOLVED}
+    ),
     # A pending decision may be replaced by another pending one (carrier first, then a re-inspection).
     IssueStatus.ON_HOLD: frozenset({IssueStatus.ON_HOLD, IssueStatus.SUPERVISOR_RESOLVED}),
     IssueStatus.SELF_RESOLVED: frozenset(),
@@ -92,8 +96,29 @@ def requires_supervisor(severity: Severity) -> bool:
     return severity is Severity.CRITICAL
 
 
+# ── Self-resolve (business-rules §7.5): the reporting worker closes their own issue ──
+
+
 def can_self_resolve(status: IssueStatus, severity: Severity) -> bool:
+    """Any open issue of the reporter's that is not critical, `resolution_in_progress` or `escalated`
+    (acknowledged or not). Never `on_hold`: that is a supervisor's pending decision."""
     return can_transition(status, IssueStatus.SELF_RESOLVED) and not requires_supervisor(severity)
+
+
+def self_resolve_needs_note(status: IssueStatus) -> bool:
+    """Closing an escalated issue takes it back from the supervisor's queue: the worker says why."""
+    return status is IssueStatus.ESCALATED
+
+
+def why_not_self_resolve(status: IssueStatus, severity: Severity) -> str | None:
+    """The worker's reason, in their words, when they may not close it themselves; None when they may."""
+    if can_self_resolve(status, severity):
+        return None
+    if status not in OPEN_STATUSES:
+        return "Already resolved."
+    if requires_supervisor(severity):
+        return "Critical: your supervisor decides. A critical issue cannot be resolved on your own."
+    return "Your supervisor has a decision pending on it (on hold), so they close it."
 
 
 @dataclass(frozen=True, slots=True)

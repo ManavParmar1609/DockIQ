@@ -32,6 +32,7 @@ from app.domain.lifecycle import (
     decision_needs_notes,
     decision_status,
     requires_supervisor,
+    self_resolve_needs_note,
 )
 from app.domain.quality_hold import LEAVES_THE_BUILDING, can_dispose, holds_stock
 from app.domain.taxonomy import OPERATOR_RESOLUTIONS, SUPERVISOR_DECISIONS, needs_order
@@ -292,20 +293,31 @@ async def _dock_event(session: AsyncSession, issue: Issue, event: DockEvent) -> 
 async def self_resolve_issue(
     issue_id: PathId, body: IssueSelfResolve, user: Operator, session: SessionDep, events: RealtimeDep
 ) -> StatusOut:
-    issue = await visible_issue(session, user, issue_id)
+    """The reporter closes their own issue (business-rules §7.5): any open one that is not critical,
+    `resolution_in_progress` or `escalated`. An escalated one needs the worker's note, and the
+    supervisor who acknowledged it (and the team supervisor) are told through `issue_resolved`."""
+    issue = await visible_issue(session, user, issue_id)  # scoped: only the reporter's own
     if body.resolution_type not in OPERATOR_RESOLUTIONS:
         raise unprocessable(f"Unknown resolution '{body.resolution_type}'")
     if requires_supervisor(issue.severity):
         raise HTTPException(http.HTTP_409_CONFLICT, "A critical issue needs your supervisor's decision")
+    if issue.status is IssueStatus.ON_HOLD:
+        raise HTTPException(
+            http.HTTP_409_CONFLICT, "Your supervisor has a decision pending on this issue: they close it"
+        )
+    note = (body.resolution_notes or "").strip()
+    if self_resolve_needs_note(issue.status) and not note:
+        raise unprocessable("This issue is with your supervisor: say what you did in the note")
     _move(issue, IssueStatus.SELF_RESOLVED)
     issue.resolution_type = body.resolution_type
-    issue.resolution_notes = body.resolution_notes
+    issue.resolution_notes = note
     issue.resolved_at = utcnow()
     await _dock_event(session, issue, DockEvent.ISSUE_RESOLVED)
     await session.commit()
+    audience = await issue_audience(session, issue)
+    audience.add(issue.acknowledged_by)  # whoever said "on my way" learns the trip is off
     await events.send(
-        await issue_audience(session, issue),
-        realtime.issue_resolved(issue_id, IssueStatus.SELF_RESOLVED.value, body.resolution_type),
+        audience, realtime.issue_resolved(issue_id, IssueStatus.SELF_RESOLVED.value, body.resolution_type)
     )
     return StatusOut(status=IssueStatus.SELF_RESOLVED.value)
 

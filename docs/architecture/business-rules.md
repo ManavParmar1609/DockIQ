@@ -402,7 +402,9 @@ The patterns are **stored on the issue** (`issues.recurring_patterns`) and shown
 confirmation, the supervisor queue and the issue detail — the *"3rd temp issue from this carrier"*
 line from Scenario 2. *(Phase 2 — previously computed and discarded, and the count excluded the
 report being filed, so the message read "the 3th" on what was really the 4th.)* Counts read as
-English ordinals — 1st, 2nd, 3rd, 4th, 11th, 12th, 13th, 21st (`recurrence.ordinal`).
+English ordinals — 1st, 2nd, 3rd, 4th, 11th, 12th, 13th, 21st (`recurrence.ordinal`). Messages
+stored before the fix are rewritten to that form by migration `0007` (data only; the downgrade keeps
+the corrected text).
 
 ---
 
@@ -413,6 +415,7 @@ English ordinals — 1st, 2nd, 3rd, 4th, 11th, 12th, 13th, 21st (`recurrence.ord
 ```
 resolution_in_progress ──┬──▶ self_resolved
                          ├──▶ escalated ──┬──▶ supervisor_resolved
+                         │                ├──▶ self_resolved   (not critical, with the worker's note: §7.5)
                          │                └──▶ on_hold ──▶ supervisor_resolved
                          ├──▶ on_hold      (a decision that waits on the carrier or a re-inspection)
                          └──▶ supervisor_resolved   (a supervisor may close it directly)
@@ -420,8 +423,8 @@ resolution_in_progress ──┬──▶ self_resolved
 
 Resolved states are terminal; `on_hold` is **open** (it counts as active, blocks sign-off if the
 issue is critical, and may move to another pending decision or to a final one). Any other move is
-refused with **409 Conflict** (`domain/lifecycle.py`). Only the reporting operator may self-resolve;
-only **that operator's supervisor** decides.
+refused with **409 Conflict** (`domain/lifecycle.py`). Only the reporting operator may self-resolve
+(§7.5); only **that operator's supervisor** decides.
 
 **Timestamp trail:** `created_at` → `escalated_at` → `acknowledged_at` (+ `acknowledged_by`, who said
 "on my way") → `on_hold_at` (a pending decision) → `resolved_at` (+ `supervisor_id`, who decided). A
@@ -534,6 +537,33 @@ re-inspection, shown as its `pending_action`. Resolved issues are never overdue.
 **Dock open-issue count.** `GET /api/docks` carries `open_issues` per door — a count across every
 team — so a supervisor looking at another zone's door learns that it has open issues and that that
 zone's supervisor handles them, without the records leaving their team's scope.
+
+### 7.5 Self-resolve: the worker closes their own issue
+
+`PUT /api/issues/{id}/self-resolve`; `domain/lifecycle.py` → `can_self_resolve`,
+`self_resolve_needs_note`, `why_not_self_resolve`. Escalating is asking for help, not giving the issue
+away: a worker who then fixes it closes it, as long as it is not a decision that is the supervisor's.
+
+| The worker's own issue | May they close it? | Answer otherwise |
+|---|---|---|
+| `resolution_in_progress`, not critical | **Yes**; the note is optional | — |
+| `escalated`, not critical — whether or not a supervisor said "on my way" | **Yes, with a note** saying what they did | **422** without a non-blank `resolution_notes` |
+| **critical** (any status) | No — always the supervisor's decision (§7.1) | **409** |
+| `on_hold` | No — a supervisor's decision is pending on it (§7.2) | **409** |
+| already resolved | No — resolved is terminal | **409** |
+| someone else's issue | No — out of scope | **404** — its existence is not disclosed (`api/access.py`) |
+
+The resolution must be one of the taxonomy's `operator_resolutions` (**422** otherwise). The note is
+stored trimmed. The issue becomes `self_resolved` and the dock goes back to `active` through
+`transition()`. After the commit, `issue_resolved` (`method` = `self_resolved`) goes to the reporter,
+their supervisor, the supervisor who acknowledged it (if any) and — for a quality-relevant issue —
+Quality: a supervisor on the way learns the trip is off.
+
+Every issue response carries `can_self_resolve` and `self_resolve_needs_note` (and so does the
+filing response), so the screens offer *Resolve it yourself* — inline on *My issues*, on the issue,
+and on the report's result — from the rule itself, never a copy of it. The assistant follows the same
+rule: `my_open_issues` marks an escalated issue `note_required`, and `draft_self_resolve` drafts it
+with the note left for the worker to write on the card.
 
 ---
 
@@ -898,6 +928,7 @@ unchanged.
 
 | Date | Change |
 |---|---|
+| 2026-09-25 | §7.5 self-resolve: the reporter may close an escalated issue that is not critical, with a note (422 without); never critical, on hold or resolved (409). Migration 0007 rewrites stored "3th"-style recurrence ordinals (§6). |
 | 2026-09-25 | §11.1 probe guidance follows the order's direction: loading gets *do not load / hold at the dock*, never *do not unload*. |
 | 2026-09-25 | §7.4 decision targets (critical 15 · high 60 · medium 240 · low 480 minutes), overdue flag in the queue; per-door `open_issues` count. |
 | 2026-09-25 | Audit: §7 `on_hold`, who acknowledged vs who decided, the record as reported; §7.1 every filing path escalates a critical, migration 0006; §7.2 decisions take effect (reasons for accepting critical/temperature product, Full Reject blocks sign-off and flags the dock, pending decisions); §7.3 quality hold and disposition; §8 people and systems issues without an order; §11.1 the probe log and critical auto-filing; §11.3 receiving evidence before sign-off; §12.5 reset guard; §12.7 hold/release movements; §12.11 the yard's actual door; §12.12 the alarm holds exposed stock; §6 ordinals. |

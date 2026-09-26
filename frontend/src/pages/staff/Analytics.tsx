@@ -90,10 +90,10 @@ const SEVERITY_BAR: Record<Severity, string> = {
 
 type Hue = 'clay' | 'slate' | 'moss' | 'plum';
 const HUE_CLASS: Record<Hue, string> = {
-  clay: 'bg-chart-clay',
-  slate: 'bg-chart-slate',
-  moss: 'bg-chart-moss',
-  plum: 'bg-chart-plum',
+  clay: 'bg-chart-1',
+  slate: 'bg-chart-2',
+  moss: 'bg-chart-3',
+  plum: 'bg-chart-4',
 };
 
 function prefersReducedMotion(): boolean {
@@ -302,16 +302,16 @@ function Trend({ points, reduced }: { points: DayPoint[]; reduced: boolean }) {
                 <Area
                   type="monotone"
                   dataKey="count"
-                  stroke="var(--chart-slate)"
+                  stroke="var(--chart-2)"
                   strokeWidth={2}
                   strokeLinejoin="round"
                   strokeLinecap="round"
-                  fill="var(--chart-slate)"
+                  fill="var(--chart-2)"
                   fillOpacity={0.12}
                   dot={false}
                   activeDot={{
                     r: 5,
-                    fill: 'var(--chart-slate)',
+                    fill: 'var(--chart-2)',
                     stroke: 'var(--color-surface)',
                     strokeWidth: 2,
                   }}
@@ -323,7 +323,7 @@ function Trend({ points, reduced }: { points: DayPoint[]; reduced: boolean }) {
                     x={peak.date}
                     y={peak.count}
                     r={5}
-                    fill="var(--chart-slate)"
+                    fill="var(--chart-2)"
                     stroke="var(--color-surface)"
                     strokeWidth={2}
                     label={{
@@ -580,7 +580,7 @@ function Doors({ rows, reduced }: { rows: Summary['by_dock']; reduced: boolean }
                   <Bar
                     dataKey="resolved"
                     name="Resolved"
-                    fill="var(--chart-slate)"
+                    fill="var(--chart-2)"
                     maxBarSize={24}
                     isAnimationActive={!reduced}
                     animationDuration={900}
@@ -588,7 +588,7 @@ function Doors({ rows, reduced }: { rows: Summary['by_dock']; reduced: boolean }
                   <Bar
                     dataKey="open"
                     name="Still open"
-                    fill="var(--chart-clay)"
+                    fill="var(--chart-1)"
                     maxBarSize={24}
                     shape={OpenSegment}
                     isAnimationActive={!reduced}

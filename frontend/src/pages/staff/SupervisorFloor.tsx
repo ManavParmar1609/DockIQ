@@ -130,29 +130,6 @@ export default function SupervisorFloor() {
         </Panel>
       )}
 
-      <StatGrid>
-        <Stat
-          label="Needs you"
-          value={priority.length}
-          sub={priority.length ? 'Escalated or critical' : 'Queue clear'}
-          index={0}
-        />
-        <Stat
-          label="Critical"
-          value={critical.length}
-          sub={critical.length ? 'Open, in any state' : 'None'}
-          alert={critical.length > 0}
-          index={1}
-        />
-        <Stat
-          label="On hold"
-          value={onHold.length}
-          sub={onHold.length ? 'Waiting on a carrier or inspection' : 'Nothing pending'}
-          index={2}
-        />
-        <Stat label="Requests" value={requests.data?.length ?? 0} sub="Pending" index={3} />
-      </StatGrid>
-
       <div className="grid gap-6 xl:grid-cols-5">
         <div className="flex flex-col gap-6 xl:col-span-3">
           <Panel
@@ -218,6 +195,29 @@ export default function SupervisorFloor() {
           </Panel>
         </div>
       </div>
+
+      <StatGrid>
+        <Stat
+          label="Needs you"
+          value={priority.length}
+          sub={priority.length ? 'Escalated or critical' : 'Queue clear'}
+          index={0}
+        />
+        <Stat
+          label="Critical"
+          value={critical.length}
+          sub={critical.length ? 'Open, in any state' : 'None'}
+          alert={critical.length > 0}
+          index={1}
+        />
+        <Stat
+          label="On hold"
+          value={onHold.length}
+          sub={onHold.length ? 'Waiting on a carrier or inspection' : 'Nothing pending'}
+          index={2}
+        />
+        <Stat label="Requests" value={requests.data?.length ?? 0} sub="Pending" index={3} />
+      </StatGrid>
 
       <Panel title="Dock floor" aside={<span className="label">{activeDocks.length} active</span>} index={7}>
         <QueryBoundary query={docks}>

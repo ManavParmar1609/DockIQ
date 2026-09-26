@@ -151,11 +151,12 @@ export function ScanField({
 
   return (
     <div className="flex flex-col gap-3">
-      <form onSubmit={submit} className="flex flex-wrap gap-2">
+      {/* Below sm the buttons sit under the input, so a phone shows the whole placeholder. */}
+      <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row">
         <label htmlFor="scan-field" className="sr-only">
           {label}
         </label>
-        <div className="relative min-w-0 flex-1">
+        <div className="relative min-w-0 sm:flex-1">
           <ScanLine
             size={22}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
@@ -175,19 +176,21 @@ export function ScanField({
             aria-busy={disabled}
           />
         </div>
-        <button type="submit" className="btn btn-primary" disabled={!value.trim()}>
-          Check
-        </button>
-        {hasCamera && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setCamera((open) => !open)}
-            aria-expanded={camera}
-          >
-            <Camera size={20} aria-hidden="true" /> Camera
+        <div className="flex gap-2">
+          <button type="submit" className="btn btn-primary flex-1 sm:flex-none" disabled={!value.trim()}>
+            Check
           </button>
-        )}
+          {hasCamera && (
+            <button
+              type="button"
+              className="btn btn-secondary flex-1 sm:flex-none"
+              onClick={() => setCamera((open) => !open)}
+              aria-expanded={camera}
+            >
+              <Camera size={20} aria-hidden="true" /> Camera
+            </button>
+          )}
+        </div>
       </form>
       {camera && (
         <CameraScanner

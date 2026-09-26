@@ -1,7 +1,7 @@
+import '@fontsource-variable/inter/index.css';
 import '@fontsource-variable/playfair-display/index.css';
-import '@fontsource-variable/playfair-display/wght-italic.css';
-import '@fontsource-variable/source-sans-3/index.css';
-import '@fontsource-variable/spline-sans-mono/index.css';
+import '@fontsource-variable/hanken-grotesk/index.css';
+import '@fontsource-variable/geist-mono/index.css';
 import './styles/app.css';
 
 import { QueryClientProvider } from '@tanstack/react-query';

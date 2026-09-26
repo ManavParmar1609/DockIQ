@@ -49,7 +49,7 @@ export function IssueQueue({ issues, empty }: { issues: Issue[]; empty: string }
           <li key={issue.id} className="border-b border-hairline last:border-b-0">
             <Link
               to={`/app/issues/${issue.id}`}
-              className={`my-1 flex items-center gap-3.5 rounded-lg p-2 transition-colors sm:gap-4 ${critical ? 'bg-hazard-soft hover:bg-hazard-soft' : 'hover:bg-paper'}`}
+              className={`my-1 flex items-center gap-3.5 rounded-lg p-2 transition-colors sm:gap-4 ${critical ? 'hover:bg-hazard-soft' : 'hover:bg-paper'}`}
             >
               <span
                 className={`grid h-16 w-14 shrink-0 place-content-center rounded-md text-center ${critical ? 'bg-hazard text-white' : 'bg-paper-sunk'}`}
@@ -66,7 +66,7 @@ export function IssueQueue({ issues, empty }: { issues: Issue[]; empty: string }
                     {issue.issue_subtype ?? issue.issue_type}
                   </span>
                   {overdue && (
-                    <Tag tone="ink">
+                    <Tag>
                       <AlarmClock size={14} aria-hidden="true" /> Overdue
                     </Tag>
                   )}

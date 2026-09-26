@@ -248,7 +248,8 @@ export default function Chat() {
             </button>
           ))}
         </div>
-        <form onSubmit={submit} className="flex gap-2">
+        {/* Below sm, Dictate and Send sit under the input so the box keeps its width on a phone. */}
+        <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row">
           <label htmlFor="chat-input" className="sr-only">
             Ask the assistant
           </label>
@@ -262,21 +263,23 @@ export default function Chat() {
             autoComplete="off"
             maxLength={2000}
           />
-          {/* Dictation fills the box for the worker to read back and send: a mis-heard word is not a question. */}
-          <VoiceButton
-            onText={(text) => {
-              setInput((current) => (current ? `${current} ${text}` : text).slice(0, 2000));
-              field.current?.focus();
-            }}
-          />
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={!input.trim() || busy}
-            aria-label="Send"
-          >
-            <Send size={20} aria-hidden="true" />
-          </button>
+          <div className="flex justify-end gap-2">
+            {/* Dictation fills the box for the worker to read back and send: a mis-heard word is not a question. */}
+            <VoiceButton
+              onText={(text) => {
+                setInput((current) => (current ? `${current} ${text}` : text).slice(0, 2000));
+                field.current?.focus();
+              }}
+            />
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!input.trim() || busy}
+              aria-label="Send"
+            >
+              <Send size={20} aria-hidden="true" />
+            </button>
+          </div>
         </form>
       </div>
       <p className="text-sm text-ink-mute">

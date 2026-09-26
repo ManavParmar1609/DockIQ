@@ -188,8 +188,7 @@ export function Notice({
 }) {
   if (tone === 'alert') {
     return (
-      <div role="alert" className="flex overflow-hidden rounded-xl bg-hazard-soft">
-        <div className="hazard-tape w-1.5 shrink-0" aria-hidden="true" />
+      <div role="alert" className="flex overflow-hidden rounded-xl bg-hazard-soft ring-1 ring-hazard">
         <div className="flex flex-1 flex-wrap items-start justify-between gap-3 p-4">
           <div className="flex gap-3">
             <AlertTriangle size={22} aria-hidden="true" className="mt-0.5 shrink-0 text-hazard-deep" />

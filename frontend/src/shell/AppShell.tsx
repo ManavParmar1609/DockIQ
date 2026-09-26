@@ -179,104 +179,109 @@ function SignedInShell({
   const shown = role === 'operator' ? currentBroadcast(broadcast, broadcasts.data) : null;
 
   return (
-    <div className="shell-grid min-h-dvh">
-      {/* Sidebar — desktop, as on iPad */}
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-hairline bg-paper lg:flex">
-        <div className="px-5 pt-6 pb-4">
-          <Wordmark />
-          <p className="label mt-3">{zone ? `${ROLE_LABEL[role]} · ${zone}` : ROLE_LABEL[role]}</p>
-        </div>
-        <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-full px-4 py-2.5 text-base font-medium transition-colors duration-300 ${isActive ? 'bg-accent text-on-accent' : 'text-ink hover:bg-paper-sunk'}`
-              }
-            >
-              <item.icon size={20} aria-hidden="true" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="flex flex-col gap-3 px-5 pt-3 pb-5">
-          <div className="flex items-center justify-between gap-2">
-            <LiveIndicator connection={connection} />
-            <AlertButton unseen={unseen} onOpen={openInbox} />
+    <>
+      <p className="signal-strip px-4 py-1.5 text-center text-sm font-medium">
+        Prototype on simulated data: every trailer, person and pallet here is fictional.
+      </p>
+      <div className="shell-grid min-h-dvh">
+        {/* Sidebar — desktop, as on iPad */}
+        <aside className="sticky top-0 hidden h-dvh flex-col border-r border-hairline bg-surface lg:flex">
+          <div className="px-5 pt-6 pb-4">
+            <Wordmark />
+            <p className="label mt-3">{zone ? `${ROLE_LABEL[role]} · ${zone}` : ROLE_LABEL[role]}</p>
           </div>
-          <div>
-            <SimulatedTag />
-          </div>
-          <div className="flex items-center gap-3 rounded-lg bg-surface p-2.5 shadow-card">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-paper-deep text-sm font-semibold text-ink-soft">
-              {initials(name)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-semibold">{name}</p>
-              <p className="telemetry text-sm text-ink-mute">{employeeId}</p>
+          <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
+            {items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-md px-4 py-2.5 text-base font-medium transition-colors duration-300 ${isActive ? 'bg-paper-sunk text-ink ring-1 ring-hairline' : 'text-ink-soft hover:bg-paper-sunk hover:text-ink'}`
+                }
+              >
+                <item.icon size={20} aria-hidden="true" />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="flex flex-col gap-3 px-5 pt-3 pb-5">
+            <div className="flex items-center justify-between gap-2">
+              <LiveIndicator connection={connection} />
+              <AlertButton unseen={unseen} onOpen={openInbox} />
             </div>
-            <SignOut onLogout={onLogout} />
+            <div>
+              <SimulatedTag />
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-surface p-2.5 shadow-card">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-paper-deep text-sm font-semibold text-ink-soft">
+                {initials(name)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-semibold">{name}</p>
+                <p className="telemetry text-sm text-ink-mute">{employeeId}</p>
+              </div>
+              <SignOut onLogout={onLogout} />
+            </div>
           </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-col">
+          {/* Navigation bar — tablet and phone: translucent, content scrolls under it */}
+          <header className="material sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-hairline px-4 py-1.5 lg:hidden">
+            <Wordmark compact />
+            <div className="flex items-center gap-2">
+              <LiveIndicator connection={connection} />
+              <AlertButton unseen={unseen} onOpen={openInbox} />
+              <SignOut onLogout={onLogout} />
+            </div>
+          </header>
+
+          {shown && shown.id !== dismissedId && (
+            <BroadcastBanner
+              key={shown.id}
+              message={shown.message}
+              onDismiss={() => setDismissedId(shown.id)}
+            />
+          )}
+
+          <main className="flex-1 px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-10 lg:pb-16">
+            <div className="mx-auto max-w-7xl">
+              <WmsOfflineBanner />
+              <Outlet />
+            </div>
+            <div className="mt-10 flex justify-center lg:hidden">
+              <SimulatedTag />
+            </div>
+          </main>
+
+          {/* Tab bar — tablet and phone: translucent, the selected tab in blue */}
+          <nav
+            aria-label="Main"
+            className="material tabbar-safe fixed inset-x-0 bottom-0 z-20 grid border-t border-hairline lg:hidden"
+            style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+          >
+            {items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 transition-colors ${isActive ? 'text-accent-ink' : 'text-ink-mute'}`
+                }
+              >
+                <item.icon size={24} aria-hidden="true" />
+                <span className="text-xs font-medium leading-tight">{item.short ?? item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
         </div>
-      </aside>
 
-      <div className="flex min-w-0 flex-col">
-        {/* Navigation bar — tablet and phone: translucent, content scrolls under it */}
-        <header className="material sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-hairline px-4 py-1.5 lg:hidden">
-          <Wordmark compact />
-          <div className="flex items-center gap-2">
-            <LiveIndicator connection={connection} />
-            <AlertButton unseen={unseen} onOpen={openInbox} />
-            <SignOut onLogout={onLogout} />
-          </div>
-        </header>
-
-        {shown && shown.id !== dismissedId && (
-          <BroadcastBanner
-            key={shown.id}
-            message={shown.message}
-            onDismiss={() => setDismissedId(shown.id)}
-          />
-        )}
-
-        <main className="flex-1 px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-10 lg:pb-16">
-          <div className="mx-auto max-w-7xl">
-            <WmsOfflineBanner />
-            <Outlet />
-          </div>
-          <div className="mt-10 flex justify-center lg:hidden">
-            <SimulatedTag />
-          </div>
-        </main>
-
-        {/* Tab bar — tablet and phone: translucent, the selected tab in blue */}
-        <nav
-          aria-label="Main"
-          className="material tabbar-safe fixed inset-x-0 bottom-0 z-20 grid border-t border-hairline lg:hidden"
-          style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-        >
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 transition-colors ${isActive ? 'text-accent-ink' : 'text-ink-mute'}`
-              }
-            >
-              <item.icon size={24} aria-hidden="true" />
-              <span className="text-xs font-medium leading-tight">{item.short ?? item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
+        {/* The assistant has its own input along the bottom; the floating button would cover it. */}
+        {role === 'operator' && !onAssistant && <QuickRequest />}
+        <AlertStack alerts={alerts} dismiss={dismiss} onOpenInbox={openInbox} />
+        <AlertInbox open={inboxOpen} onClose={() => setInboxOpen(false)} inbox={inbox} role={role} />
       </div>
-
-      {/* The assistant has its own input along the bottom; the floating button would cover it. */}
-      {role === 'operator' && !onAssistant && <QuickRequest />}
-      <AlertStack alerts={alerts} dismiss={dismiss} onOpenInbox={openInbox} />
-      <AlertInbox open={inboxOpen} onClose={() => setInboxOpen(false)} inbox={inbox} role={role} />
-    </div>
+    </>
   );
 }

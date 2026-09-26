@@ -28,6 +28,15 @@ export default function QualityBoard() {
           </span>
         }
       />
+      <Panel
+        title="Open quality issues"
+        aside={<span className="label">Critical first · then oldest</span>}
+        index={4}
+      >
+        <QueryBoundary query={issues} loading="Loading quality issues">
+          {() => <IssueQueue issues={open} empty="No open quality issues" />}
+        </QueryBoundary>
+      </Panel>
       <StatGrid>
         <Stat label="Open" value={open.length} sub="Across the facility" index={0} />
         <Stat
@@ -48,15 +57,6 @@ export default function QualityBoard() {
         />
         <Stat label="Open exposure" value={formatMoney(exposure)} sub="Estimated" index={3} />
       </StatGrid>
-      <Panel
-        title="Open quality issues"
-        aside={<span className="label">Critical first · then oldest</span>}
-        index={4}
-      >
-        <QueryBoundary query={issues} loading="Loading quality issues">
-          {() => <IssueQueue issues={open} empty="No open quality issues" />}
-        </QueryBoundary>
-      </Panel>
     </div>
   );
 }

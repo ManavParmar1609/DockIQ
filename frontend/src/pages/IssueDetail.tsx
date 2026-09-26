@@ -8,15 +8,15 @@ import {
   useDocks,
   useEscalate,
   useIssue,
-  useSelfResolve,
   useSetDisposition,
   useSupervisorResolve,
   useTaxonomy,
 } from '../api/hooks';
 import { aiResolutionOf, type Disposition, type Issue, type Role, type Taxonomy } from '../api/types';
 import { useUser } from '../auth/AuthProvider';
-import { PhotoStrip, VoiceButton } from '../components/Evidence';
+import { PhotoStrip } from '../components/Evidence';
 import { ProcedureCard, RecurringPatterns, SeverityDerivation } from '../components/Resolution';
+import { SelfResolveForm } from '../components/SelfResolve';
 import { SeverityBadge } from '../components/Severity';
 import {
   ChoiceGroup,
@@ -436,78 +436,27 @@ function DispositionPanel({ issue, role }: { issue: Issue; role: Role }) {
 // ── The operator ──
 
 function OperatorActions({ issue }: { issue: Issue }) {
-  const taxonomy = useTaxonomy();
-  const selfResolve = useSelfResolve();
   const escalate = useEscalate();
-  const [choice, setChoice] = useState<string | null>(null);
-  const [note, setNote] = useState('');
-  const busy = selfResolve.isPending || escalate.isPending;
   return (
     <Panel title="Resolve it yourself">
       {issue.severity === 'critical' ? (
         <p className="text-lg">
-          <strong>Critical: your supervisor decides.</strong> Critical issues cannot be resolved on your own;
+          <strong>Your supervisor decides — critical.</strong> Critical issues cannot be resolved on your own;
           your supervisor has been alerted and has your report.
         </p>
-      ) : (
-        <>
-          <p className="mb-3 text-base">
-            Did the procedure fix it? Pick what you did, add a note if it helps, and confirm.
-          </p>
-          <ChoiceGroup
-            label="What you did"
-            options={(taxonomy.data?.operator_resolutions ?? []).map((option) => ({
-              value: option,
-              label: option,
-            }))}
-            value={choice}
-            onChange={setChoice}
-          />
-          <div className="mt-4">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div className="flex-1">
-                <FieldLabel htmlFor="resolution-note" hint="Optional">
-                  Note for the record
-                </FieldLabel>
-              </div>
-              <div className="mb-2">
-                <VoiceButton
-                  onText={(text) =>
-                    setNote((current) => (current ? `${current} ${text}` : text).slice(0, 2000))
-                  }
-                />
-              </div>
-            </div>
-            <textarea
-              id="resolution-note"
-              rows={2}
-              className="field text-lg"
-              maxLength={2000}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="What you did, what you saw"
-            />
-          </div>
-          <button
-            type="button"
-            className="btn btn-primary mt-4 w-full text-lg"
-            disabled={!choice || busy}
-            onClick={() => {
-              if (!choice) return;
-              selfResolve.mutate({ id: issue.id, resolution_type: choice, resolution_notes: note.trim() });
-            }}
-          >
-            <Check size={22} aria-hidden="true" />
-            {selfResolve.isPending ? 'Closing…' : 'Yes — mark it resolved'}
-          </button>
-        </>
-      )}
+      ) : issue.can_self_resolve ? (
+        <SelfResolveForm
+          issueId={issue.id}
+          needsNote={issue.self_resolve_needs_note === true}
+          disabled={escalate.isPending}
+        />
+      ) : null}
       {issue.status === 'resolution_in_progress' && (
         <div className="mt-5 border-t border-hairline pt-5">
           <button
             type="button"
             className="btn btn-hazard w-full text-lg"
-            disabled={busy}
+            disabled={escalate.isPending}
             onClick={() => escalate.mutate(issue.id)}
           >
             <ArrowUpRight size={22} aria-hidden="true" /> No — escalate to my supervisor
@@ -515,12 +464,11 @@ function OperatorActions({ issue }: { issue: Issue }) {
           <p className="mt-2 text-sm text-ink-mute">
             They get the full context, the procedure you were shown, and your photos.
           </p>
+          <div className="mt-3">
+            <MutationError error={escalate.error} />
+          </div>
         </div>
       )}
-      <div className="mt-3 flex flex-col gap-2">
-        <MutationError error={selfResolve.error} />
-        <MutationError error={escalate.error} />
-      </div>
     </Panel>
   );
 }
@@ -582,11 +530,9 @@ function Detail({ issue }: { issue: Issue }) {
   const resolution = aiResolutionOf(issue);
   const since = issue.escalated_at ?? issue.created_at;
   const canDecide = user.role === 'supervisor' && open;
+  // The reporter's own open issue, unless a supervisor's decision is pending on it (business-rules §7.5).
   const canClose =
-    user.role === 'operator' &&
-    open &&
-    issue.operator_id === user.id &&
-    issue.status === 'resolution_in_progress';
+    user.role === 'operator' && open && issue.operator_id === user.id && issue.status !== 'on_hold';
   const critical = issue.severity === 'critical';
 
   return (

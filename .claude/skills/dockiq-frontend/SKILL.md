@@ -1,15 +1,15 @@
 ---
 name: dockiq-frontend
-description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (Botanical / Organic Serif: Playfair Display + Source Sans 3, rice paper with grain, forest/sage/terracotta, 24px cards, pills, slow motion), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
+description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (Grafbase exactly, light only: drafting-gray canvas, white hairline cards without shadows, graphite text and action, 6px buttons, 20px cards, 40px pills; Playfair Display + Inter + Hanken Grotesk + Geist Mono), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
 ---
 
 # DockIQ Frontend
 
 You are working on a tablet interface for a **cold-storage warehouse dock floor**. Gloved hands,
-dim light, glare, food-safety decisions. The product owner chose **Botanical / Organic Serif** for it
-(2026-09-25) and wants it kept exactly: refine within it, in harmony with what is on screen, never
-replace it — and never let the style weaken the safety rules. Every colour sits naturally on the
-rice paper; variety comes from meaning (zone tints, product hues, tonal depth), not decoration.
+dim light, glare, food-safety decisions. The product owner chose **Grafbase, exactly** for it
+(2026-09-25, light only): refine within it — and never let the style weaken the safety rules. The
+interface is near-monochrome; colour appears only in the announcement strip, in product content and
+in severity.
 
 ## Read first
 
@@ -19,16 +19,17 @@ rice paper; variety comes from meaning (zone tints, product hues, tonal depth), 
 
 ## The direction
 
-- **Botanical / Organic Serif** (product owner's design system, 2026-09-25). Tokens and every value:
-  `docs/specs/ui-ux-spec.md` §2; rules and the documented departures: `.claude/rules/frontend-aesthetics.md`.
-- **Type:** Playfair Display for headings (`.display`, `.heading`, `<em>` for italic sage emphasis)
-  and headline numerals (`.num`); Source Sans 3 for everything read at work; Spline Sans Mono via
-  `.telemetry` for IDs, codes, times and counts. No kickers above headings. Wordmark: `.wordmark-iq`.
-- **Surfaces:** rice-paper ground with grain beneath opaque `.card`s; `.lift` on interactive cards.
-- **Colour:** forest for primary pills; sage/terracotta decorate (their `-ink` variants carry text);
-  brick red only for critical severity and destructive actions.
-- **Motion:** slow reveals and hovers, instant press feedback, purposeful micro-interactions that
-  explain (the load guide, sheets), never on an alert. Reduced motion is honoured.
+- **Grafbase, exactly** (owner-pinned, 2026-09-25), light only. Values: `docs/specs/ui-ux-spec.md` §2,
+  `DESIGN.md`; departures: `.claude/rules/frontend-aesthetics.md` §2.3; product truth: `PRODUCT.md`.
+- **Type:** Playfair Display 400 for display and section headings (`.display`, `.section-heading`);
+  Inter, tightened, for everything read at work (`.heading` 600 for card titles); Hanken Grotesk for
+  captions (`.label`); Geist Mono for telemetry (`.telemetry`). No kickers above headings.
+- **Surfaces:** drafting-gray canvas, white 20px cards with a 1px hairline and **no shadow**.
+- **Colour:** graphite text and the one primary action (6px, the only drop shadow); the cool triad
+  only inside product content; brick red only for critical severity and destructive actions; the
+  announcement strip is the only colour in the chrome.
+- **Motion:** a short staggered rise, hover by rule, instant press, purposeful micro-interactions;
+  never on an alert.
 
 ## Non-negotiables — these outrank the aesthetic
 

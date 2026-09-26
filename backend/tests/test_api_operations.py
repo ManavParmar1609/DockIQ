@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from app.api import deps
 from app.api.deps import RateLimit
@@ -515,3 +516,45 @@ def test_a_passing_reinspection_clears_the_gate(client: TestClient, login: Login
     client.post("/api/inspections", json=inspection(seal_condition="broken"), headers=op)
     client.post("/api/inspections", json=inspection(interior_temperature=-5), headers=op)
     assert client.get("/api/orders/1", headers=op).json()["completion_blockers"] == []
+
+
+# ── Validation: non-finite numbers are a 422, never a 500 ──
+
+
+def post_raw(client: TestClient, path: str, raw: str, headers: Headers) -> Response:
+    # Raw text: Python's JSON encoder in the test client refuses NaN, but a client could send it.
+    return client.post(path, content=raw, headers={**headers, "Content-Type": "application/json"})
+
+
+@pytest.mark.parametrize("value", ["NaN", "Infinity", "-Infinity"])
+def test_a_non_finite_temperature_is_a_422_with_where_and_what_only(
+    client: TestClient, login: Login, value: str
+) -> None:
+    op = login("OP-001")
+    raw = (
+        '{"order_id": 1, "dock_door_id": 1, "issue_type": "Temperature Deviation", '
+        f'"issue_subtype": "Product temperature out of range", "temp_reading": {value}}}'
+    )
+    response = post_raw(client, "/api/issues", raw, op)
+    assert response.status_code == 422, response.text
+    [error] = response.json()["detail"]
+    assert error["loc"] == ["body", "temp_reading"]
+    assert set(error) == {"loc", "msg", "type"}  # the input is never echoed back
+
+
+def test_non_finite_readings_and_counts_are_refused_everywhere(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    probe = post_raw(client, "/api/orders/1/temperature-check", '{"reading": NaN}', op)
+    assert probe.status_code == 422, probe.text
+    inspection = post_raw(
+        client,
+        "/api/inspections",
+        '{"dock_door_id": 1, "seal_condition": "Intact", "interior_cleanliness": "Clean", '
+        '"interior_temperature": Infinity, "visible_damage": "None"}',
+        op,
+    )
+    assert inspection.status_code == 422, inspection.text
+    raw = '{"dock_door_id": 12, "issue_type": "Count Discrepancy", "count_actual": NaN}'
+    count = post_raw(client, "/api/issues", raw, op)
+    assert count.status_code == 422, count.text
+    assert count.json()["detail"][0]["loc"] == ["body", "count_actual"]

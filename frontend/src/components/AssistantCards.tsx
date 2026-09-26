@@ -20,7 +20,7 @@ import { duration, formatDate, formatTemp } from '../lib/format';
 import { parseSeverityReason } from '../lib/vocab';
 import { PalletList } from './PalletList';
 import { ConfidenceMeter, SeverityBadge } from './Severity';
-import { MutationError, SimulatedTag, Tag } from './ui';
+import { FieldLabel, MutationError, SimulatedTag, Tag } from './ui';
 
 function CardFrame({
   kicker,
@@ -408,9 +408,13 @@ function SelfResolveDraftView({ draft }: { draft: SelfResolveDraft }) {
   const taxonomy = useTaxonomy();
   const resolve = useSelfResolve();
   const [choice, setChoice] = useState<string | null>(draft.resolution_type);
+  // Escalated: the worker writes the note themselves before confirming (business-rules §7.5).
+  const noteRequired = draft.note_required === true;
+  const [note, setNote] = useState(draft.resolution_notes);
   const [discarded, setDiscarded] = useState(false);
   if (discarded) return <Discarded what="Draft resolution" />;
   const resolved = resolve.isSuccess;
+  const noteId = `self-resolve-note-${String(draft.issue_id)}`;
   return (
     <CardFrame
       kicker={resolved ? 'Issue resolved' : 'Draft resolution · not resolved yet'}
@@ -421,7 +425,7 @@ function SelfResolveDraftView({ draft }: { draft: SelfResolveDraft }) {
         <SeverityBadge severity={draft.severity} />
         <p className="heading text-lg">{draft.title}</p>
       </div>
-      {draft.resolution_notes && <p className="mt-2 text-base">{draft.resolution_notes}</p>}
+      {!noteRequired && draft.resolution_notes && <p className="mt-2 text-base">{draft.resolution_notes}</p>}
       {resolved ? (
         <Link to={`/app/issues/${String(draft.issue_id)}`} className="btn btn-primary mt-4">
           <Check size={20} aria-hidden="true" /> Resolved as {choice}: open it
@@ -443,17 +447,34 @@ function SelfResolveDraftView({ draft }: { draft: SelfResolveDraft }) {
               </button>
             ))}
           </div>
+          {noteRequired && (
+            <div className="mt-4">
+              <FieldLabel htmlFor={noteId} hint="Required: the issue is with your supervisor">
+                Note for the record
+              </FieldLabel>
+              <textarea
+                id={noteId}
+                rows={2}
+                className="field text-lg"
+                maxLength={2000}
+                required
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="What you did, what you saw"
+              />
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               className="btn btn-primary"
-              disabled={choice === null || resolve.isPending}
+              disabled={choice === null || (noteRequired && !note.trim()) || resolve.isPending}
               onClick={() => {
                 if (choice !== null) {
                   resolve.mutate({
                     id: draft.issue_id,
                     resolution_type: choice,
-                    resolution_notes: draft.resolution_notes,
+                    resolution_notes: noteRequired ? note.trim() : draft.resolution_notes,
                   });
                 }
               }}

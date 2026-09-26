@@ -129,7 +129,7 @@ export default function Login() {
     <div className="min-h-dvh px-4 pt-6 pb-16 sm:px-6">
       <Link
         to="/"
-        className="inline-flex items-center gap-1 rounded-full px-2 text-base font-medium text-accent-ink hover:bg-paper-sunk"
+        className="inline-flex items-center gap-1 rounded-md px-2 text-base font-medium text-accent-ink hover:bg-paper-sunk"
       >
         <ArrowLeft size={18} aria-hidden="true" /> About DockIQ
       </Link>
@@ -137,7 +137,7 @@ export default function Login() {
       <main className="mx-auto mt-6 max-w-md sm:mt-12">
         <div className="reveal flex flex-col items-center text-center">
           <span
-            className="grid h-20 w-20 place-items-center rounded-2xl bg-accent text-on-accent shadow-float"
+            className="grid h-20 w-20 place-items-center rounded-2xl bg-accent text-on-accent"
             aria-hidden="true"
           >
             <Warehouse size={42} strokeWidth={2} />

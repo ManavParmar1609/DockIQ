@@ -1,7 +1,7 @@
 """Password hashing (Argon2 via pwdlib) and signed access tokens (HS256 JWT via PyJWT)."""
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 
 import jwt
@@ -35,6 +35,7 @@ def verify_password(password: str, password_hash: str | None) -> bool:
 class TokenClaims:
     user_id: int
     role: Role
+    expires_at: datetime  # the token's `exp`: a WebSocket opened with it is closed then
 
 
 def create_access_token(settings: Settings, user_id: int, role: Role) -> str:
@@ -57,6 +58,10 @@ def decode_access_token(settings: Settings, token: str) -> TokenClaims | None:
             algorithms=[ALGORITHM],
             options={"require": ["sub", "exp", "role"]},
         )
-        return TokenClaims(user_id=int(payload["sub"]), role=Role(payload["role"]))
-    except (jwt.InvalidTokenError, ValueError, KeyError):
+        return TokenClaims(
+            user_id=int(payload["sub"]),
+            role=Role(payload["role"]),
+            expires_at=datetime.fromtimestamp(int(payload["exp"]), UTC),
+        )
+    except (jwt.InvalidTokenError, ValueError, KeyError, TypeError, OverflowError):
         return None

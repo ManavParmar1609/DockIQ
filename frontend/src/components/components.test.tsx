@@ -42,10 +42,10 @@ describe('LoadPlanView', () => {
       screen.getByRole('img', { name: /Looking into the trailer from the dock door\. Pallet 1,/ }),
     ).toBeInTheDocument();
     expect(screen.getByText('Slip sheet between every layer')).toBeInTheDocument();
-    expect(screen.getByText(/Load step/)).toHaveTextContent(`Load step 1 of ${SAMPLE_PLAN.total_pallets}`);
+    expect(screen.getByText(/Step 1 of/)).toHaveTextContent(`Step 1 of ${SAMPLE_PLAN.total_pallets}`);
 
     await userEvent.click(screen.getByRole('button', { name: /Loaded, next pallet/ }));
-    expect(screen.getByText(/Load step/)).toHaveTextContent('Load step 2 of');
+    expect(screen.getByText(/Step 2 of/)).toHaveTextContent('Step 2 of');
     expect(screen.getByRole('button', { name: 'Previous step' })).toBeEnabled();
   });
 

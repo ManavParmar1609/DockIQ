@@ -12,7 +12,7 @@ import { Link } from 'react-router';
 import { useActiveOrder, useHandoffs, useIssues, useOrder } from '../../api/hooks';
 import type { InspectionSummary, Issue } from '../../api/types';
 import { useUser } from '../../auth/AuthProvider';
-import { SeverityMark, severityLabel } from '../../components/Severity';
+import { SeverityBadge } from '../../components/Severity';
 import {
   Definition,
   EmptyState,
@@ -66,10 +66,9 @@ function RecentIssue({ issue }: { issue: Issue }) {
         to={`/app/issues/${issue.id}`}
         className="flex items-center gap-3 border-b border-hairline px-5 py-3 transition-colors hover:bg-paper"
       >
-        <SeverityMark severity={issue.severity} size={16} tinted />
-        <span className="sr-only">{severityLabel(issue.severity)} severity:</span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{issue.issue_subtype ?? issue.issue_type}</span>
+          <SeverityBadge severity={issue.severity} size="sm" />
+          <span className="mt-1 block font-semibold">{issue.issue_subtype ?? issue.issue_type}</span>
           <span className="telemetry text-sm text-ink-mute">
             #{issue.id} · Dock {issue.door_number ?? '—'} · {timeAgo(issue.created_at)}
           </span>
@@ -117,6 +116,7 @@ export default function OperatorHome() {
     (issue) => issue.order_id === assignment?.id && issue.severity === 'critical',
   );
 
+  const criticalOpen = open.filter((issue) => issue.severity === 'critical').length;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -220,8 +220,16 @@ export default function OperatorHome() {
         <Stat
           label="Open"
           value={stat(open.length)}
-          sub={loaded ? (open.length ? 'Needs attention' : 'All clear') : undefined}
-          alert={open.some((issue) => issue.severity === 'critical')}
+          sub={
+            loaded
+              ? criticalOpen > 0
+                ? `${String(criticalOpen)} critical`
+                : open.length
+                  ? 'Needs attention'
+                  : 'All clear'
+              : undefined
+          }
+          alert={criticalOpen > 0}
           index={5}
         />
         <Stat

@@ -2,51 +2,88 @@
 docs/requirements/functional-specs.md §3. Adding one means changing the frontend handler too.
 
 The handshake is authenticated with the access token passed as the second WebSocket subprotocol
-(`new WebSocket(url, ["dockiq", token])`) — browsers cannot set headers on a WebSocket.
+(`new WebSocket(url, ["dockiq", token])`) — browsers cannot set headers on a WebSocket. A socket
+lives no longer than its token: past the token's `exp` it is closed with 1008 (policy violation),
+on the next send to it or by the periodic sweep, whichever comes first.
 """
 
 import asyncio
+import contextlib
 import logging
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from datetime import datetime
 from typing import Any
 
-from fastapi import WebSocket
+from fastapi import WebSocket, status
 from fastapi.encoders import jsonable_encoder
+
+from app.db import utcnow
 
 logger = logging.getLogger(__name__)
 
 SUBPROTOCOL = "dockiq"
+SWEEP_SECONDS = 30  # how often sockets whose token has expired are closed, at the latest
 
 
 class ConnectionManager:
     """Authenticated sockets, grouped by user. Events carrying data are addressed to users; only the
     data-free `floor_update` signal goes to every socket (each client refetches through its own scope)."""
 
-    def __init__(self) -> None:
+    def __init__(self, clock: Callable[[], datetime] = utcnow) -> None:
         self._sockets: dict[int, set[WebSocket]] = defaultdict(set)
+        self._expires: dict[WebSocket, datetime] = {}  # each socket's token `exp`
+        self.clock = clock
 
-    async def connect(self, websocket: WebSocket, user_id: int, subprotocol: str) -> None:
+    async def connect(
+        self, websocket: WebSocket, user_id: int, subprotocol: str, expires_at: datetime | None = None
+    ) -> None:
         await websocket.accept(subprotocol=subprotocol)
         self._sockets[user_id].add(websocket)
+        if expires_at is not None:
+            self._expires[websocket] = expires_at
 
     def disconnect(self, websocket: WebSocket, user_id: int) -> None:
+        self._expires.pop(websocket, None)
         sockets = self._sockets.get(user_id)
         if sockets is not None:
             sockets.discard(websocket)
             if not sockets:
                 del self._sockets[user_id]
 
+    def _expired(self, websocket: WebSocket) -> bool:
+        expires = self._expires.get(websocket)
+        return expires is not None and expires <= self.clock()
+
+    async def _close_expired(self, user_id: int, websocket: WebSocket) -> None:
+        self.disconnect(websocket, user_id)
+        with contextlib.suppress(Exception):  # already gone: nothing to close
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Session expired")
+
+    async def sweep(self) -> int:
+        """Close every socket whose token has expired; returns how many."""
+        expired = [
+            (user_id, socket)
+            for user_id, sockets in list(self._sockets.items())
+            for socket in list(sockets)
+            if self._expired(socket)
+        ]
+        for user_id, socket in expired:
+            await self._close_expired(user_id, socket)
+        return len(expired)
+
     async def send_all(self, event: dict[str, Any]) -> None:
         await self.send(list(self._sockets), event)
 
     async def send(self, user_ids: Iterable[int | None], event: dict[str, Any]) -> None:
         payload = jsonable_encoder(event)
-        targets = [
-            (user_id, socket)
-            for user_id in {uid for uid in user_ids if uid is not None}
-            for socket in list(self._sockets.get(user_id, ()))
-        ]
+        targets: list[tuple[int, WebSocket]] = []
+        for user_id in {uid for uid in user_ids if uid is not None}:
+            for socket in list(self._sockets.get(user_id, ())):
+                if self._expired(socket):
+                    await self._close_expired(user_id, socket)  # never deliver past the token
+                else:
+                    targets.append((user_id, socket))
         results = await asyncio.gather(
             *(socket.send_json(payload) for _, socket in targets), return_exceptions=True
         )

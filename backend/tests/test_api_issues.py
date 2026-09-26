@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import Response
 from sqlalchemy import event
 from starlette.websockets import WebSocketDisconnect
 
@@ -202,6 +203,88 @@ def test_a_critical_issue_cannot_be_self_resolved(client: TestClient, login: Log
     assert "supervisor" in refused.json()["detail"]
 
 
+# ── Self-resolve (business-rules §7.5) ──
+
+
+def self_resolve(client: TestClient, headers: Headers, issue_id: int, note: str | None = None) -> Response:
+    body = {"resolution_type": "Product Segregated"}
+    if note is not None:
+        body["resolution_notes"] = note
+    return client.put(f"/api/issues/{issue_id}/self-resolve", json=body, headers=headers)
+
+
+def test_a_worker_may_self_resolve_an_escalated_issue_with_a_note(client: TestClient, login: Login) -> None:
+    op, sup = login("OP-001"), login("SUP-001")
+    issue_id = report(client, op, product_id=None)["id"]  # not critical
+    assert client.put(f"/api/issues/{issue_id}/escalate", headers=op).status_code == 200
+    assert client.put(f"/api/issues/{issue_id}/acknowledge", headers=sup).status_code == 200
+    listed = client.get(f"/api/issues/{issue_id}", headers=op).json()
+    assert (listed["can_self_resolve"], listed["self_resolve_needs_note"]) == (True, True)
+
+    for blank in (None, "", "   "):
+        refused = self_resolve(client, op, issue_id, blank)
+        assert refused.status_code == 422, blank
+        assert "note" in refused.json()["detail"]
+
+    with client.websocket_connect("/ws", subprotocols=["dockiq", token_of(sup)]) as supervisor:
+        done = self_resolve(client, op, issue_id, "  Restacked it onto a new pallet  ")
+        assert done.status_code == 200
+        event = supervisor.receive_json()
+    assert (event["type"], event["issue_id"]) == ("issue_resolved", issue_id)
+    assert event["method"] == "self_resolved"
+    issue = client.get(f"/api/issues/{issue_id}", headers=sup).json()
+    assert issue["status"] == "self_resolved"
+    assert issue["resolution_notes"] == "Restacked it onto a new pallet"
+    assert issue["can_self_resolve"] is False
+    assert dock(client, op, 1)["status"] == "active"
+
+
+def test_an_issue_being_resolved_at_the_dock_needs_no_note(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    created = report(client, op, product_id=None)
+    assert created["status"] == "resolution_in_progress"
+    assert (created["can_self_resolve"], created["self_resolve_needs_note"]) == (True, False)
+    assert self_resolve(client, op, created["id"]).status_code == 200
+
+
+def test_an_issue_on_hold_is_the_supervisors_to_close(client: TestClient, login: Login) -> None:
+    op, sup = login("OP-001"), login("SUP-001")
+    issue_id = report(client, op, product_id=None)["id"]
+    held = client.put(
+        f"/api/issues/{issue_id}/supervisor-resolve", json={"resolution_type": "Contact Carrier"}, headers=sup
+    )
+    assert held.json()["status"] == "on_hold"
+    assert client.get(f"/api/issues/{issue_id}", headers=op).json()["can_self_resolve"] is False
+    refused = self_resolve(client, op, issue_id, "I sorted it")
+    assert refused.status_code == 409
+    assert "pending" in refused.json()["detail"]
+
+
+def test_a_critical_escalated_issue_cannot_be_self_resolved_even_with_a_note(
+    client: TestClient, login: Login
+) -> None:
+    op = login("OP-001")
+    created = report(client, op)
+    assert (created["severity"], created["status"], created["can_self_resolve"]) == (
+        "critical",
+        "escalated",
+        False,
+    )
+    assert self_resolve(client, op, created["id"], "Fixed it").status_code == 409
+
+
+def test_only_the_reporter_may_self_resolve(client: TestClient, login: Login) -> None:
+    issue_id = report(client, login("OP-001"), product_id=None)["id"]
+    assert self_resolve(client, login("OP-003"), issue_id, "Not mine").status_code == 404
+
+
+def test_a_resolved_issue_cannot_be_self_resolved_again(client: TestClient, login: Login) -> None:
+    op = login("OP-001")
+    issue_id = report(client, op, product_id=None)["id"]
+    assert self_resolve(client, op, issue_id).status_code == 200
+    assert self_resolve(client, op, issue_id, "again").status_code == 409
+
+
 def test_resolution_lists_are_enforced(client: TestClient, login: Login) -> None:
     op = login("OP-001")
     issue_id = report(client, op)["id"]
@@ -276,6 +359,40 @@ def test_websocket_rejects_missing_or_bad_tokens(client: TestClient) -> None:
         ):
             pass
         assert refused.value.code == 1008
+
+
+def test_a_socket_is_closed_when_its_token_expires_on_the_next_send(client: TestClient, login: Login) -> None:
+    from datetime import timedelta
+
+    op = login("OP-001")
+    manager = client.app.state.realtime
+    real_clock = manager.clock
+    with client.websocket_connect("/ws", subprotocols=["dockiq", token_of(op)]) as socket:
+        manager.clock = lambda: real_clock() + timedelta(hours=13)  # past the 12-hour token
+        try:
+            report(client, op, product_id=None)  # new_issue is addressed to the reporter
+            with pytest.raises(WebSocketDisconnect) as closed:
+                socket.receive_json()
+        finally:
+            manager.clock = real_clock
+    assert closed.value.code == 1008
+
+
+def test_the_sweep_closes_expired_sockets_and_keeps_the_rest(client: TestClient, login: Login) -> None:
+    from datetime import timedelta
+
+    manager = client.app.state.realtime
+    real_clock = manager.clock
+    with client.websocket_connect("/ws", subprotocols=["dockiq", token_of(login("OP-001"))]) as socket:
+        assert socket.portal.call(manager.sweep) == 0  # still within its token
+        manager.clock = lambda: real_clock() + timedelta(hours=13)
+        try:
+            assert socket.portal.call(manager.sweep) == 1
+            with pytest.raises(WebSocketDisconnect) as closed:
+                socket.receive_json()
+        finally:
+            manager.clock = real_clock
+    assert closed.value.code == 1008
 
 
 # ── Photos ──

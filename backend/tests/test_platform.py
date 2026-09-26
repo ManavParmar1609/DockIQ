@@ -167,3 +167,65 @@ def test_open_critical_issues_filed_before_the_rule_are_escalated_by_migration(e
         ("high", "resolution_in_progress", None),
         ("critical", "self_resolved", None),  # closed history is left as it was
     ]
+
+
+def test_recurring_pattern_ordinals_stored_before_the_fix_are_corrected_by_migration(
+    empty_db: Settings,
+) -> None:
+    """Migration 0007 (business-rules §6): stored messages read as English ordinals."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from app.models import Issue
+
+    def message(count: str) -> str:
+        return f"This is the {count} 'Damaged Pallet' at Dock 4 in the last 7 days. Possible root cause: …"
+
+    def row(patterns: list[dict[str, object]]) -> dict[str, object]:
+        return {
+            "issue_type": "Damaged Pallet",
+            "severity": "medium",
+            "status": "resolution_in_progress",
+            "quick_tags": [],
+            "recurring_patterns": patterns,
+            "held_pallets": [],
+            "estimated_cost_impact": 0,
+            "simulated": False,
+            "created_at": datetime(2026, 9, 1, 8, 0, tzinfo=UTC),
+        }
+
+    stored = [
+        [{"type": "dock", "message": message("3th"), "count": 3}],
+        [
+            {"type": "dock", "message": message("1th"), "count": 1},
+            {"type": "carrier", "message": message("2th").replace("at Dock 4", "from Polar"), "count": 2},
+        ],
+        [{"type": "dock", "message": message("11st"), "count": 11}],
+        [{"type": "dock", "message": message("21th"), "count": 21}],
+        [{"type": "dock", "message": message("4th"), "count": 4}],  # already right: unchanged
+        [],
+    ]
+
+    async def migrate() -> list[list[str]]:
+        database = Database(empty_db)
+        try:
+            await downgrade(database.engine, configure_logging=False)
+            await upgrade(database.engine, "0006", configure_logging=False)
+            async with database.engine.begin() as connection:
+                await connection.execute(Issue.__table__.insert(), [row(p) for p in stored])
+            await upgrade(database.engine, configure_logging=False)
+            async with database.engine.connect() as connection:
+                result = await connection.execute(select(Issue.recurring_patterns).order_by(Issue.id))
+                return [[p["message"].split(" '")[0] for p in patterns] for (patterns,) in result]
+        finally:
+            await database.dispose()
+
+    assert asyncio.run(migrate()) == [
+        ["This is the 3rd"],
+        ["This is the 1st", "This is the 2nd"],
+        ["This is the 11th"],
+        ["This is the 21st"],
+        ["This is the 4th"],
+        [],
+    ]

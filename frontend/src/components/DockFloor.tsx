@@ -19,7 +19,7 @@ const ZONE_TINTS = ['zone-sage', 'zone-slate', 'zone-clay'] as const;
 function StatusChip({ status }: { status: Dock['status'] }) {
   if (status === 'critical') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-sm font-bold text-hazard-deep">
+      <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-sm font-bold text-hazard">
         <TriangleAlert size={15} strokeWidth={2.4} aria-hidden="true" />
         {DOCK_STATUS.critical}
       </span>

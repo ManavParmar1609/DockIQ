@@ -87,8 +87,10 @@ describe('Issue detail: product disposition belongs to Quality', () => {
       status: 'resolution_in_progress',
       escalated_at: null,
       held_pallets: [],
+      can_self_resolve: true,
+      self_resolve_needs_note: false,
     });
-    const confirm = screen.getByRole('button', { name: 'Yes — mark it resolved' });
+    const confirm = screen.getByRole('button', { name: 'Confirm — mark it resolved' });
     expect(confirm).toBeDisabled();
     await user.click(screen.getByRole('radio', { name: 'Partial Accept' }));
     await user.type(screen.getByLabelText(/Note for the record/), 'Restacked two cases');

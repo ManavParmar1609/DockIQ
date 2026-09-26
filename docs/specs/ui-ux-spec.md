@@ -24,52 +24,45 @@ to a CRITICAL alert, a temperature, a count or a severity badge.
 
 ---
 
-## 2. The design system — Botanical / Organic Serif *(since 2026-09-25)*
+## 2. The design system — Grafbase, exactly *(since 2026-09-25)*
 
-Supplied by the product owner (after the Apple pass, which they judged generic). Tokens live only
-in `frontend/src/styles/app.css`; Tailwind's default palette, radii and shadows are **removed**.
+The owner's pinned reference: Grafbase's "engineering blueprint on cool marble", light only, with
+the owner's own type spec. Tokens live only in `frontend/src/styles/app.css`; Tailwind's default
+palette, radii and shadows are **removed**. Built record: `DESIGN.md`; product truth: `PRODUCT.md`.
 
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `paper` | `#F9F8F4` rice paper | `#1B221D` | The page, under a fixed paper-grain layer |
-| `surface` | `#FFFFFF` | `#242C26` | Cards (24px, stone hairline, soft forest shadow), sheets |
-| `paper-sunk` / `paper-deep` | `#F2F0EB` clay / `#DCCFC2` mushroom | `#2C352E` / `#3A453C` | Quiet fills, fields, tracks |
-| `ink` / `ink-soft` / `ink-mute` | `#2D3A31` forest / `#46544A` / `#636E65` | `#EDEAE0` / `#D3D6CB` / `#A3AC9F` | Text (11.2 / 8 / 5.0:1) |
-| `hairline` | `#E6E2DA` stone | `#36403A` | Separators |
-| `accent` + `on-accent` | forest `#2D3A31` + white | sage `#9FAE97` + forest | Primary pills, selected navigation |
-| `sage` / `sage-ink` | `#8C9A84` / `#5E6E57` | `#9FAE97` / `#B7C4AE` | Icons, focus rings, rules / italic emphasis text |
-| `terracotta` / `accent-ink` | `#C27B66` / `#9A4F38` | — / `#E0A48F` | Hover blooms / link text |
-| `hazard` (+ `-deep`, `-soft`, `-bright`) | brick `#A8322A` | text `#F09A8C` | **Critical only** — white on it is 6.7:1 |
-| `orange` / `amber` (+ tints) | ochre `#8F4E16` / olive `#6F5B12` | `#E8A76A` / `#DCC46A` | High / medium severity |
-| `green` | moss `#46613C` | `#9CC08C` | Resolved, live |
-| `teal`, `indigo`, `mint`, `purple`, `brown` | slate, plum, moss, clay, ochre | lighter | Product identity in the load plan — never severity |
-| `night*` | `#1F2A23` | — | The landing page's deep-forest band |
+| Token | Value | Use |
+|---|---|---|
+| `paper` | `#EAEAEA` drafting gray | The canvas |
+| `surface` | `#FFFFFF` marble | Cards (20px, 1px hairline, **no shadow**), nav, panels, fields |
+| `paper-sunk` / `paper-deep` | `#F4F4F5` / `#E0E1E6` | The subtle gray treatment (hover, selection, tracks) / empty cells |
+| `ink` / `ink-soft` = `ink-mute` | `#1B1B1B` graphite / `#60646C` steel | Text (17.4 / 6.0:1); Ash `#7C7C7C` never carries small text (it fails AA) |
+| `hairline` | `#E0E1E6` | The structural rule |
+| `accent` | graphite | The one primary action (6px, the only drop shadow besides the preview panel) |
+| `hazard` / `orange` / `amber` | brick `#B42318` / saffron `#8A5A10` / olive `#515C0B` | **Severity only** — a departure: Grafbase has no status colour |
+| `teal`/`indigo`/`mint`/`purple` + `-soft` | the cool triad (mint, sky, moss) deepened, on pale integration-tile tints | Product content only: diagrams, zones (A moss, B mint, C sky) |
+| `chart-1…4` | `#007096` `#679725` `#6A78CD` `#007D65` | Categorical data, fixed order; dataviz checks pass |
 
-Sage (2.8:1) and terracotta (3.3:1) are too light for text on rice paper, so they decorate; their
-deeper `-ink` variants carry text.
-
-- **Type:** Playfair Display (600, italic 500 for emphasis in sage via `<em>`) for headings and headline
-  numerals (`.num`); Source Sans 3 for everything read at work; **Spline Sans Mono** for telemetry —
-  IDs, codes, times, counts (`.telemetry`, tabular). Uppercase, widely tracked pill buttons; no
-  kickers above headings. The wordmark sets *IQ* upright in sage (`.wordmark-iq`) so it never reads
-  "Dock12". Scale: 14 floor · 17 body · 24–76 headlines. Self-hosted via Fontsource.
-- **Shape:** 24px cards, pill buttons and tags, arches (`.arch`) on the landing page, thin 1.5 icons.
-- **Texture:** a fixed fractal-noise paper grain on the page ground only, **beneath** the opaque cards,
-  so it never touches a badge, a reading or an alert. Hidden under `prefers-contrast: more`.
-- **Motion:** slow and soft — reveals 800ms (`.reveal`, 80ms stagger), hovers 300–500ms with a gentle
-  lift (`.lift`); press feedback stays instant (`scale(.97)`). Purposeful micro-interactions where
-  they explain something: the load guide's spot breathes, its arrow flows, a placed pallet settles,
-  the view glides between steps; dock sheets slide in. Never on an alert. Reduced motion,
-  reduced transparency and increased contrast are honoured. Dark mode is "the garden at night".
+- **Type (owner's spec):** Playfair Display 400 for display and section headings, tight
+  (−0.02em, line-height ~0.95) — the free stand-in for Heldane Display; Inter for everything read at
+  work, tightened (−0.018em) with `ss01`/`cv11`; Hanken Grotesk for captions and labels — the stand-in
+  for Aktiv Grotesk; Geist Mono for telemetry (IDs, codes, times, counts). 14px floor (Grafbase's 13px
+  captions would fail the dock). Wordmark: *IQ* upright in steel.
+- **Shape:** 6px buttons and nav items, 12px panels and fields, 20px cards, 40px pills (tags and the
+  sign-in pill). Icons 1.6 stroke.
+- **Colour:** the forest-to-deep-teal announcement strip is the only colour in the chrome — it says
+  the data is simulated; its stops run one step deeper than the reference so white text passes AA.
+- **Surfaces:** no texture, no glass, no dark mode.
+- **Motion:** a short staggered rise; hovers darken the rule; press is instant. Purposeful
+  micro-interactions that explain (load guide, bays, sheets). Never on an alert.
 
 ### 2.1 The severity and confidence channels
 
 | Level | Shape | Badge |
 |---|---|---|
 | Critical | ▲ | Solid brick capsule, white text; brick-tinted rows and a brick edge in queues |
-| High | ◆ | Ochre tint, ochre text |
-| Medium | ■ | Olive-mustard tint, olive text |
-| Low | ○ | Clay tint, muted text |
+| High | ◆ | Saffron tint, saffron text |
+| Medium | ■ | Olive tint, olive text |
+| Low | ○ | Quiet tint, muted text |
 
 **Match confidence** is a separate channel: three ink signal bars labelled `Match: high|medium|low`.
 

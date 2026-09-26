@@ -1,0 +1,963 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-25T12:00:00+00:00",
+  "title": "Design System: DockIQ",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Drafting Gray",
+        "canonical": "#eaeaea",
+        "cssVar": "--color-paper",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Marble",
+        "canonical": "#ffffff",
+        "cssVar": "--color-surface",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "paper-sunk": {
+        "role": "neutral",
+        "displayName": "Subtle Gray",
+        "canonical": "#f4f4f5",
+        "cssVar": "--color-paper-sunk",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242425",
+          "#404040",
+          "#5d5d5e",
+          "#7d7d7e",
+          "#9e9e9f",
+          "#c4c4c5",
+          "#eeeeef"
+        ]
+      },
+      "paper-deep": {
+        "role": "neutral",
+        "displayName": "Cool Rule (deep)",
+        "canonical": "#e0e1e6",
+        "cssVar": "--color-paper-deep",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#232427",
+          "#3f3f43",
+          "#5c5d62",
+          "#7c7d81",
+          "#9d9ea3",
+          "#c3c4c9",
+          "#edeef3"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Cool Rule",
+        "canonical": "#e0e1e6",
+        "cssVar": "--color-hairline",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#232427",
+          "#3f3f43",
+          "#5c5d62",
+          "#7c7d81",
+          "#9d9ea3",
+          "#c3c4c9",
+          "#edeef3"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Graphite",
+        "canonical": "#1b1b1b",
+        "cssVar": "--color-ink",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Steel",
+        "canonical": "#60646c",
+        "cssVar": "--color-ink-soft",
+        "tonalRamp": [
+          "#080b11",
+          "#21242b",
+          "#3c4047",
+          "#5a5e66",
+          "#797d86",
+          "#9a9ea7",
+          "#c0c4cd",
+          "#eaeff8"
+        ]
+      },
+      "ink-mute": {
+        "role": "neutral",
+        "displayName": "Steel (captions)",
+        "canonical": "#60646c",
+        "cssVar": "--color-ink-mute",
+        "tonalRamp": [
+          "#080b11",
+          "#21242b",
+          "#3c4047",
+          "#5a5e66",
+          "#797d86",
+          "#9a9ea7",
+          "#c0c4cd",
+          "#eaeff8"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Graphite (action)",
+        "canonical": "#1b1b1b",
+        "cssVar": "--color-accent",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "White on Graphite",
+        "canonical": "#ffffff",
+        "cssVar": "--color-on-accent",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Graphite (links)",
+        "canonical": "#1b1b1b",
+        "cssVar": "--color-accent-ink",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "accent-soft": {
+        "role": "neutral",
+        "displayName": "Subtle Gray (selection)",
+        "canonical": "#f4f4f5",
+        "cssVar": "--color-accent-soft",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242425",
+          "#404040",
+          "#5d5d5e",
+          "#7d7d7e",
+          "#9e9e9f",
+          "#c4c4c5",
+          "#eeeeef"
+        ]
+      },
+      "sage": {
+        "role": "neutral",
+        "displayName": "Ash",
+        "canonical": "#7c7c7c",
+        "cssVar": "--color-sage",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "sage-ink": {
+        "role": "primary",
+        "displayName": "Graphite (meters, focus)",
+        "canonical": "#1b1b1b",
+        "cssVar": "--color-sage-ink",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "terracotta": {
+        "role": "neutral",
+        "displayName": "Ash (lamps)",
+        "canonical": "#7c7c7c",
+        "cssVar": "--color-terracotta",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "strip-forest": {
+        "role": "secondary",
+        "displayName": "Strip Forest",
+        "canonical": "#13784a",
+        "cssVar": ".signal-strip gradient stop 1",
+        "tonalRamp": [
+          "#001600",
+          "#003209",
+          "#005025",
+          "#007043",
+          "#369161",
+          "#5bb482",
+          "#81dba7",
+          "#acffd0"
+        ]
+      },
+      "strip-teal": {
+        "role": "secondary",
+        "displayName": "Strip Teal",
+        "canonical": "#0b6b75",
+        "cssVar": ".signal-strip gradient stop 2",
+        "tonalRamp": [
+          "#00121c",
+          "#002d37",
+          "#004b55",
+          "#096a74",
+          "#388b95",
+          "#5cadb7",
+          "#83d3de",
+          "#adffff"
+        ]
+      },
+      "hazard": {
+        "role": "secondary",
+        "displayName": "Brick",
+        "canonical": "#b42318",
+        "cssVar": "--color-hazard",
+        "tonalRamp": [
+          "#3b0000",
+          "#610000",
+          "#870000",
+          "#ad1a10",
+          "#d44536",
+          "#fb6957",
+          "#ff907c",
+          "#ffd0bf"
+        ]
+      },
+      "hazard-bright": {
+        "role": "secondary",
+        "displayName": "Brick Mark",
+        "canonical": "#d92d20",
+        "cssVar": "--color-hazard-bright",
+        "tonalRamp": [
+          "#410000",
+          "#680000",
+          "#8f0000",
+          "#b60000",
+          "#de3325",
+          "#ff5c4a",
+          "#ff856f",
+          "#ffd0bf"
+        ]
+      },
+      "hazard-deep": {
+        "role": "secondary",
+        "displayName": "Deep Brick",
+        "canonical": "#912018",
+        "cssVar": "--color-hazard-deep",
+        "tonalRamp": [
+          "#340000",
+          "#580000",
+          "#7c0202",
+          "#a13126",
+          "#c75346",
+          "#ed7666",
+          "#ff9c8b",
+          "#ffd0c0"
+        ]
+      },
+      "hazard-soft": {
+        "role": "secondary",
+        "displayName": "Brick Tint",
+        "canonical": "#fdecea",
+        "cssVar": "--color-hazard-soft",
+        "tonalRamp": [
+          "#120807",
+          "#2d211f",
+          "#493c3b",
+          "#685a58",
+          "#887977",
+          "#aa9a98",
+          "#d0c0be",
+          "#fbeae8"
+        ]
+      },
+      "orange": {
+        "role": "secondary",
+        "displayName": "Saffron (high)",
+        "canonical": "#8a5a10",
+        "cssVar": "--color-orange",
+        "tonalRamp": [
+          "#230000",
+          "#411600",
+          "#603300",
+          "#815200",
+          "#a3722f",
+          "#c79352",
+          "#eeb977",
+          "#ffe3a1"
+        ]
+      },
+      "orange-soft": {
+        "role": "secondary",
+        "displayName": "Saffron Tint",
+        "canonical": "#fdf1dc",
+        "cssVar": "--color-orange-soft",
+        "tonalRamp": [
+          "#120a00",
+          "#2b2312",
+          "#483e2d",
+          "#665c4a",
+          "#877c69",
+          "#a89d89",
+          "#cec3ae",
+          "#f9edd8"
+        ]
+      },
+      "orange-bright": {
+        "role": "secondary",
+        "displayName": "Saffron Mark",
+        "canonical": "#d4891f",
+        "cssVar": "--color-orange-bright",
+        "tonalRamp": [
+          "#2b0000",
+          "#4b0400",
+          "#6d2900",
+          "#8f4900",
+          "#b26a00",
+          "#d78c23",
+          "#ffb252",
+          "#ffe094"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Olive (medium)",
+        "canonical": "#515c0b",
+        "cssVar": "--color-amber",
+        "tonalRamp": [
+          "#0a0e00",
+          "#212900",
+          "#3c4600",
+          "#596518",
+          "#78853c",
+          "#99a75d",
+          "#becd82",
+          "#e8f8ab"
+        ]
+      },
+      "amber-soft": {
+        "role": "secondary",
+        "displayName": "Olive Tint",
+        "canonical": "#f3f5d8",
+        "cssVar": "--color-amber-soft",
+        "tonalRamp": [
+          "#0c0c00",
+          "#25260f",
+          "#41422a",
+          "#5e6047",
+          "#7e8066",
+          "#9fa186",
+          "#c5c7ab",
+          "#eff1d4"
+        ]
+      },
+      "amber-bright": {
+        "role": "secondary",
+        "displayName": "Olive Mark",
+        "canonical": "#aebd2a",
+        "cssVar": "--color-amber-bright",
+        "tonalRamp": [
+          "#0d0d00",
+          "#252800",
+          "#3f4600",
+          "#5c6600",
+          "#7b8700",
+          "#9ba900",
+          "#c0d044",
+          "#ebf999"
+        ]
+      },
+      "green": {
+        "role": "secondary",
+        "displayName": "Resolved Green",
+        "canonical": "#2f6b1c",
+        "cssVar": "--color-green",
+        "tonalRamp": [
+          "#001400",
+          "#003000",
+          "#0f4e00",
+          "#326e1f",
+          "#528f41",
+          "#73b162",
+          "#98d887",
+          "#c5ffb5"
+        ]
+      },
+      "green-soft": {
+        "role": "secondary",
+        "displayName": "Resolved Tint",
+        "canonical": "#eaf6e2",
+        "cssVar": "--color-green-soft",
+        "tonalRamp": [
+          "#070e03",
+          "#1f2718",
+          "#3a4333",
+          "#576150",
+          "#77816f",
+          "#98a390",
+          "#bdc8b5",
+          "#e7f3df"
+        ]
+      },
+      "teal": {
+        "role": "tertiary",
+        "displayName": "Mint (deep)",
+        "canonical": "#0a6d78",
+        "cssVar": "--color-teal",
+        "tonalRamp": [
+          "#00121e",
+          "#002e3a",
+          "#004c58",
+          "#006b78",
+          "#258c99",
+          "#4faebc",
+          "#77d5e3",
+          "#a2ffff"
+        ]
+      },
+      "teal-soft": {
+        "role": "tertiary",
+        "displayName": "Mint Tile",
+        "canonical": "#e6f8f5",
+        "cssVar": "--color-teal-soft",
+        "tonalRamp": [
+          "#030e0c",
+          "#192725",
+          "#354341",
+          "#52615f",
+          "#71817f",
+          "#92a3a0",
+          "#b7c8c6",
+          "#e1f3f0"
+        ]
+      },
+      "indigo": {
+        "role": "tertiary",
+        "displayName": "Sky (deep)",
+        "canonical": "#00679e",
+        "cssVar": "--color-indigo",
+        "tonalRamp": [
+          "#00013c",
+          "#00235d",
+          "#00437e",
+          "#0063a1",
+          "#1e84c4",
+          "#49a7e9",
+          "#71ceff",
+          "#a5f8ff"
+        ]
+      },
+      "indigo-soft": {
+        "role": "tertiary",
+        "displayName": "Sky Tile",
+        "canonical": "#e5f5fc",
+        "cssVar": "--color-indigo-soft",
+        "tonalRamp": [
+          "#030d11",
+          "#1a262b",
+          "#354248",
+          "#526066",
+          "#728086",
+          "#92a1a8",
+          "#b8c7ce",
+          "#e2f2f9"
+        ]
+      },
+      "mint": {
+        "role": "tertiary",
+        "displayName": "Moss (deep)",
+        "canonical": "#456d18",
+        "cssVar": "--color-mint",
+        "tonalRamp": [
+          "#001200",
+          "#032e00",
+          "#214c00",
+          "#3f6c00",
+          "#5e8d2f",
+          "#7fb053",
+          "#a3d678",
+          "#d1ffab"
+        ]
+      },
+      "mint-soft": {
+        "role": "tertiary",
+        "displayName": "Moss Tile",
+        "canonical": "#eef7e2",
+        "cssVar": "--color-mint-soft",
+        "tonalRamp": [
+          "#080d02",
+          "#202717",
+          "#3c4332",
+          "#59614f",
+          "#79816e",
+          "#9aa28f",
+          "#bfc8b4",
+          "#e9f2dd"
+        ]
+      },
+      "purple": {
+        "role": "tertiary",
+        "displayName": "Forest",
+        "canonical": "#1d6b52",
+        "cssVar": "--color-purple",
+        "tonalRamp": [
+          "#001404",
+          "#00301b",
+          "#004d36",
+          "#1f6d54",
+          "#448e73",
+          "#67b094",
+          "#8cd6b9",
+          "#b6ffe3"
+        ]
+      },
+      "purple-soft": {
+        "role": "tertiary",
+        "displayName": "Forest Tile",
+        "canonical": "#e3f4ea",
+        "cssVar": "--color-purple-soft",
+        "tonalRamp": [
+          "#040e08",
+          "#1b2720",
+          "#36443c",
+          "#536259",
+          "#728279",
+          "#93a39a",
+          "#b8c9bf",
+          "#e2f3e9"
+        ]
+      },
+      "brown": {
+        "role": "tertiary",
+        "displayName": "Graphite (content)",
+        "canonical": "#1b1b1b",
+        "cssVar": "--color-brown",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "brown-soft": {
+        "role": "tertiary",
+        "displayName": "Graphite Tile",
+        "canonical": "#f0f0f1",
+        "cssVar": "--color-brown-soft",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242425",
+          "#404040",
+          "#5d5d5e",
+          "#7d7d7e",
+          "#9e9e9f",
+          "#c4c4c5",
+          "#eeeeef"
+        ]
+      },
+      "chart-1": {
+        "role": "tertiary",
+        "displayName": "Chart Sky",
+        "canonical": "#007096",
+        "cssVar": "--chart-1",
+        "tonalRamp": [
+          "#000c2d",
+          "#00294b",
+          "#00476b",
+          "#00678c",
+          "#2c88af",
+          "#52aad2",
+          "#7ad1fa",
+          "#a4fcff"
+        ]
+      },
+      "chart-2": {
+        "role": "tertiary",
+        "displayName": "Chart Moss",
+        "canonical": "#679725",
+        "cssVar": "--chart-2",
+        "tonalRamp": [
+          "#001200",
+          "#052e00",
+          "#224d00",
+          "#406d00",
+          "#5e8e17",
+          "#7fb042",
+          "#a3d76a",
+          "#d4ffa9"
+        ]
+      },
+      "chart-3": {
+        "role": "tertiary",
+        "displayName": "Chart Blue",
+        "canonical": "#6a78cd",
+        "cssVar": "--chart-3",
+        "tonalRamp": [
+          "#090040",
+          "#171361",
+          "#2e3483",
+          "#4954a6",
+          "#6775ca",
+          "#8797ef",
+          "#abbdff",
+          "#d6e9ff"
+        ]
+      },
+      "chart-4": {
+        "role": "tertiary",
+        "displayName": "Chart Mint",
+        "canonical": "#007d65",
+        "cssVar": "--chart-4",
+        "tonalRamp": [
+          "#001607",
+          "#00321f",
+          "#00503b",
+          "#006f58",
+          "#289078",
+          "#51b398",
+          "#79dabe",
+          "#a4ffe8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing hero, Playfair Display 400 at 64-90px, 0.95, -0.02em (free stand-in for Heldane Display)."
+      },
+      "headline": {
+        "displayName": "Page Title",
+        "purpose": "Every app page title and landing section heading, Playfair Display 400 at 40-48px (28-40px when the title is data)."
+      },
+      "title": {
+        "displayName": "Card Title",
+        "purpose": "Card, panel, notice and empty-state titles in Inter 600."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text and values, Inter 16px tracked -0.018em with ss01 and cv11."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Captions, metadata, table headers in steel, Hanken Grotesk 500 (free stand-in for Aktiv Grotesk); 14px is the floor."
+      },
+      "number": {
+        "displayName": "Headline Number",
+        "purpose": "Stat values, door plates and headline figures: Inter 600, tight and tabular."
+      },
+      "telemetry": {
+        "displayName": "Telemetry",
+        "purpose": "Every ID, code, time, count, temperature and money value: Geist Mono, tabular, slashed zero."
+      }
+    },
+    "shadows": [
+      {
+        "name": "action",
+        "value": "0 4px 20px 0 rgb(0 0 0 / 0.15)",
+        "purpose": "The primary button: the only shadow in the page flow."
+      },
+      {
+        "name": "float",
+        "value": "0 4px 20px 0 rgb(0 0 0 / 0.15)",
+        "purpose": "Things above the page: the landing preview panel and load-plan frame, dialogs, detail sheets, alert toasts, chart tooltips, the floating request button."
+      },
+      {
+        "name": "card",
+        "value": "none",
+        "purpose": "Cards, rail, bars and door tiles cast no shadow; the 1px hairline carries structure."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px color-mix(in srgb, var(--color-sage-ink) 18%, transparent)",
+        "purpose": "Field focus, with a graphite border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-organic",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Exponential ease-out for reveals, sheets and diagram settles."
+      },
+      {
+        "name": "reveal",
+        "value": "rise 0.5s var(--ease-organic) both; delay calc(var(--i) * 60ms)",
+        "purpose": "The one staggered rise as a screen loads (10px up, fade in). Never on an alert."
+      },
+      {
+        "name": "press",
+        "value": "transform 120ms ease-out; translateY(1px)",
+        "purpose": "Instant press feedback on buttons and choice tiles."
+      },
+      {
+        "name": "rule-hover",
+        "value": "border-color 200ms ease; hairline mixed 30% toward graphite",
+        "purpose": "Interactive cards answer hover with the rule, never a jump. Critical tiles do not respond."
+      },
+      {
+        "name": "landing-enter",
+        "value": "opacity, transform 1s var(--ease-organic); from translateY(24px)",
+        "purpose": "Landing sections float in on scroll."
+      },
+      {
+        "name": "dock-sheet",
+        "value": "420ms var(--ease-organic)",
+        "purpose": "Detail sheet rises from the bottom (phone) or slides in from the right (48rem+)."
+      },
+      {
+        "name": "load-guide",
+        "value": "breathe 1.8s ease-in-out infinite; flow 0.9s linear infinite; pin 0.5s; drop 0.45s",
+        "purpose": "The spot to fill breathes, the arrow flows, a placed pallet settles. Explanatory only."
+      },
+      {
+        "name": "data-bar",
+        "value": "grow-x 0.9s var(--ease-organic); delay calc(var(--i) * 80ms + 200ms)",
+        "purpose": "Chart bars grow from the baseline."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "40rem"
+      },
+      {
+        "name": "md",
+        "value": "48rem"
+      },
+      {
+        "name": "lg",
+        "value": "64rem"
+      }
+    ],
+    "colorScheme": "light only; no dark mode"
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled action per view: graphite with the single action drop.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Open the demo <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:var(--radius-md, 6px); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; white-space:nowrap; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, border-color 200ms ease, opacity 200ms ease; } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--color-sage-ink, #1b1b1b); outline-offset:3px; } .ds-btn-primary { background:var(--color-accent, #1b1b1b); color:var(--color-on-accent, #ffffff); box-shadow:0 4px 20px 0 rgb(0 0 0 / 0.15); } .ds-btn-primary:hover { opacity:0.88; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action: marble on a hairline, flat, 6px.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">How it scores</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:var(--radius-md, 6px); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; white-space:nowrap; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, border-color 200ms ease, opacity 200ms ease; } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--color-sage-ink, #1b1b1b); outline-offset:3px; } .ds-btn-secondary { background:var(--color-surface, #ffffff); border-color:var(--color-hairline, #e0e1e6); color:var(--color-ink, #1b1b1b); } .ds-btn-secondary:hover { background:var(--color-paper-sunk, #f4f4f5); border-color:color-mix(in srgb, var(--color-ink, #1b1b1b) 25%, var(--color-hairline, #e0e1e6)); }"
+    },
+    {
+      "name": "Sign-in Pill",
+      "kind": "button",
+      "refersTo": "button-pill",
+      "description": "The landing sign-in: marble, hairline, 40px radius; less commitment than the squared buttons.",
+      "html": "<button class=\"ds-btn ds-btn-pill\">Sign in</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:var(--radius-md, 6px); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; white-space:nowrap; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, border-color 200ms ease, opacity 200ms ease; } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--color-sage-ink, #1b1b1b); outline-offset:3px; } .ds-btn-pill { background:var(--color-surface, #ffffff); border-color:var(--color-hairline, #e0e1e6); border-radius:40px; color:var(--color-ink, #1b1b1b); } .ds-btn-pill:hover { background:var(--color-paper-sunk, #f4f4f5); }"
+    },
+    {
+      "name": "Hazard Button",
+      "kind": "button",
+      "refersTo": "button-hazard",
+      "description": "Reporting an issue and critical decisions only.",
+      "html": "<button class=\"ds-btn ds-btn-hazard\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg> Report issue</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:var(--radius-md, 6px); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; white-space:nowrap; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, border-color 200ms ease, opacity 200ms ease; } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--color-sage-ink, #1b1b1b); outline-offset:3px; } .ds-btn-hazard { background:var(--color-hazard, #b42318); color:#ffffff; } .ds-btn-hazard:hover { background:var(--color-hazard-deep, #912018); }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Marble, ruled, 12px; focus draws the graphite rule and a soft halo.",
+      "html": "<label class=\"ds-field-wrap\"><span class=\"ds-field-label\">Cases counted</span><input class=\"ds-field\" type=\"text\" placeholder=\"e.g. 36\" /></label>",
+      "css": ".ds-field-wrap { display:flex; flex-direction:column; gap:8px; font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; color:var(--color-ink, #1b1b1b); } .ds-field-label { font-size:16px; font-weight:600; } .ds-field { width:100%; min-height:48px; padding:10px 14px; border-radius:var(--radius-lg, 12px); background:var(--color-surface, #ffffff); border:1px solid color-mix(in srgb, var(--color-ink, #1b1b1b) 14%, var(--color-hairline, #e0e1e6)); color:var(--color-ink, #1b1b1b); font:inherit; font-size:16px; transition:border-color 200ms ease, box-shadow 200ms ease; } .ds-field::placeholder { color:var(--color-ink-mute, #60646c); } .ds-field:focus { outline:none; border-color:var(--color-sage-ink, #1b1b1b); box-shadow:0 0 0 3px color-mix(in srgb, var(--color-sage-ink, #1b1b1b) 18%, transparent); }"
+    },
+    {
+      "name": "Choice Tiles",
+      "kind": "chip",
+      "refersTo": "choice",
+      "description": "Single-select ruled tiles; selected is subtle gray with a 2px inset graphite rule.",
+      "html": "<div class=\"ds-choices\" role=\"radiogroup\"><button class=\"ds-choice\" role=\"radio\" aria-checked=\"true\">Refrigerated</button><button class=\"ds-choice\" role=\"radio\" aria-checked=\"false\">Frozen</button></div>",
+      "css": ".ds-choices { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-choice { display:flex; align-items:center; justify-content:center; min-height:52px; padding:10px 16px; border:0; border-radius:var(--radius-lg, 12px); background:var(--color-surface, #ffffff); box-shadow:inset 0 0 0 1px var(--color-hairline, #e0e1e6); color:var(--color-ink, #1b1b1b); font:inherit; font-size:16px; font-weight:500; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, box-shadow 200ms ease; } .ds-choice:hover { background:var(--color-paper, #eaeaea); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--color-ink, #1b1b1b) 22%, var(--color-hairline, #e0e1e6)); } .ds-choice:active { transform:translateY(1px); } .ds-choice:focus-visible { outline:2px solid var(--color-sage-ink, #1b1b1b); outline-offset:3px; } .ds-choice[aria-checked='true'] { background:var(--color-accent-soft, #f4f4f5); box-shadow:inset 0 0 0 2px var(--color-ink, #1b1b1b); font-weight:600; }"
+    },
+    {
+      "name": "Tags and Severity Badges",
+      "kind": "chip",
+      "refersTo": "severity-critical",
+      "description": "Pills carry word + shape + colour; the dashed tag marks simulated data.",
+      "html": "<div class=\"ds-tags\"><span class=\"ds-sev ds-sev-critical\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M7 1.2 13.3 12.6H0.7Z\" fill=\"currentColor\"/></svg>Critical</span><span class=\"ds-sev ds-sev-high\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M7 0.6 13.4 7 7 13.4 0.6 7Z\" fill=\"currentColor\"/></svg>High</span><span class=\"ds-sev ds-sev-medium\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><rect x=\"1.5\" y=\"1.5\" width=\"11\" height=\"11\" rx=\"2.5\" fill=\"currentColor\"/></svg>Medium</span><span class=\"ds-sev ds-sev-low\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"7\" r=\"5.25\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>Low</span><span class=\"ds-pill ds-pill-sim\">Simulated data</span></div>",
+      "css": ".ds-tags { display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-sev, .ds-pill { display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:0 10px; border-radius:40px; font-size:14px; white-space:nowrap; } .ds-sev { font-weight:600; } .ds-sev-critical { background:var(--color-hazard, #b42318); color:#ffffff; } .ds-sev-high { background:var(--color-orange-soft, #fdf1dc); color:var(--color-orange, #8a5a10); } .ds-sev-medium { background:var(--color-amber-soft, #f3f5d8); color:var(--color-amber, #515c0b); } .ds-sev-low { background:var(--color-paper-sunk, #f4f4f5); color:var(--color-ink-mute, #60646c); } .ds-pill { font-weight:500; } .ds-pill-sim { border:1px dashed var(--color-ink-mute, #60646c); color:var(--color-ink-mute, #60646c); }"
+    },
+    {
+      "name": "Card with Stat",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Marble on drafting gray, 20px, a hairline and no shadow; the critical stat is solid brick.",
+      "html": "<div class=\"ds-stats\"><div class=\"ds-card ds-stat\"><p class=\"ds-stat-label\">Needs you</p><p class=\"ds-stat-num\">11</p><p class=\"ds-stat-sub\">Escalated or critical</p></div><div class=\"ds-stat ds-stat-alert\"><p class=\"ds-stat-label\">Critical</p><p class=\"ds-stat-num\">5</p><p class=\"ds-stat-sub\">Open, in any state</p></div></div>",
+      "css": ".ds-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px; background:var(--color-paper, #eaeaea); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-card { background:var(--color-surface, #ffffff); border:1px solid var(--color-hairline, #e0e1e6); border-radius:var(--radius-xl, 20px); color:var(--color-ink, #1b1b1b); transition:border-color 200ms ease; } .ds-card:hover { border-color:color-mix(in srgb, var(--color-ink, #1b1b1b) 30%, var(--color-hairline, #e0e1e6)); } .ds-stat { display:flex; flex-direction:column; gap:8px; padding:16px; } .ds-stat p { margin:0; } .ds-stat-label { font-size:14px; font-weight:600; color:var(--color-ink-mute, #60646c); } .ds-stat-num { font-size:48px; line-height:1; font-weight:600; letter-spacing:-0.035em; font-variant-numeric:lining-nums tabular-nums; } .ds-stat-sub { font-size:14px; color:var(--color-ink-mute, #60646c); } .ds-stat-alert { background:var(--color-hazard, #b42318); color:#ffffff; border-radius:var(--radius-xl, 20px); } .ds-stat-alert .ds-stat-label, .ds-stat-alert .ds-stat-sub { color:#ffffff; }"
+    },
+    {
+      "name": "Navigation Rail",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Marble rail on a hairline, Playfair wordmark with upright steel IQ, 6px items; active is subtle gray with a hairline ring.",
+      "html": "<nav class=\"ds-rail\"><div class=\"ds-wordmark\">Dock<span class=\"ds-iq\">IQ</span></div><p class=\"ds-rail-role\">Supervisor · Zone A</p><a class=\"ds-nav-item ds-active\" href=\"#\">Floor</a><a class=\"ds-nav-item\" href=\"#\">Issue log</a><a class=\"ds-nav-item\" href=\"#\">Analytics</a><p class=\"ds-rail-id\">SUP-001</p></nav>",
+      "css": ".ds-rail { display:flex; flex-direction:column; gap:2px; width:280px; padding:24px 12px; background:var(--color-surface, #ffffff); border-right:1px solid var(--color-hairline, #e0e1e6); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-wordmark { padding:0 8px; font-family:var(--font-display, 'Playfair Display Variable', 'Playfair Display', Georgia, serif); font-size:24px; font-weight:400; letter-spacing:-0.02em; color:var(--color-ink, #1b1b1b); } .ds-iq { font-weight:600; letter-spacing:0; color:var(--color-ink-soft, #60646c); } .ds-rail-role { margin:8px 8px 12px; font-family:var(--font-caption, 'Hanken Grotesk Variable', 'Hanken Grotesk', sans-serif); letter-spacing:0; font-size:14px; font-weight:500; color:var(--color-ink-mute, #60646c); } .ds-rail-id { margin:16px 8px 0; font-family:var(--font-mono, 'Geist Mono Variable', 'Geist Mono', monospace); font-size:14px; font-weight:500; font-variant-numeric:tabular-nums slashed-zero; color:var(--color-ink-mute, #60646c); } .ds-nav-item { display:flex; align-items:center; min-height:44px; padding:10px 16px; border-radius:var(--radius-md, 6px); font-size:16px; font-weight:500; color:var(--color-ink-soft, #60646c); text-decoration:none; transition:background-color 300ms ease, color 300ms ease; } .ds-nav-item:hover { background:var(--color-paper-sunk, #f4f4f5); color:var(--color-ink, #1b1b1b); } .ds-nav-item:focus-visible { outline:2px solid var(--color-sage-ink, #1b1b1b); outline-offset:3px; } .ds-nav-item.ds-active { background:var(--color-paper-sunk, #f4f4f5); color:var(--color-ink, #1b1b1b); box-shadow:0 0 0 1px var(--color-hairline, #e0e1e6); }"
+    },
+    {
+      "name": "Door Tile",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "The dock wall: a zone-tinted door plate, crew and progress on the zone apron; critical turns solid brick and never moves.",
+      "html": "<div class=\"ds-doors\"><div class=\"ds-door\"><div class=\"ds-door-top\"><span class=\"ds-plate\">02</span><span class=\"ds-door-status\">Active</span></div><p class=\"ds-door-who\">Tanya Brooks</p><p class=\"ds-door-sub\">Lone Mesa Foods</p><div class=\"ds-track\"><span style=\"width:40%\"></span></div></div><div class=\"ds-door ds-door-critical\"><div class=\"ds-door-top\"><span class=\"ds-plate\">01</span><span class=\"ds-door-status\">Critical</span></div><p class=\"ds-door-who\">Mike Johnson</p><p class=\"ds-door-sub\">Crestline Markets</p><div class=\"ds-track\"><span style=\"width:10%\"></span></div></div></div>",
+      "css": ".ds-doors { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:12px; border-radius:20px; background:color-mix(in srgb, var(--color-mint-soft, #eef7e2) 60%, var(--color-paper-sunk, #f4f4f5)); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-door { display:flex; flex-direction:column; gap:6px; padding:14px; border-radius:20px; background:var(--color-surface, #ffffff); border:1px solid var(--color-hairline, #e0e1e6); color:var(--color-ink, #1b1b1b); transition:border-color 200ms ease; } .ds-door:hover { border-color:color-mix(in srgb, var(--color-ink, #1b1b1b) 30%, var(--color-hairline, #e0e1e6)); } .ds-door p { margin:0; } .ds-door-top { display:flex; justify-content:space-between; align-items:center; } .ds-plate { min-width:44px; padding:6px 9px; border-radius:6px; text-align:center; font-size:28px; line-height:1; font-weight:600; letter-spacing:-0.035em; font-variant-numeric:tabular-nums; color:var(--color-mint, #456d18); background:var(--color-mint-soft, #eef7e2); } .ds-door-status { font-size:14px; font-weight:600; } .ds-door-who { font-size:16px; font-weight:600; } .ds-door-sub { font-size:14px; color:var(--color-ink-mute, #60646c); } .ds-track { height:6px; border-radius:40px; overflow:hidden; background:var(--color-paper-sunk, #f4f4f5); } .ds-track span { display:block; height:100%; background:var(--color-mint, #456d18); } .ds-door-critical { background:var(--color-hazard, #b42318); border-color:var(--color-hazard, #b42318); color:#ffffff; } .ds-door-critical:hover { border-color:var(--color-hazard, #b42318); } .ds-door-critical .ds-plate { color:#ffffff; background:color-mix(in srgb, #ffffff 18%, var(--color-hazard, #b42318)); } .ds-door-critical .ds-door-sub { color:color-mix(in srgb, #ffffff 88%, var(--color-hazard, #b42318)); } .ds-door-critical .ds-track { background:color-mix(in srgb, #ffffff 25%, var(--color-hazard, #b42318)); } .ds-door-critical .ds-track span { background:#ffffff; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Engineering Blueprint on Cool Marble",
+    "overview": "DockIQ replicates Grafbase's style reference and holds the dock's safety rules above it. The page is a drafting-gray table. White marble sheets sit on it, each edged with a 1px cool hairline and no shadow. Graphite sets all the text and fills the single primary action. The interface has no chromatic accent. Colour appears in two places only: the forest-to-teal announcement strip that says the data is simulated, and the product's own content (diagrams, zones, charts), which uses a cool triad of mint, sky and moss. The world is light only. There is no dark mode.\n\nThe type follows the owner's spec in place of Grafbase's single family. Titles are an editorial serif at 400, tight and compressed. Inter, tracked slightly tight, carries everything read at work. Hanken Grotesk sets the small captions. Geist Mono sets the telemetry. Everything is read at arm's length on a forklift tablet, with gloves, glare and dim light. So density is moderate, targets are generous (44px minimum, 48px buttons), the type floor is 14px, and nothing moves on an alert.\n\nThe reference gives way to the dock in three documented places. Severity keeps brick red, saffron and olive, always with a word and a shape. The floor is 14px, not Grafbase's 13px. Ash grey never sets small text.",
+    "keyCharacteristics": [
+      "A drafting-gray canvas (`paper`) under white cards with a 1px `hairline`, 20px corners and no shadow.",
+      "Graphite (`ink`) is the text colour and the one filled action. The interface has no accent hue.",
+      "Four typefaces, one per job: Playfair Display 400 for titles, Inter for UI and body, Hanken Grotesk for labels, Geist Mono for telemetry.",
+      "Squared 6px buttons, 12px fields and panels, 20px cards, 40px pills for tags and the sign-in pill.",
+      "Chrome colour is limited to the announcement strip. The cool triad appears only inside product content.",
+      "Light only."
+    ],
+    "rules": [
+      {
+        "name": "The Two Places Rule",
+        "body": "Chromatic colour in the chrome is limited to the announcement strip. Everywhere else, the triad lives inside the product's own content (a zone, a load, a chart series, a cold room). Anything that is neither is graphite, steel or gray.",
+        "section": "colors"
+      },
+      {
+        "name": "The Brick Is Critical Rule",
+        "body": "`hazard` appears only for critical severity, critical door tiles, the critical stat, alert notices and the report or destructive action. It is never a chart hue, and no status colour is ever a chart hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Graphic-Only Rule",
+        "body": "The `-bright` severity tones and Ash fail as small text. They draw edges, bars, lamps and marks. The base and `-deep` inks carry the words.",
+        "section": "colors"
+      },
+      {
+        "name": "The Four Jobs Rule",
+        "body": "Each face has one job. Playfair names places (page titles, section headings, the wordmark). Inter carries every sentence, control and headline number. Hanken sets captions. Geist Mono sets data a person copies, compares or reads off. Never set a sentence in mono.",
+        "section": "typography"
+      },
+      {
+        "name": "The Upright IQ Rule",
+        "body": "The wordmark sets \"IQ\" upright at 600 in steel, so it never reads as \"Dock12\".",
+        "section": "typography"
+      },
+      {
+        "name": "The No Accent Words Rule",
+        "body": "Emphasis inside a title keeps the title's own voice: no italic and no colour change.",
+        "section": "typography"
+      },
+      {
+        "name": "The Single Drop Rule",
+        "body": "In the page flow, only the primary action casts a shadow. Everything else sits flat on its hairline.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Rule Answers Rule",
+        "body": "Interactive cards answer hover by darkening their hairline toward graphite (30%). They never jump, and never change fill. Critical tiles do not respond.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use graphite (`accent`) for exactly one filled primary action per view. Everything else is secondary, pill or hazard.",
+      "**Do** draw structure with the 1px `hairline` on marble, and leave cards without a shadow.",
+      "**Do** set titles in Playfair Display 400 at -0.02em, UI and body in Inter at -0.018em with `ss01`/`cv11`, captions in Hanken Grotesk, and every ID, code, time and count in Geist Mono.",
+      "**Do** show severity as word, shape and colour together, and confidence as graphite signal bars.",
+      "**Do** keep the cool triad and the chart slots inside product content (zones, loads, rooms, chart series), in their fixed order.",
+      "**Do** keep targets at least 44px (48px buttons and fields) and text at 14px or larger.",
+      "**Do** mark simulated data with the announcement strip and the dashed Simulated tag.",
+      "**Do** keep motion to the 60ms staggered rise on load, rule-darkening on hover and the load guide's explanatory loops. All of it is disabled under reduced motion."
+    ],
+    "donts": [
+      "**Don't** add a chromatic accent to the interface chrome. The strip is the only colour there.",
+      "**Don't** use `hazard` or any status colour as a chart hue or as decoration.",
+      "**Don't** set text in Ash (`sage`, `terracotta`) or any `-bright` tone.",
+      "**Don't** add texture, glass or translucency over badges, readings or alerts.",
+      "**Don't** animate, lift or pulse anything critical.",
+      "**Don't** use italic accent words in titles, or set a sentence in mono.",
+      "**Don't** make action buttons pills. Pills are for tags, badges and the sign-in pill.",
+      "**Don't** add a dark mode, or reach for Tailwind's default palette, radii or shadows. They are wiped, and every value is a token in `frontend/src/styles/app.css`.",
+      "**Don't** recolour the barcode. It stays black on white."
+    ]
+  }
+}
