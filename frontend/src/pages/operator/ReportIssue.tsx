@@ -95,9 +95,16 @@ function TypeStep({
         </Notice>
       )}
       {groups.map((group, groupIndex) => (
-        <section key={group.id} className="reveal" style={{ '--i': groupIndex } as CSSProperties}>
+        <section
+          key={group.id}
+          className={`reveal file-${group.id}`}
+          style={{ '--i': groupIndex } as CSSProperties}
+        >
           <div className="mb-3 flex flex-wrap items-baseline gap-3 border-b border-hairline pb-2">
-            <h2 className="heading text-2xl">{group.title}</h2>
+            <h2 className="heading flex items-center gap-2 text-2xl">
+              <span className="file-dot" aria-hidden="true" />
+              {group.title}
+            </h2>
             <p className="text-ink-soft">{group.blurb}</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -112,7 +119,9 @@ function TypeStep({
                     className="choice min-h-20"
                     onClick={() => onPick(type)}
                   >
-                    <Icon size={26} aria-hidden="true" className="shrink-0" />
+                    <span className="medallion">
+                      <Icon size={22} aria-hidden="true" />
+                    </span>
                     <span>
                       <span className="block text-lg">{type.name}</span>
                       <span className="text-sm font-normal text-ink-mute">

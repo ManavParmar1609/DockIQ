@@ -100,7 +100,7 @@ describe('My issues: resolve it yourself, inline', () => {
   it('is not offered on a critical issue, which says who decides, nor on one on hold', () => {
     renderList([CRITICAL, ON_HOLD]);
     const critical = within(card('Product temperature out of range'));
-    expect(critical.getByText('Your supervisor decides — critical')).toBeInTheDocument();
+    expect(critical.getByText('Critical — your supervisor decides')).toBeInTheDocument();
     expect(critical.queryByRole('button', { name: /Resolve it yourself/ })).not.toBeInTheDocument();
 
     const held = within(card('Seal number does not match'));

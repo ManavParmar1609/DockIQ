@@ -35,14 +35,14 @@ function ResolveInline({ issue }: { issue: Issue }) {
   const [open, setOpen] = useState(false);
   if (issue.severity === 'critical' && ISSUE_STATUS[issue.status].open) {
     return (
-      <p className="border-t border-hairline px-4 py-3 text-base font-semibold">
-        Your supervisor decides — critical
+      <p className="border-t border-hairline bg-paper-sunk px-5 py-3 text-sm font-semibold text-ink-soft">
+        Critical — your supervisor decides
       </p>
     );
   }
   if (!issue.can_self_resolve) return null;
   return (
-    <div className="border-t border-hairline px-4 py-3">
+    <div className="border-t border-hairline bg-paper-sunk px-5 py-3">
       {open ? (
         <SelfResolveForm
           issueId={issue.id}
@@ -53,7 +53,7 @@ function ResolveInline({ issue }: { issue: Issue }) {
       ) : (
         <button
           type="button"
-          className="btn btn-secondary w-full"
+          className="btn btn-primary w-full"
           aria-label={`Resolve it yourself: issue #${String(issue.id)}`}
           onClick={() => setOpen(true)}
         >
@@ -67,18 +67,22 @@ function ResolveInline({ issue }: { issue: Issue }) {
 function IssueCard({ issue }: { issue: Issue }) {
   const waiting = waitingOn(issue);
   return (
-    <li className="card overflow-hidden">
-      <Link to={`/app/issues/${issue.id}`} className="block hover:bg-paper-sunk">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline px-4 py-2">
+    <li className="card flex flex-col overflow-hidden">
+      <Link to={`/app/issues/${issue.id}`} className="flex flex-1 flex-col gap-2 p-5 hover:bg-paper-sunk">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <SeverityBadge severity={issue.severity} size="sm" />
           <IssueStatusTag status={issue.status} />
         </div>
-        <div className="px-4 py-3">
-          <p className="heading text-xl">{issue.issue_subtype ?? issue.issue_type}</p>
-          <p className="mt-0.5 text-ink-soft">{issue.issue_type}</p>
-          {issue.description && <p className="mt-2 line-clamp-2 text-base">{issue.description}</p>}
-          {waiting && <p className="mt-2 text-base font-semibold">{waiting}</p>}
-          <p className="telemetry mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-mute">
+        <div>
+          <p className="heading text-lg">{issue.issue_subtype ?? issue.issue_type}</p>
+          {issue.issue_subtype && issue.issue_subtype !== issue.issue_type && (
+            <p className="text-sm text-ink-mute">{issue.issue_type}</p>
+          )}
+        </div>
+        {issue.description && <p className="line-clamp-2 text-base text-ink-soft">{issue.description}</p>}
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 pt-1">
+          {waiting && <p className="text-sm font-semibold text-accent-ink">{waiting}</p>}
+          <p className="telemetry flex flex-wrap gap-x-3 text-sm text-ink-mute">
             <span>#{issue.id}</span>
             <span>Dock {issue.door_number ?? '—'}</span>
             <span>{formatDateTime(issue.created_at)}</span>
@@ -88,15 +92,15 @@ function IssueCard({ issue }: { issue: Issue }) {
               </span>
             )}
           </p>
-          {issue.supervisor_notes && (
-            <p className="mt-3 rounded-lg bg-paper-sunk px-3 py-2 text-base">
-              <span className="label block">
-                {issue.supervisor_name} · {issue.resolution_type}
-              </span>
-              {issue.supervisor_notes}
-            </p>
-          )}
         </div>
+        {issue.supervisor_notes && (
+          <p className="rounded-lg bg-accent-soft px-3 py-2 text-base">
+            <span className="label block">
+              {issue.supervisor_name} · {issue.resolution_type}
+            </span>
+            {issue.supervisor_notes}
+          </p>
+        )}
       </Link>
       <ResolveInline issue={issue} />
     </li>

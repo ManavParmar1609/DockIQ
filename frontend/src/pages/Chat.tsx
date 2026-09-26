@@ -240,7 +240,7 @@ export default function Chat() {
             <button
               key={chip}
               type="button"
-              className="shrink-0 card px-3 text-base font-semibold hover:bg-paper-sunk disabled:opacity-60"
+              className="chip-suggest shrink-0 text-base disabled:opacity-60"
               disabled={busy}
               onClick={() => send(chip)}
             >

@@ -185,7 +185,7 @@ function SignedInShell({
       </p>
       <div className="shell-grid min-h-dvh">
         {/* Sidebar — desktop, as on iPad */}
-        <aside className="sticky top-0 hidden h-dvh flex-col border-r border-hairline bg-surface lg:flex">
+        <aside className="rail sticky top-0 hidden h-dvh flex-col lg:flex">
           <div className="px-5 pt-6 pb-4">
             <Wordmark />
             <p className="label mt-3">{zone ? `${ROLE_LABEL[role]} · ${zone}` : ROLE_LABEL[role]}</p>
@@ -197,7 +197,7 @@ function SignedInShell({
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-md px-4 py-2.5 text-base font-medium transition-colors duration-300 ${isActive ? 'bg-paper-sunk text-ink ring-1 ring-hairline' : 'text-ink-soft hover:bg-paper-sunk hover:text-ink'}`
+                  `flex items-center gap-3 rounded-md px-4 py-2.5 text-base font-medium transition-colors duration-300 ${isActive ? 'bg-accent font-semibold text-on-accent' : 'text-ink-soft hover:bg-paper-sunk hover:text-ink'}`
                 }
               >
                 <item.icon size={20} aria-hidden="true" />

@@ -33,12 +33,15 @@ DockIQ runs on a tablet on a forklift in a **cold-storage warehouse**. Gloved ha
 glare, and decisions that are sometimes food-safety critical. Whatever the style, the interface has
 to be legible at arm's length, unmistakable about severity, and calm under pressure.
 
-### 2.2 The committed direction — Grafbase, exactly *(chosen 2026-09-25)*
+### 2.2 The committed direction — Grafbase's structure in the owner's palette *(2026-09-25)*
 
-The owner pinned the Grafbase style reference ("engineering blueprint on cool marble") and asked for
-it exactly, light only, with their own type spec: an editorial display serif over tightened Inter,
-a grotesk for captions and a mono for telemetry. Values: `docs/specs/ui-ux-spec.md` §2 and
-`DESIGN.md`.
+The owner pinned the Grafbase style reference for structure (hairline cards without shadows, 6px
+buttons, 12px panels, 20px cards, 40px pills, one drop shadow, light only), their own type spec
+(an editorial display serif over tightened Inter, a grotesk for captions, a mono for telemetry), and
+then their own palette for colour: an obsidian rail and strip, a mint-frost canvas, neon pulse for
+the one filled action and the selected place, mint whisper for highlights, signal yellow as warm
+punctuation in diagrams. Colour files things (zones, report groups, inspection sections) or raises
+alarms; it never decorates. Values: `docs/specs/ui-ux-spec.md` §2.
 
 ### 2.3 Where DockIQ departs from the reference
 

@@ -164,10 +164,7 @@ export function IssueStatusTag({ status }: { status: IssueStatus }) {
 /** Rules §2.4.7 — simulated data stays visibly marked as simulated. `compact` marks one record. */
 export function SimulatedTag({ compact = false }: { compact?: boolean }) {
   return (
-    <span
-      className="pill border border-dashed border-ink-mute text-ink-mute"
-      title={compact ? 'Created by the shift simulator' : undefined}
-    >
+    <span className="pill sim-tag" title={compact ? 'Created by the shift simulator' : undefined}>
       {compact ? 'Sim' : 'Simulated data'}
     </span>
   );

@@ -1,4 +1,5 @@
-import { Check, X } from 'lucide-react';
+import { Check, ClipboardCheck, NotebookPen, ShieldCheck, Thermometer, X } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useState, type SyntheticEvent } from 'react';
 import { Link } from 'react-router';
 
@@ -52,6 +53,16 @@ const FAILED_REPORT: Record<string, { type: string; subtype: string }> = {
 type Outcome = Pick<InspectionResult, 'overall_pass' | 'temperature_limit' | 'failed_checks'> & {
   created_at?: string;
 };
+
+/** A section title with its filed medallion: the colour says what kind of check it is. */
+function SectionTitle({ icon, file, children }: { icon: ReactNode; file: string; children: ReactNode }) {
+  return (
+    <span className={`file-${file} flex items-center gap-3`}>
+      <span className="medallion">{icon}</span>
+      {children}
+    </span>
+  );
+}
 
 export default function Inspection() {
   const order = useActiveOrder();
@@ -121,7 +132,13 @@ export default function Inspection() {
       />
 
       {result ? (
-        <Panel title="Result">
+        <Panel
+          title={
+            <SectionTitle icon={<ClipboardCheck size={20} aria-hidden="true" />} file="green">
+              Result
+            </SectionTitle>
+          }
+        >
           {result.overall_pass ? (
             <div className="flex items-center gap-4">
               <span className="grid h-16 w-16 place-items-center rounded-full bg-green-soft text-green">
@@ -187,7 +204,13 @@ export default function Inspection() {
         </Panel>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-6">
-          <Panel title="Condition">
+          <Panel
+            title={
+              <SectionTitle icon={<ShieldCheck size={20} aria-hidden="true" />} file="product">
+                Condition
+              </SectionTitle>
+            }
+          >
             <div className="flex flex-col gap-6">
               <ChoiceGroup label="Seal" options={SEAL} value={seal} onChange={setSeal} columns={3} />
               <ChoiceGroup label="Interior" options={CLEAN} value={clean} onChange={setClean} columns={4} />
@@ -200,7 +223,13 @@ export default function Inspection() {
               />
             </div>
           </Panel>
-          <Panel title="Reefer">
+          <Panel
+            title={
+              <SectionTitle icon={<Thermometer size={20} aria-hidden="true" />} file="systems">
+                Reefer
+              </SectionTitle>
+            }
+          >
             <FieldLabel
               htmlFor="interior-temp"
               hint={
@@ -223,7 +252,13 @@ export default function Inspection() {
               onChange={(event) => setTemperature(event.target.value)}
             />
           </Panel>
-          <Panel title="Notes">
+          <Panel
+            title={
+              <SectionTitle icon={<NotebookPen size={20} aria-hidden="true" />} file="people">
+                Notes
+              </SectionTitle>
+            }
+          >
             <label htmlFor="inspection-notes" className="sr-only">
               Notes
             </label>

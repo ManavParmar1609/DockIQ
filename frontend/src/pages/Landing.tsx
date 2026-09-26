@@ -340,7 +340,6 @@ export default function Landing() {
           <div className="sm:col-span-2">
             <Wordmark />
             <p className="mt-3 text-sm text-ink-soft">© 2026 DockIQ. Prototype on fictional data.</p>
-            <p className="text-sm text-ink-soft">Prepared by Rishabh Gupta</p>
           </div>
           <div>
             <p className="text-sm font-semibold">Product</p>

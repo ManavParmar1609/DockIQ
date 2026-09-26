@@ -32,14 +32,18 @@ palette, radii and shadows are **removed**. Built record: `DESIGN.md`; product t
 
 | Token | Value | Use |
 |---|---|---|
-| `paper` | `#EAEAEA` drafting gray | The canvas |
-| `surface` | `#FFFFFF` marble | Cards (20px, 1px hairline, **no shadow**), nav, panels, fields |
-| `paper-sunk` / `paper-deep` | `#F4F4F5` / `#E0E1E6` | The subtle gray treatment (hover, selection, tracks) / empty cells |
-| `ink` / `ink-soft` = `ink-mute` | `#1B1B1B` graphite / `#60646C` steel | Text (17.4 / 6.0:1); Ash `#7C7C7C` never carries small text (it fails AA) |
-| `hairline` | `#E0E1E6` | The structural rule |
-| `accent` | graphite | The one primary action (6px, the only drop shadow besides the preview panel) |
-| `hazard` / `orange` / `amber` | brick `#B42318` / saffron `#8A5A10` / olive `#515C0B` | **Severity only** — a departure: Grafbase has no status colour |
-| `teal`/`indigo`/`mint`/`purple` + `-soft` | the cool triad (mint, sky, moss) deepened, on pale integration-tile tints | Product content only: diagrams, zones (A moss, B mint, C sky) |
+| `paper` | `#EDF7F5` mint frost | The canvas |
+| `surface` | `#FFFFFF` | Cards (20px, 1px hairline, **no shadow**), panels, fields |
+| `paper-sunk` / `paper-deep` | `#F2F8F6` / `#D0D3D3` fog | Quiet fills, hover, footers of cards / empty cells |
+| `ink` / `ink-soft` / `ink-mute` | `#132322` obsidian / `#424F4F` graphite fill / `#56615F` | Text (16.2 / 8.9 / 6.4:1); slate `#828786` decorates only (it fails AA for small text) |
+| `hairline` | `#D0D3D3` fog border | The structural rule |
+| `accent` + `on-accent` | `#3DDC91` neon pulse + obsidian (8.6:1) | The one filled action, the selected navigation item, the chat's own messages |
+| `accent-ink` / `accent-soft` / `accent-line` | `#146C47` / `#DFF5EA` / `#97DDBC` mint whisper | Green text / selection and highlight washes / highlight rules and chips |
+| `sage-ink` | `#1B8A57` | Meters, focus rings, the wordmark's IQ (graphic marks) |
+| `signal` + `-soft` / `-ink` | `#FFCD48` signal yellow | Lamps and marks in diagrams; the simulated tag; the People filing colour |
+| `night` / `night-raised` | `#132322` obsidian / `#0E1A19` deep abyss | The app rail (tokens re-scoped by `.rail`) and the announcement strip |
+| `hazard` / `orange` / `amber` | brick `#B42318` / saffron `#8A5A10` / olive `#515C0B` | **Severity only**, always with a word and a shape |
+| `teal`/`indigo`/`mint`/`purple` + `-soft` | deep mint `#0A6D78`, sky `#00679E`, moss `#456D18`, forest — on pale tints | Product content and filing: zones (A moss, B mint, C sky), report groups (Product mint, People yellow, Systems sky), inspection sections |
 | `chart-1…4` | `#007096` `#679725` `#6A78CD` `#007D65` | Categorical data, fixed order; dataviz checks pass |
 
 - **Type (owner's spec):** Playfair Display 400 for display and section headings, tight

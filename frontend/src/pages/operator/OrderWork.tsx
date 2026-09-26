@@ -764,22 +764,45 @@ function Work({
       {(detail) => (
         <div className="flex flex-col gap-6">
           <PageHeader
-            kicker={`${outbound ? 'Loading' : 'Receiving'} · ${detail.company_name} · Tier ${detail.company_tier}`}
             title={`Dock ${detail.door_number ?? '—'}`}
-            meta={
-              <>
-                <span className="telemetry">{detail.order_number}</span>
-                <span className="telemetry">Trailer {detail.trailer_number}</span>
-                <span className="telemetry">BOL {detail.bol_number}</span>
-                <span>{detail.carrier_name}</span>
-              </>
-            }
             actions={
               <Link to={reportLink({})} className="btn btn-hazard">
                 <TriangleAlert size={18} aria-hidden="true" /> Report issue
               </Link>
             }
           />
+          <dl className="fact-strip">
+            <div>
+              <dt className="label">Job</dt>
+              <dd className="mt-1 flex items-center gap-2 font-semibold">
+                <span className="file-dot file-green" aria-hidden="true" />
+                {outbound ? 'Loading' : 'Receiving'}
+              </dd>
+            </div>
+            <div>
+              <dt className="label">Customer</dt>
+              <dd className="mt-1 font-semibold">
+                {detail.company_name}{' '}
+                <span className="font-normal text-ink-mute">· Tier {detail.company_tier}</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="label">Order</dt>
+              <dd className="telemetry mt-1">{detail.order_number}</dd>
+            </div>
+            <div>
+              <dt className="label">Trailer</dt>
+              <dd className="telemetry mt-1">{detail.trailer_number}</dd>
+            </div>
+            <div>
+              <dt className="label">BOL</dt>
+              <dd className="telemetry mt-1">{detail.bol_number}</dd>
+            </div>
+            <div>
+              <dt className="label">Carrier</dt>
+              <dd className="mt-1 font-semibold">{detail.carrier_name}</dd>
+            </div>
+          </dl>
           <CountSync orderId={orderId} />
           <Tabs
             tabs={tabs}
