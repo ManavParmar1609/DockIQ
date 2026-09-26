@@ -1,35 +1,34 @@
 ---
 name: dockiq-frontend
-description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (Grafbase structure in the owner's palette, light only: mint-frost canvas, white hairline cards without shadows, obsidian rail, neon pulse action, 6px buttons, 20px cards, 40px pills; Geist + Inter + Hanken Grotesk + Geist Mono), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
+description: Use for ANY change to frontend/src — components, pages, styles, layout, the landing page. Loads DockIQ's committed aesthetic direction (the owner's GSAP reference, dark only: near-black stage, cream type, hairline rules, 100px pills with one green-gradient-stroked primary, { bracket } notes, highlighter blocks, pink/blue/lilac filing; Host Grotesk + Source Serif 4 display + Geist Mono), the anti-AI-slop directive, and the dock-floor legibility non-negotiables that outrank it. Also load before proposing typefaces, palettes, or motion.
 ---
 
 # DockIQ Frontend
 
 You are working on a tablet interface for a **cold-storage warehouse dock floor**. Gloved hands,
-dim light, glare, food-safety decisions. The product owner chose **Grafbase, exactly** for it
-(2026-09-25, light only): refine within it — and never let the style weaken the safety rules. The
-interface is near-monochrome; colour appears only in the announcement strip, in product content and
-in severity.
+dim light, glare, food-safety decisions. The product owner chose **the GSAP reference, dark**
+(2026-09-26): refine within it — and never let the style weaken the safety rules. Colour files
+things or raises alarms; it never decorates.
 
 ## Read first
 
 `.claude/rules/frontend-aesthetics.md` — the directive and DockIQ's resolution of it — and
-`docs/specs/ui-ux-spec.md` §2 for every token. Load the `apple-design` skill
-(`.agents/skills/apple-design/`) for motion, materials and typography.
+`docs/specs/ui-ux-spec.md` §2 for every token.
 
 ## The direction
 
-- **Grafbase, exactly** (owner-pinned, 2026-09-25), light only. Values: `docs/specs/ui-ux-spec.md` §2,
+- **The GSAP reference** (owner-pinned, 2026-09-26), dark only. Values: `docs/specs/ui-ux-spec.md` §2,
   `DESIGN.md`; departures: `.claude/rules/frontend-aesthetics.md` §2.3; product truth: `PRODUCT.md`.
-- **Type:** Geist 600 for display and section headings (`.display`, `.section-heading`);
-  Inter, tightened, for everything read at work (`.heading` 600 for card titles); Hanken Grotesk for
-  captions (`.label`); Geist Mono for telemetry (`.telemetry`). No kickers above headings.
-- **Surfaces:** drafting-gray canvas, white 20px cards with a 1px hairline and **no shadow**.
-- **Colour:** graphite text and the one primary action (6px, the only drop shadow); the cool triad
-  only inside product content; brick red only for critical severity and destructive actions; the
-  announcement strip is the only colour in the chrome.
-- **Motion:** a short staggered rise, hover by rule, instant press, purposeful micro-interactions;
-  never on an alert.
+- **Type:** Host Grotesk for everything (`.display` page titles, `.heading` card titles, `.label`);
+  Source Serif 4 display for panel and section titles ≥20px (`.serif-title`, `.section-heading`);
+  Geist Mono for telemetry (`.telemetry`). No eyebrows above headings: context goes in a `.bracket`
+  note beside or under the title.
+- **Surfaces:** the `#0E100F` stage, `#171917` cards with a hairline and **no shadow**.
+- **Colour:** green is DockIQ and the thing to do (the primary pill's gradient stroke, your place as
+  a highlighter block); pink, blue and lilac file zones, groups and sections; orange marks simulated
+  data; red only for critical severity and destructive actions.
+- **Motion:** titles wipe up, screens rise out of a blur, the green rises through the primary pill,
+  nav bars slide in, cards light their rule; never on an alert; reduced motion honoured.
 
 ## Non-negotiables — these outrank the aesthetic
 

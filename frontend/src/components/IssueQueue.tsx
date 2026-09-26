@@ -7,6 +7,7 @@ import { elapsed, formatMoney, formatTemp } from '../lib/format';
 import { isOverdue, waitingSince } from '../lib/triage';
 import { useNow } from '../lib/useNow';
 import { bySeverityThenAge, DISPOSITION } from '../lib/vocab';
+import { IssueGroupDot } from './IssueGroup';
 import { SeverityBadge } from './Severity';
 import { EmptyState, SimulatedTag, Tag } from './ui';
 
@@ -62,6 +63,7 @@ export function IssueQueue({ issues, empty }: { issues: Issue[]; empty: string }
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">
                   <SeverityBadge severity={issue.severity} size="sm" />
+                  <IssueGroupDot issueType={issue.issue_type} />
                   <span className="heading text-base sm:text-lg">
                     {issue.issue_subtype ?? issue.issue_type}
                   </span>

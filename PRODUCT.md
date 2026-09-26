@@ -47,9 +47,9 @@ runs in the browser on free hosting (Render, Neon, Vercel).
 ## Brand Commitments
 
 - Name: **DockIQ** — "IQ" must never read as "12".
-- Visual direction chosen by the owner (2026-09-25): the Grafbase style reference, exactly, light only,
-  with the owner's type spec (an editorial display serif over tightened Inter, a grotesk for captions,
-  a mono for telemetry). Paid faces are replaced by free stand-ins.
+- Visual direction chosen by the owner (2026-09-26): the GSAP style reference, dark only — a near-black
+  stage, cream type, outlined pills, bracket notes and colour-coded highlighters — with a display serif
+  for editorial titles. Paid faces (Mori, Messina Sans, Untitled Serif) are replaced by free stand-ins.
 
 ## Evidence on Hand
 

@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 
 import { useIssues } from '../../api/hooks';
 import type { Issue } from '../../api/types';
+import { IssueGroupDot, IssueTypeLabel } from '../../components/IssueGroup';
 import { SelfResolveForm } from '../../components/SelfResolve';
 import { SeverityBadge } from '../../components/Severity';
 import { EmptyState, IssueStatusTag, PageHeader, QueryBoundary } from '../../components/ui';
@@ -74,9 +75,18 @@ function IssueCard({ issue }: { issue: Issue }) {
           <IssueStatusTag status={issue.status} />
         </div>
         <div>
-          <p className="heading text-lg">{issue.issue_subtype ?? issue.issue_type}</p>
-          {issue.issue_subtype && issue.issue_subtype !== issue.issue_type && (
-            <p className="text-sm text-ink-mute">{issue.issue_type}</p>
+          {issue.issue_subtype && issue.issue_subtype !== issue.issue_type ? (
+            <>
+              <p className="heading text-lg">{issue.issue_subtype}</p>
+              <p className="text-sm">
+                <IssueTypeLabel issueType={issue.issue_type} />
+              </p>
+            </>
+          ) : (
+            <p className="heading flex items-center gap-2 text-lg">
+              <IssueGroupDot issueType={issue.issue_type} />
+              {issue.issue_type}
+            </p>
           )}
         </div>
         {issue.description && <p className="line-clamp-2 text-base text-ink-soft">{issue.description}</p>}

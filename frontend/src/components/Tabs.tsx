@@ -37,7 +37,7 @@ export function Tabs<T extends string>({
           aria-controls={active === tab.id ? panelId : undefined}
           tabIndex={rovingTabIndex(index, current)}
           onClick={() => onChange(tab.id)}
-          className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 whitespace-nowrap transition-colors ${active === tab.id ? 'bg-surface text-ink shadow-card' : 'text-ink-mute hover:text-ink'}`}
+          className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 whitespace-nowrap transition-colors ${active === tab.id ? 'bg-accent text-on-accent' : 'text-ink-mute hover:bg-paper-deep hover:text-ink'}`}
         >
           {numbered && <span className="telemetry text-sm">{index + 1}</span>}
           <span className="text-base font-semibold">{tab.label}</span>

@@ -25,12 +25,12 @@ type Fill = (typeof FILLS)[number];
 
 /** Each product's hue, in fill order. The pattern is the non-colour channel. */
 const HUE: Record<Fill, { ink: string; tint: string }> = {
-  solid: { ink: 'var(--color-sage-ink)', tint: 'var(--color-accent-soft)' },
-  hatch: { ink: 'var(--color-teal)', tint: 'var(--color-teal-soft)' },
-  cross: { ink: 'var(--color-indigo)', tint: 'var(--color-indigo-soft)' },
-  dots: { ink: 'var(--color-mint)', tint: 'var(--color-mint-soft)' },
-  rows: { ink: 'var(--color-purple)', tint: 'var(--color-purple-soft)' },
-  cols: { ink: 'var(--color-brown)', tint: 'var(--color-brown-soft)' },
+  solid: { ink: 'var(--color-accent)', tint: 'var(--lp-tint-green)' },
+  hatch: { ink: 'var(--color-teal)', tint: 'var(--lp-tint-blue)' },
+  cross: { ink: 'var(--color-indigo)', tint: 'var(--lp-tint-lilac)' },
+  dots: { ink: 'var(--color-mint)', tint: 'var(--lp-tint-pink)' },
+  rows: { ink: 'var(--color-purple)', tint: 'var(--lp-tint-lime)' },
+  cols: { ink: 'var(--color-brown)', tint: 'var(--lp-tint-cream)' },
 };
 
 interface Stack {

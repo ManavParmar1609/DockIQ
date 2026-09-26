@@ -1,939 +1,938 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-25T18:00:00+00:00",
+  "generatedAt": "2026-09-26T12:00:00+00:00",
   "title": "Design System: DockIQ",
   "extensions": {
     "colorMeta": {
       "paper": {
         "role": "neutral",
-        "displayName": "Mint Frost",
-        "canonical": "#edf7f5",
+        "displayName": "Just Black",
+        "canonical": "#0e100f",
         "cssVar": "--color-paper",
         "tonalRamp": [
-          "#0f1212",
-          "#262a29",
-          "#3e4443",
-          "#585f5e",
-          "#747c7b",
-          "#98a09f",
-          "#bfc6c4",
-          "#eaf0ef"
+          "#0a0c0b",
+          "#232624",
+          "#404341",
+          "#5f6261",
+          "#808382",
+          "#a3a6a4",
+          "#c7cac8",
+          "#ecefee"
         ]
       },
       "surface": {
         "role": "neutral",
-        "displayName": "White",
-        "canonical": "#ffffff",
+        "displayName": "Lifted Black",
+        "canonical": "#171917",
         "cssVar": "--color-surface",
         "tonalRamp": [
-          "#121212",
-          "#292929",
-          "#424242",
-          "#5d5d5d",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#c4c4c4",
-          "#eeeeee"
+          "#0a0c0a",
+          "#242624",
+          "#404340",
+          "#5f625f",
+          "#808380",
+          "#a3a6a3",
+          "#c7cac7",
+          "#ecefec"
         ]
       },
       "paper-sunk": {
         "role": "neutral",
-        "displayName": "Frost Hover",
-        "canonical": "#f2f8f6",
+        "displayName": "Quiet Step",
+        "canonical": "#1f211e",
         "cssVar": "--color-paper-sunk",
         "tonalRamp": [
-          "#101211",
-          "#272929",
-          "#404342",
-          "#5a5f5d",
-          "#767c7a",
-          "#9ba09e",
-          "#c1c5c4",
-          "#ecefee"
+          "#0a0c09",
+          "#242623",
+          "#40433f",
+          "#60625e",
+          "#81837f",
+          "#a3a6a2",
+          "#c7cac6",
+          "#edefeb"
         ]
       },
       "paper-deep": {
         "role": "neutral",
-        "displayName": "Fog (fills)",
-        "canonical": "#d0d3d3",
+        "displayName": "Deep Step",
+        "canonical": "#2c2e2a",
         "cssVar": "--color-paper-deep",
         "tonalRamp": [
-          "#111212",
-          "#282929",
-          "#414343",
-          "#5c5e5e",
-          "#787b7b",
-          "#9c9f9f",
-          "#c2c4c4",
-          "#edefef"
+          "#0a0c08",
+          "#242622",
+          "#41433f",
+          "#60625e",
+          "#81837e",
+          "#a3a6a1",
+          "#c7cac5",
+          "#edefea"
         ]
       },
-      "hairline": {
+      "night": {
         "role": "neutral",
-        "displayName": "Fog Border",
-        "canonical": "#d0d3d3",
-        "cssVar": "--color-hairline",
+        "displayName": "Night",
+        "canonical": "#0b0c0b",
+        "cssVar": "--color-night",
         "tonalRamp": [
-          "#111212",
-          "#282929",
-          "#414343",
-          "#5c5e5e",
-          "#787b7b",
-          "#9c9f9f",
-          "#c2c4c4",
-          "#edefef"
+          "#0a0b0a",
+          "#242524",
+          "#414241",
+          "#606260",
+          "#818381",
+          "#a4a5a4",
+          "#c8c9c8",
+          "#edefed"
+        ]
+      },
+      "night-raised": {
+        "role": "neutral",
+        "displayName": "Off Black",
+        "canonical": "#191919",
+        "cssVar": "--color-night-raised",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
         ]
       },
       "ink": {
-        "role": "primary",
-        "displayName": "Obsidian Shell",
-        "canonical": "#132322",
+        "role": "neutral",
+        "displayName": "Surface Cream",
+        "canonical": "#fffce1",
         "cssVar": "--color-ink",
         "tonalRamp": [
-          "#0d1313",
-          "#222b2a",
-          "#394544",
-          "#526160",
-          "#6d7f7d",
-          "#92a2a1",
-          "#b9c7c6",
-          "#e6f1f0"
+          "#0e0b00",
+          "#282611",
+          "#46432d",
+          "#65624b",
+          "#86836b",
+          "#a9a68d",
+          "#cdcab0",
+          "#f3f0d5"
         ]
       },
       "ink-soft": {
         "role": "neutral",
-        "displayName": "Graphite Fill",
-        "canonical": "#424f4f",
+        "displayName": "Soft Cream",
+        "canonical": "#d3d0b9",
         "cssVar": "--color-ink-soft",
         "tonalRamp": [
-          "#0e1313",
-          "#242a2a",
-          "#3b4444",
-          "#556060",
-          "#707d7d",
-          "#95a1a1",
-          "#bcc7c6",
-          "#e8f0f0"
+          "#0e0b00",
+          "#282613",
+          "#45432f",
+          "#65624e",
+          "#86836e",
+          "#a9a690",
+          "#cdcab3",
+          "#f3f0d8"
         ]
       },
       "ink-mute": {
         "role": "neutral",
-        "displayName": "Caption Grey",
-        "canonical": "#56615f",
+        "displayName": "Mute Cream",
+        "canonical": "#a3a292",
         "cssVar": "--color-ink-mute",
         "tonalRamp": [
-          "#0f1212",
-          "#252a29",
-          "#3d4443",
-          "#57605e",
-          "#727d7b",
-          "#97a19f",
-          "#bdc6c5",
-          "#e9f0ef"
+          "#0d0c02",
+          "#272619",
+          "#444335",
+          "#636253",
+          "#848374",
+          "#a7a696",
+          "#cbcaba",
+          "#f1f0de"
         ]
       },
-      "accent": {
-        "role": "primary",
-        "displayName": "Neon Pulse",
-        "canonical": "#3ddc91",
-        "cssVar": "--color-accent",
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#34352f",
+        "cssVar": "--color-hairline",
         "tonalRamp": [
-          "#001a04",
-          "#003614",
-          "#005427",
-          "#00743c",
-          "#009652",
-          "#35b97a",
-          "#7cdca6",
-          "#bcffd7"
+          "#0b0c07",
+          "#252620",
+          "#42433c",
+          "#61625b",
+          "#82837c",
+          "#a5a69f",
+          "#c9cac2",
+          "#eeefe8"
         ]
       },
-      "on-accent": {
-        "role": "primary",
-        "displayName": "Obsidian on Neon",
-        "canonical": "#132322",
-        "cssVar": "--color-on-accent",
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "#42433d",
+        "cssVar": "--color-rule",
         "tonalRamp": [
-          "#0d1313",
-          "#222b2a",
-          "#394544",
-          "#526160",
-          "#6d7f7d",
-          "#92a2a1",
-          "#b9c7c6",
-          "#e6f1f0"
+          "#0b0c07",
+          "#252620",
+          "#42433d",
+          "#61625c",
+          "#82837c",
+          "#a5a69f",
+          "#c9cac3",
+          "#eeefe8"
         ]
       },
-      "accent-ink": {
-        "role": "primary",
-        "displayName": "Deep Green",
-        "canonical": "#146c47",
-        "cssVar": "--color-accent-ink",
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Rule Strong",
+        "canonical": "#6d6e63",
+        "cssVar": "--color-rule-strong",
         "tonalRamp": [
-          "#00170a",
-          "#07311f",
-          "#194e35",
-          "#2b6c4d",
-          "#3f8c66",
-          "#6daf8c",
-          "#9dd3b4",
-          "#d1fae2"
-        ]
-      },
-      "accent-soft": {
-        "role": "secondary",
-        "displayName": "Mint Whisper Wash",
-        "canonical": "#dff5ea",
-        "cssVar": "--color-accent-soft",
-        "tonalRamp": [
-          "#0d1310",
-          "#222b27",
-          "#394640",
-          "#52625a",
-          "#6c8076",
-          "#92a39b",
-          "#b9c8c1",
-          "#e6f2ec"
-        ]
-      },
-      "accent-line": {
-        "role": "secondary",
-        "displayName": "Mint Whisper",
-        "canonical": "#97ddbc",
-        "cssVar": "--color-accent-line",
-        "tonalRamp": [
-          "#01170d",
-          "#0d3022",
-          "#204c39",
-          "#336a52",
-          "#478a6d",
-          "#73ad92",
-          "#a1d1b9",
-          "#d4f9e6"
+          "#0b0c05",
+          "#25261d",
+          "#424339",
+          "#616257",
+          "#828378",
+          "#a5a69a",
+          "#c9cabe",
+          "#eff0e3"
         ]
       },
       "sage": {
         "role": "neutral",
-        "displayName": "Slate",
-        "canonical": "#828786",
+        "displayName": "Sage (decorative only)",
+        "canonical": "#7c7c6f",
         "cssVar": "--color-sage",
         "tonalRamp": [
-          "#101212",
-          "#272929",
-          "#404342",
-          "#5b5f5e",
-          "#777b7a",
-          "#9b9f9f",
-          "#c1c5c4",
-          "#ecefee"
+          "#0c0c04",
+          "#26261b",
+          "#434337",
+          "#626256",
+          "#838376",
+          "#a6a698",
+          "#cacabc",
+          "#f0f0e1"
         ]
       },
-      "sage-ink": {
-        "role": "primary",
-        "displayName": "Signal Green",
-        "canonical": "#1b8a57",
-        "cssVar": "--color-sage-ink",
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#ffffff",
+        "cssVar": "--color-white",
         "tonalRamp": [
-          "#001807",
-          "#00331a",
-          "#04502f",
-          "#176f46",
-          "#298f5d",
-          "#60b384",
-          "#94d6ae",
-          "#cbfddd"
-        ]
-      },
-      "signal": {
-        "role": "secondary",
-        "displayName": "Signal Yellow",
-        "canonical": "#ffcd48",
-        "cssVar": "--color-signal",
-        "tonalRamp": [
-          "#1e0e00",
-          "#3b2400",
-          "#5b3c00",
-          "#7c5600",
-          "#a07200",
-          "#c19823",
-          "#e2c06e",
-          "#ffecaf"
-        ]
-      },
-      "terracotta": {
-        "role": "secondary",
-        "displayName": "Signal Yellow (lamps)",
-        "canonical": "#ffcd48",
-        "cssVar": "--color-terracotta",
-        "tonalRamp": [
-          "#1e0e00",
-          "#3b2400",
-          "#5b3c00",
-          "#7c5600",
-          "#a07200",
-          "#c19823",
-          "#e2c06e",
-          "#ffecaf"
-        ]
-      },
-      "signal-soft": {
-        "role": "secondary",
-        "displayName": "Signal Wash",
-        "canonical": "#fff4d1",
-        "cssVar": "--color-signal-soft",
-        "tonalRamp": [
-          "#151107",
-          "#2d2919",
-          "#48422e",
-          "#655d44",
-          "#847a5b",
-          "#a79e82",
-          "#cbc4ac",
-          "#f4eedc"
-        ]
-      },
-      "signal-ink": {
-        "role": "secondary",
-        "displayName": "Signal Ink",
-        "canonical": "#6b5000",
-        "cssVar": "--color-signal-ink",
-        "tonalRamp": [
-          "#191000",
-          "#342704",
-          "#524014",
-          "#715a25",
-          "#927636",
-          "#b49b64",
-          "#d7c294",
-          "#fdedca"
-        ]
-      },
-      "night": {
-        "role": "secondary",
-        "displayName": "Obsidian (rail, strip)",
-        "canonical": "#132322",
-        "cssVar": "--color-night",
-        "tonalRamp": [
-          "#0d1313",
-          "#222b2a",
-          "#394544",
-          "#526160",
-          "#6d7f7d",
-          "#92a2a1",
-          "#b9c7c6",
-          "#e6f1f0"
-        ]
-      },
-      "night-raised": {
-        "role": "secondary",
-        "displayName": "Deep Abyss",
-        "canonical": "#0e1a19",
-        "cssVar": "--color-night-raised",
-        "tonalRamp": [
-          "#0e1312",
-          "#242a2a",
-          "#3b4544",
-          "#55605f",
-          "#707e7c",
-          "#95a2a0",
-          "#bcc7c6",
-          "#e8f1f0"
-        ]
-      },
-      "rail-sunk": {
-        "role": "secondary",
-        "displayName": "Rail Hover",
-        "canonical": "#1b3230",
-        "cssVar": ".rail --color-paper-sunk",
-        "tonalRamp": [
-          "#0b1313",
-          "#1f2c2a",
-          "#364644",
-          "#4e6260",
-          "#68807e",
-          "#8da4a1",
-          "#b6c9c7",
-          "#e3f2f0"
-        ]
-      },
-      "rail-rule": {
-        "role": "secondary",
-        "displayName": "Rail Rule",
-        "canonical": "#24403d",
-        "cssVar": ".rail --color-hairline / --color-paper-deep",
-        "tonalRamp": [
-          "#0a1413",
-          "#1e2c2a",
-          "#344744",
-          "#4b6360",
-          "#64817e",
-          "#8aa5a1",
-          "#b3cac7",
-          "#e2f3f0"
-        ]
-      },
-      "rail-ink-soft": {
-        "role": "secondary",
-        "displayName": "Rail Secondary Text",
-        "canonical": "#d0d3d3",
-        "cssVar": ".rail --color-ink-soft",
-        "tonalRamp": [
-          "#111212",
-          "#282929",
-          "#414343",
-          "#5c5e5e",
-          "#787b7b",
-          "#9c9f9f",
-          "#c2c4c4",
-          "#edefef"
-        ]
-      },
-      "rail-ink-mute": {
-        "role": "secondary",
-        "displayName": "Rail Captions (Stone)",
-        "canonical": "#b2b6b4",
-        "cssVar": ".rail --color-ink-mute",
-        "tonalRamp": [
-          "#111211",
-          "#282928",
-          "#414342",
-          "#5b5e5d",
-          "#787b79",
-          "#9c9f9e",
-          "#c2c5c3",
-          "#edefee"
-        ]
-      },
-      "hazard": {
-        "role": "secondary",
-        "displayName": "Brick",
-        "canonical": "#a4291f",
-        "cssVar": "--color-hazard",
-        "tonalRamp": [
-          "#2c0000",
-          "#510804",
-          "#781b13",
-          "#a22f24",
-          "#ce4435",
-          "#f07362",
-          "#ffa393",
-          "#ffd6c9"
-        ]
-      },
-      "hazard-bright": {
-        "role": "secondary",
-        "displayName": "Brick Mark",
-        "canonical": "#c23a2c",
-        "cssVar": "--color-hazard-bright",
-        "tonalRamp": [
-          "#2f0000",
-          "#550000",
-          "#7f0c06",
-          "#aa2016",
-          "#d83326",
-          "#fb6a58",
-          "#ff9d8b",
-          "#ffd2c3"
-        ]
-      },
-      "hazard-deep": {
-        "role": "secondary",
-        "displayName": "Deep Brick",
-        "canonical": "#912018",
-        "cssVar": "--color-hazard-deep",
-        "tonalRamp": [
-          "#280201",
-          "#4b130d",
-          "#70271f",
-          "#983c31",
-          "#c25245",
-          "#e47d6f",
-          "#ffaa9c",
-          "#ffdbd0"
-        ]
-      },
-      "hazard-soft": {
-        "role": "secondary",
-        "displayName": "Brick Tint",
-        "canonical": "#fbf1ef",
-        "cssVar": "--color-hazard-soft",
-        "tonalRamp": [
-          "#151010",
-          "#2e2726",
-          "#49403f",
-          "#665a59",
-          "#857675",
-          "#a89b99",
-          "#cdc1c0",
-          "#f5eceb"
-        ]
-      },
-      "orange": {
-        "role": "secondary",
-        "displayName": "Saffron (high)",
-        "canonical": "#8a5a10",
-        "cssVar": "--color-orange",
-        "tonalRamp": [
-          "#1e0d00",
-          "#3b2301",
-          "#5a3b0e",
-          "#7c541e",
-          "#9f6f2f",
-          "#c2955e",
-          "#e2bd90",
-          "#ffe9c7"
-        ]
-      },
-      "orange-soft": {
-        "role": "secondary",
-        "displayName": "Saffron Tint",
-        "canonical": "#fdf1dc",
-        "cssVar": "--color-orange-soft",
-        "tonalRamp": [
-          "#15110b",
-          "#2d281f",
-          "#484136",
-          "#655c4d",
-          "#837967",
-          "#a79d8c",
-          "#cbc3b5",
-          "#f4eee3"
-        ]
-      },
-      "orange-bright": {
-        "role": "secondary",
-        "displayName": "Saffron Mark",
-        "canonical": "#d4891f",
-        "cssVar": "--color-orange-bright",
-        "tonalRamp": [
-          "#220a00",
-          "#421f00",
-          "#643600",
-          "#884e00",
-          "#ae6800",
-          "#d08f3f",
-          "#efb87b",
-          "#ffe6b8"
-        ]
-      },
-      "amber": {
-        "role": "secondary",
-        "displayName": "Olive (medium)",
-        "canonical": "#515c0b",
-        "cssVar": "--color-amber",
-        "tonalRamp": [
-          "#101400",
-          "#272c07",
-          "#3f4717",
-          "#5a6429",
-          "#76823b",
-          "#9aa667",
-          "#c0cb97",
-          "#ebf4cc"
-        ]
-      },
-      "amber-soft": {
-        "role": "secondary",
-        "displayName": "Olive Tint",
-        "canonical": "#f3f5d8",
-        "cssVar": "--color-amber-soft",
-        "tonalRamp": [
-          "#12120a",
-          "#292a1d",
-          "#434433",
-          "#5e5f4b",
-          "#7b7d63",
-          "#9fa189",
-          "#c5c6b2",
-          "#eff0e1"
-        ]
-      },
-      "amber-bright": {
-        "role": "secondary",
-        "displayName": "Olive Mark",
-        "canonical": "#aebd2a",
-        "cssVar": "--color-amber-bright",
-        "tonalRamp": [
-          "#111400",
-          "#282d00",
-          "#414800",
-          "#5c6500",
-          "#788400",
-          "#9ba832",
-          "#c1cd75",
-          "#ebf6b4"
-        ]
-      },
-      "green": {
-        "role": "secondary",
-        "displayName": "Resolved Green",
-        "canonical": "#2f6b1c",
-        "cssVar": "--color-green",
-        "tonalRamp": [
-          "#031700",
-          "#13310a",
-          "#264d1b",
-          "#3b6c2d",
-          "#518b40",
-          "#7aaf6c",
-          "#a6d39b",
-          "#d8facf"
-        ]
-      },
-      "green-soft": {
-        "role": "secondary",
-        "displayName": "Resolved Tint",
-        "canonical": "#eaf6e2",
-        "cssVar": "--color-green-soft",
-        "tonalRamp": [
-          "#0f130d",
-          "#262b22",
-          "#3e453a",
-          "#586153",
-          "#747e6d",
-          "#98a292",
-          "#bfc7ba",
-          "#eaf1e6"
-        ]
-      },
-      "teal": {
-        "role": "tertiary",
-        "displayName": "Deep Mint (Product file, zone B)",
-        "canonical": "#0a6d78",
-        "cssVar": "--color-teal",
-        "tonalRamp": [
-          "#00161a",
-          "#022f35",
-          "#124b52",
-          "#246871",
-          "#368892",
-          "#67abb5",
-          "#98cfd7",
-          "#cef7fe"
-        ]
-      },
-      "teal-soft": {
-        "role": "tertiary",
-        "displayName": "Mint Tile",
-        "canonical": "#e6f8f5",
-        "cssVar": "--color-teal-soft",
-        "tonalRamp": [
-          "#0d1312",
-          "#232b29",
-          "#3b4543",
-          "#54615f",
-          "#6f7e7c",
-          "#94a2a0",
-          "#bbc7c5",
-          "#e7f1ef"
-        ]
-      },
-      "indigo": {
-        "role": "tertiary",
-        "displayName": "Sky (Systems file, zone C)",
-        "canonical": "#00679e",
-        "cssVar": "--color-indigo",
-        "tonalRamp": [
-          "#001326",
-          "#002c47",
-          "#0d466b",
-          "#1e6391",
-          "#3081b8",
-          "#62a6d9",
-          "#94cbf6",
-          "#cbf5ff"
-        ]
-      },
-      "indigo-soft": {
-        "role": "tertiary",
-        "displayName": "Sky Tile",
-        "canonical": "#e5f5fc",
-        "cssVar": "--color-indigo-soft",
-        "tonalRamp": [
-          "#0e1214",
-          "#232a2d",
-          "#3b4448",
-          "#546065",
-          "#6f7d83",
-          "#94a1a6",
-          "#bbc6cb",
-          "#e8f0f4"
-        ]
-      },
-      "mint": {
-        "role": "tertiary",
-        "displayName": "Moss (zone A)",
-        "canonical": "#456d18",
-        "cssVar": "--color-mint",
-        "tonalRamp": [
-          "#081600",
-          "#1c3006",
-          "#314b16",
-          "#486927",
-          "#60883a",
-          "#86ac66",
-          "#b0d097",
-          "#dff8cc"
-        ]
-      },
-      "mint-soft": {
-        "role": "tertiary",
-        "displayName": "Moss Tile",
-        "canonical": "#eef7e2",
-        "cssVar": "--color-mint-soft",
-        "tonalRamp": [
-          "#10130d",
-          "#272a22",
-          "#404439",
-          "#5a6051",
-          "#767e6c",
-          "#9aa291",
-          "#c1c7b8",
-          "#ecf1e5"
-        ]
-      },
-      "purple": {
-        "role": "tertiary",
-        "displayName": "Forest",
-        "canonical": "#1d6b52",
-        "cssVar": "--color-purple",
-        "tonalRamp": [
-          "#00170e",
-          "#0a3024",
-          "#1c4d3c",
-          "#2f6b55",
-          "#438a70",
-          "#70ad95",
-          "#9fd1bc",
-          "#d3f9e8"
-        ]
-      },
-      "purple-soft": {
-        "role": "tertiary",
-        "displayName": "Forest Tile",
-        "canonical": "#e3f4ea",
-        "cssVar": "--color-purple-soft",
-        "tonalRamp": [
-          "#0e1310",
-          "#242b27",
-          "#3b453f",
-          "#55615a",
-          "#707e76",
-          "#95a29a",
-          "#bcc7c1",
-          "#e8f1ec"
-        ]
-      },
-      "brown": {
-        "role": "tertiary",
-        "displayName": "Graphite (content)",
-        "canonical": "#1b1b1b",
-        "cssVar": "--color-brown",
-        "tonalRamp": [
-          "#121212",
-          "#292929",
+          "#0b0b0b",
+          "#252525",
           "#424242",
-          "#5d5d5d",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#c4c4c4",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
           "#eeeeee"
         ]
       },
-      "brown-soft": {
-        "role": "tertiary",
-        "displayName": "Graphite Tile",
-        "canonical": "#f0f0f1",
-        "cssVar": "--color-brown-soft",
+      "black": {
+        "role": "neutral",
+        "displayName": "Black",
+        "canonical": "#000000",
+        "cssVar": "--color-black",
         "tonalRamp": [
-          "#111112",
-          "#292929",
-          "#424243",
-          "#5d5d5e",
-          "#7a7a7b",
-          "#9e9e9f",
-          "#c4c4c5",
-          "#eeeeef"
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Shockingly Green",
+        "canonical": "#0ae448",
+        "cssVar": "--color-accent",
+        "tonalRamp": [
+          "#001001",
+          "#022e09",
+          "#055115",
+          "#0d7624",
+          "#169d33",
+          "#07c73e",
+          "#2ef055",
+          "#ccfecd"
+        ]
+      },
+      "accent-light": {
+        "role": "primary",
+        "displayName": "Lime Light",
+        "canonical": "#abff84",
+        "cssVar": "--color-accent-light",
+        "tonalRamp": [
+          "#030f00",
+          "#102d01",
+          "#224e03",
+          "#357208",
+          "#499910",
+          "#6cbd42",
+          "#90e368",
+          "#d0ffbc"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "On-Green",
+        "canonical": "#0e100f",
+        "cssVar": "--color-on-accent",
+        "tonalRamp": [
+          "#0a0c0b",
+          "#232624",
+          "#404341",
+          "#5f6261",
+          "#808382",
+          "#a3a6a4",
+          "#c7cac8",
+          "#ecefee"
+        ]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Green Ink",
+        "canonical": "#3df06f",
+        "cssVar": "--color-accent-ink",
+        "tonalRamp": [
+          "#001002",
+          "#002e0d",
+          "#01511c",
+          "#06762d",
+          "#0d9d3f",
+          "#1ec554",
+          "#3bee6d",
+          "#c9ffcf"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Green Wash",
+        "canonical": "#12281a",
+        "cssVar": "--color-accent-soft",
+        "tonalRamp": [
+          "#000f05",
+          "#152b1c",
+          "#314839",
+          "#506857",
+          "#718a78",
+          "#93ad9a",
+          "#b6d1be",
+          "#dbf7e3"
+        ]
+      },
+      "accent-line": {
+        "role": "primary",
+        "displayName": "Green Rule",
+        "canonical": "#1f5a32",
+        "cssVar": "--color-accent-line",
+        "tonalRamp": [
+          "#001004",
+          "#012e12",
+          "#124f28",
+          "#367046",
+          "#589266",
+          "#7ab588",
+          "#9edaab",
+          "#c7ffd3"
+        ]
+      },
+      "pink": {
+        "role": "secondary",
+        "displayName": "Highlighter Pink",
+        "canonical": "#fec5fb",
+        "cssVar": "--color-pink",
+        "tonalRamp": [
+          "#190019",
+          "#3c0e3c",
+          "#5c2d5b",
+          "#7e4d7c",
+          "#a16d9f",
+          "#c690c3",
+          "#ecb3e9",
+          "#ffe5fd"
+        ]
+      },
+      "pink-soft": {
+        "role": "secondary",
+        "displayName": "Pink Wash",
+        "canonical": "#2c1b2b",
+        "cssVar": "--color-pink-soft",
+        "tonalRamp": [
+          "#140513",
+          "#2f1e2e",
+          "#4e3b4c",
+          "#6e5a6c",
+          "#907a8e",
+          "#b39db1",
+          "#d8c1d6",
+          "#fee6fc"
+        ]
+      },
+      "blue": {
+        "role": "secondary",
+        "displayName": "Highlighter Blue",
+        "canonical": "#00bae2",
+        "cssVar": "--color-blue",
+        "tonalRamp": [
+          "#000e13",
+          "#012a35",
+          "#024a5b",
+          "#066c84",
+          "#0d91b0",
+          "#1eb6dc",
+          "#67dafd",
+          "#d7f4fe"
+        ]
+      },
+      "blue-ink": {
+        "role": "secondary",
+        "displayName": "Blue Ink",
+        "canonical": "#4fd3ef",
+        "cssVar": "--color-blue-ink",
+        "tonalRamp": [
+          "#000e12",
+          "#022a32",
+          "#064a57",
+          "#0e6d7e",
+          "#1891a8",
+          "#28b8d3",
+          "#5bddf9",
+          "#d2f6ff"
+        ]
+      },
+      "blue-soft": {
+        "role": "secondary",
+        "displayName": "Blue Wash",
+        "canonical": "#0b2329",
+        "cssVar": "--color-blue-soft",
+        "tonalRamp": [
+          "#000e13",
+          "#11292f",
+          "#2e464d",
+          "#4d666d",
+          "#6d878f",
+          "#8faab2",
+          "#b3cfd7",
+          "#d8f4fc"
+        ]
+      },
+      "lilac": {
+        "role": "secondary",
+        "displayName": "Highlighter Lilac",
+        "canonical": "#9d95ff",
+        "cssVar": "--color-lilac",
+        "tonalRamp": [
+          "#0b002d",
+          "#260269",
+          "#3f2c8d",
+          "#5c4fb2",
+          "#7b72d8",
+          "#9d95ff",
+          "#c3c2fd",
+          "#ecedfe"
+        ]
+      },
+      "lilac-ink": {
+        "role": "secondary",
+        "displayName": "Lilac Ink",
+        "canonical": "#b4aeff",
+        "cssVar": "--color-lilac-ink",
+        "tonalRamp": [
+          "#0c012c",
+          "#251458",
+          "#40357a",
+          "#5e559e",
+          "#7e77c3",
+          "#a09ae9",
+          "#c5c1fe",
+          "#edecff"
+        ]
+      },
+      "lilac-soft": {
+        "role": "secondary",
+        "displayName": "Lilac Wash",
+        "canonical": "#1c1a33",
+        "cssVar": "--color-lilac-soft",
+        "tonalRamp": [
+          "#0a071e",
+          "#23213b",
+          "#403e5a",
+          "#5e5e7b",
+          "#7f7f9e",
+          "#a2a1c2",
+          "#c6c5e7",
+          "#ecedff"
+        ]
+      },
+      "orangey": {
+        "role": "tertiary",
+        "displayName": "Orangey (simulated mark)",
+        "canonical": "#ff8709",
+        "cssVar": "--color-orangey",
+        "tonalRamp": [
+          "#160700",
+          "#3c1b00",
+          "#663200",
+          "#934b03",
+          "#c36607",
+          "#f48316",
+          "#fdb887",
+          "#feeadd"
+        ]
+      },
+      "signal-ink": {
+        "role": "tertiary",
+        "displayName": "Orange Ink",
+        "canonical": "#ffa24a",
+        "cssVar": "--color-signal-ink",
+        "tonalRamp": [
+          "#160700",
+          "#391d01",
+          "#623504",
+          "#8d500b",
+          "#bb6c14",
+          "#e78c30",
+          "#feb87d",
+          "#feeada"
+        ]
+      },
+      "signal-soft": {
+        "role": "tertiary",
+        "displayName": "Orange Wash",
+        "canonical": "#2d1a07",
+        "cssVar": "--color-signal-soft",
+        "tonalRamp": [
+          "#150700",
+          "#34200d",
+          "#523d2a",
+          "#735c48",
+          "#957d68",
+          "#b9a08a",
+          "#dec4ad",
+          "#feebd9"
+        ]
+      },
+      "hazard": {
+        "role": "severity",
+        "displayName": "Critical Red",
+        "canonical": "#c9372c",
+        "cssVar": "--color-hazard",
+        "tonalRamp": [
+          "#1f0000",
+          "#4c0202",
+          "#7f0605",
+          "#b21d16",
+          "#db493c",
+          "#fc7666",
+          "#ffb3a8",
+          "#ffe9e5"
+        ]
+      },
+      "hazard-bright": {
+        "role": "severity",
+        "displayName": "Hazard Bright",
+        "canonical": "#ff5a4f",
+        "cssVar": "--color-hazard-bright",
+        "tonalRamp": [
+          "#1f0000",
+          "#4c0304",
+          "#7f080b",
+          "#b51216",
+          "#e23d36",
+          "#fb766a",
+          "#feb3a9",
+          "#ffe9e5"
+        ]
+      },
+      "hazard-deep": {
+        "role": "severity",
+        "displayName": "Hazard Deep",
+        "canonical": "#ff9b90",
+        "cssVar": "--color-hazard-deep",
+        "tonalRamp": [
+          "#1f0000",
+          "#4c0205",
+          "#751e1b",
+          "#9a413a",
+          "#c0635a",
+          "#e7867b",
+          "#feb3aa",
+          "#ffe9e6"
+        ]
+      },
+      "hazard-soft": {
+        "role": "severity",
+        "displayName": "Hazard Wash",
+        "canonical": "#2b1311",
+        "cssVar": "--color-hazard-soft",
+        "tonalRamp": [
+          "#190404",
+          "#361d1b",
+          "#553a37",
+          "#775955",
+          "#997a76",
+          "#bd9c98",
+          "#e2c0bc",
+          "#fee9e6"
+        ]
+      },
+      "hazard-line": {
+        "role": "severity",
+        "displayName": "Hazard Line",
+        "canonical": "#6e2a23",
+        "cssVar": "--color-hazard-line",
+        "tonalRamp": [
+          "#1f0000",
+          "#4a0605",
+          "#6d2922",
+          "#914940",
+          "#b66a60",
+          "#dc8d82",
+          "#feb4a9",
+          "#ffe9e5"
+        ]
+      },
+      "orange": {
+        "role": "severity",
+        "displayName": "High Amber",
+        "canonical": "#ffc062",
+        "cssVar": "--color-orange",
+        "tonalRamp": [
+          "#130900",
+          "#342000",
+          "#5a3b01",
+          "#825704",
+          "#ad760a",
+          "#d59835",
+          "#fbbc5e",
+          "#ffebd1"
+        ]
+      },
+      "orange-bright": {
+        "role": "severity",
+        "displayName": "Amber Bright",
+        "canonical": "#ffab2e",
+        "cssVar": "--color-orange-bright",
+        "tonalRamp": [
+          "#140800",
+          "#352002",
+          "#5c3a05",
+          "#85560d",
+          "#b27200",
+          "#e0920f",
+          "#ffba62",
+          "#ffebd5"
+        ]
+      },
+      "orange-soft": {
+        "role": "severity",
+        "displayName": "Amber Wash",
+        "canonical": "#2c1f0b",
+        "cssVar": "--color-orange-soft",
+        "tonalRamp": [
+          "#130900",
+          "#30220e",
+          "#4e3f2b",
+          "#6e5f49",
+          "#908069",
+          "#b3a28b",
+          "#d8c6ae",
+          "#feecd3"
+        ]
+      },
+      "amber": {
+        "role": "severity",
+        "displayName": "Medium Citron",
+        "canonical": "#e3e37d",
+        "cssVar": "--color-amber",
+        "tonalRamp": [
+          "#0c0c00",
+          "#272702",
+          "#464505",
+          "#66650d",
+          "#898716",
+          "#acab44",
+          "#d0d06a",
+          "#f5f68f"
+        ]
+      },
+      "amber-bright": {
+        "role": "severity",
+        "displayName": "Citron Bright",
+        "canonical": "#d4d64a",
+        "cssVar": "--color-amber-bright",
+        "tonalRamp": [
+          "#0c0c00",
+          "#272701",
+          "#454502",
+          "#656607",
+          "#87880f",
+          "#abac1e",
+          "#d0d245",
+          "#f5f86f"
+        ]
+      },
+      "amber-soft": {
+        "role": "severity",
+        "displayName": "Citron Wash",
+        "canonical": "#23240f",
+        "cssVar": "--color-amber-soft",
+        "tonalRamp": [
+          "#0c0c00",
+          "#262712",
+          "#43442e",
+          "#62634c",
+          "#83856c",
+          "#a5a88e",
+          "#caccb2",
+          "#eff1d6"
+        ]
+      },
+      "green": {
+        "role": "status",
+        "displayName": "Resolved Green",
+        "canonical": "#6ff09a",
+        "cssVar": "--color-green",
+        "tonalRamp": [
+          "#001004",
+          "#032e14",
+          "#075027",
+          "#00753a",
+          "#039c50",
+          "#3ac26f",
+          "#66e892",
+          "#c6ffd4"
+        ]
+      },
+      "green-soft": {
+        "role": "status",
+        "displayName": "Resolved Wash",
+        "canonical": "#10261a",
+        "cssVar": "--color-green-soft",
+        "tonalRamp": [
+          "#000f06",
+          "#142a1e",
+          "#31483b",
+          "#506859",
+          "#70897a",
+          "#93ac9c",
+          "#b6d1c0",
+          "#dbf6e5"
         ]
       },
       "chart-1": {
-        "role": "tertiary",
-        "displayName": "Chart Sky",
-        "canonical": "#007096",
+        "role": "chart",
+        "displayName": "Chart Green",
+        "canonical": "#00b320",
         "cssVar": "--chart-1",
         "tonalRamp": [
-          "#001522",
-          "#002e40",
-          "#084962",
-          "#1a6685",
-          "#2c85aa",
-          "#60a9cc",
-          "#93cdeb",
-          "#caf6ff"
+          "#001001",
+          "#002f03",
+          "#005109",
+          "#037613",
+          "#089e1e",
+          "#2ec538",
+          "#5eec61",
+          "#ccfeca"
         ]
       },
       "chart-2": {
-        "role": "tertiary",
-        "displayName": "Chart Moss",
-        "canonical": "#679725",
+        "role": "chart",
+        "displayName": "Chart Lilac",
+        "canonical": "#7a71cf",
         "cssVar": "--chart-2",
         "tonalRamp": [
-          "#071600",
-          "#1a3000",
-          "#2f4d00",
-          "#456b07",
-          "#5c8a19",
-          "#83ae53",
-          "#add289",
-          "#ddfac2"
+          "#0c002d",
+          "#250964",
+          "#3f2f87",
+          "#5c51ac",
+          "#7c73d1",
+          "#9e97f8",
+          "#c4c2fe",
+          "#ecedff"
         ]
       },
       "chart-3": {
-        "role": "tertiary",
-        "displayName": "Chart Blue",
-        "canonical": "#6a78cd",
+        "role": "chart",
+        "displayName": "Chart Orange",
+        "canonical": "#dc7100",
         "cssVar": "--chart-3",
         "tonalRamp": [
-          "#0b0e2a",
-          "#1f244d",
-          "#353d73",
-          "#4c579a",
-          "#6572c4",
-          "#8a98e4",
-          "#b2c0ff",
-          "#e0ecff"
+          "#170600",
+          "#3c1b00",
+          "#673201",
+          "#944b04",
+          "#c4650a",
+          "#f18429",
+          "#feb788",
+          "#ffeadd"
         ]
       },
       "chart-4": {
-        "role": "tertiary",
-        "displayName": "Chart Mint",
-        "canonical": "#007d65",
+        "role": "chart",
+        "displayName": "Chart Blue",
+        "canonical": "#0096b9",
         "cssVar": "--chart-4",
         "tonalRamp": [
-          "#001810",
-          "#003226",
-          "#044e3f",
-          "#176d59",
-          "#298d75",
-          "#5fb099",
-          "#94d4c0",
-          "#cbfbeb"
+          "#000e13",
+          "#012a36",
+          "#024a5c",
+          "#076c85",
+          "#0f90b1",
+          "#3db5d9",
+          "#68daff",
+          "#d7f4ff"
         ]
       }
     },
     "typographyMeta": {
+      "hero": {
+        "displayName": "Hero",
+        "purpose": "Landing headline only: two carved lines, the second indented."
+      },
       "display": {
         "displayName": "Display",
-        "purpose": "Landing hero, Geist 600 at 64-90px, 0.95, -0.02em (free stand-in for Heldane Display)."
+        "purpose": "Page titles (44-66px), wiping up on load; landing section titles; the wordmark."
       },
-      "headline": {
-        "displayName": "Page Title",
-        "purpose": "Every app page title and landing section heading, Geist 600 at 40-48px (28-40px when the title is data)."
+      "statement": {
+        "displayName": "Statement",
+        "purpose": "The landing paragraph whose words light as they scroll."
       },
-      "title": {
-        "displayName": "Card Title",
-        "purpose": "Card, panel, notice, empty-state and filed group titles in Inter 600."
+      "serif-title": {
+        "displayName": "Serif Title",
+        "purpose": "Panel, empty-state and editorial titles; never below 20px."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Card, notice and queue-row titles."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Running text and values, Inter 16px tracked -0.018em with ss01 and cv11."
+        "purpose": "All working text."
+      },
+      "body-reading": {
+        "displayName": "Reading Body",
+        "purpose": "Assistant answers, 68ch measure."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Captions, metadata, table headers and fact-cell terms in caption grey, Hanken Grotesk 500 (free stand-in for Aktiv Grotesk); 14px is the floor."
-      },
-      "number": {
-        "displayName": "Headline Number",
-        "purpose": "Stat values, door plates and headline figures: Inter 600, tight and tabular."
+        "purpose": "Captions, metadata, definition terms, table headers; the 14px floor."
       },
       "telemetry": {
         "displayName": "Telemetry",
-        "purpose": "Every ID, code, time, count, temperature and money value: Geist Mono, tabular, slashed zero."
+        "purpose": "Every ID, count, time, money and temperature."
+      },
+      "num": {
+        "displayName": "Number",
+        "purpose": "Headline metrics and scores."
       }
     },
+    "gradients": [
+      {
+        "name": "gradient-green",
+        "value": "linear-gradient(114.41deg, #0ae448 20.74%, #abff84 65.5%)",
+        "purpose": "The primary pill stroke and rise, the announcement strip, the brand disc, meter fills, the assistant mark."
+      }
+    ],
     "shadows": [
       {
-        "name": "action",
-        "value": "0 4px 20px 0 rgb(19 35 34 / 0.18)",
-        "purpose": "The primary (neon) button: the only shadow in the page flow."
-      },
-      {
         "name": "float",
-        "value": "0 4px 20px 0 rgb(19 35 34 / 0.15)",
-        "purpose": "Things above the page: the landing preview panel and load-plan frame, dialogs, detail sheets, alert toasts, chart tooltips, the floating request button."
-      },
-      {
-        "name": "card",
-        "value": "none",
-        "purpose": "Cards, rail, bars and door tiles cast no shadow; the 1px fog hairline carries structure."
+        "value": "0 0 0 1px rgb(255 252 225 / 0.06), 0 18px 48px -12px rgb(0 0 0 / 0.7)",
+        "purpose": "Dialogs, alert toasts, the assistant composer, the landing product preview. Never on a card."
       },
       {
         "name": "focus-halo",
-        "value": "0 0 0 3px color-mix(in srgb, var(--color-sage-ink) 18%, transparent)",
-        "purpose": "Field focus, with a signal-green border."
+        "value": "0 0 0 4px color-mix(in srgb, var(--color-accent) 18%, transparent)",
+        "purpose": "Focused field; 14% around the focused composer."
+      },
+      {
+        "name": "choice-selected",
+        "value": "inset 0 0 0 2px var(--color-accent)",
+        "purpose": "Selected choice tile edge."
+      },
+      {
+        "name": "door-critical",
+        "value": "inset 0 0 0 1px var(--color-hazard-bright)",
+        "purpose": "Critical door tile rule (with the hazard wash); issue doors take inset 2px orange-bright."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--color-accent); outline-offset: 3px",
+        "purpose": "Global :focus-visible."
       }
     ],
     "motion": [
       {
         "name": "ease-organic",
         "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "Exponential ease-out for reveals, sheets and diagram settles."
+        "purpose": "Default ease for rises, slides, wipes and the primary fill."
       },
       {
-        "name": "reveal",
-        "value": "rise 0.5s var(--ease-organic) both; delay calc(var(--i) * 60ms)",
-        "purpose": "The one staggered rise as a screen loads (10px up, fade in). Never on an alert."
+        "name": "rise",
+        "value": "0.7s ease-organic; from opacity 0, translateY(14px), blur(6px); stagger 70ms by --i",
+        "purpose": "Screens and panels rising on load. Never on an alert."
+      },
+      {
+        "name": "title-wipe",
+        "value": "0.9s ease-organic; clip-path inset up from the baseline",
+        "purpose": "Page titles."
+      },
+      {
+        "name": "primary-fill",
+        "value": "transform 480ms ease-organic (translateY 102% to 0)",
+        "purpose": "Green rising through the primary pill on hover; 90ms on press."
       },
       {
         "name": "press",
-        "value": "transform 120ms ease-out; translateY(1px)",
-        "purpose": "Instant press feedback on buttons and choice tiles."
+        "value": "scale(0.97), 120ms ease-out",
+        "purpose": "Instant press feedback on buttons and chips."
       },
       {
-        "name": "rule-hover",
-        "value": "border-color 200ms ease; hairline mixed 30% toward obsidian",
-        "purpose": "Interactive cards answer hover with the rule, never a jump. Critical tiles do not respond."
+        "name": "nav-slide",
+        "value": "scaleX 0 to 1, 420ms ease-organic",
+        "purpose": "Hover bar behind rail nav items."
       },
       {
-        "name": "landing-enter",
-        "value": "opacity, transform 1s var(--ease-organic); from translateY(24px)",
-        "purpose": "Landing sections float in on scroll."
+        "name": "lift",
+        "value": "translateY(-2px), 450ms ease-organic",
+        "purpose": "Interactive cards; never on critical door tiles."
       },
       {
-        "name": "dock-sheet",
-        "value": "420ms var(--ease-organic)",
-        "purpose": "Detail sheet rises from the bottom (phone) or slides in from the right (48rem+)."
+        "name": "scroll-light",
+        "value": "animation-timeline: view(); color rule-strong to ink",
+        "purpose": "Landing statement words lighting as they scroll."
       },
       {
-        "name": "load-guide",
-        "value": "breathe 1.8s ease-in-out infinite; flow 0.9s linear infinite; pin 0.5s; drop 0.45s",
-        "purpose": "The spot to fill breathes, the arrow flows, a placed pallet settles. Explanatory only."
+        "name": "drift",
+        "value": "6-11s ease-in-out infinite alternate; translate -14px and rotate",
+        "purpose": "Landing soft shapes only."
       },
       {
-        "name": "data-bar",
-        "value": "grow-x 0.9s var(--ease-organic); delay calc(var(--i) * 80ms + 200ms)",
-        "purpose": "Chart bars grow from the baseline."
+        "name": "reduced-motion",
+        "value": "animation and transition durations to 0.01ms",
+        "purpose": "prefers-reduced-motion is honoured globally."
       }
     ],
     "breakpoints": [
       {
         "name": "sm",
-        "value": "40rem"
+        "value": "640px"
       },
       {
         "name": "md",
-        "value": "48rem"
+        "value": "768px"
       },
       {
         "name": "lg",
-        "value": "64rem"
-      }
-    ],
-    "colorScheme": "light only; no dark mode",
-    "tokenScopes": [
+        "value": "1024px"
+      },
       {
-        "selector": ".rail",
-        "purpose": "Re-scopes surface, paper-sunk, paper-deep, hairline, ink, ink-soft and ink-mute to the obsidian set so everything inside the rail turns dark without dark-specific classes."
+        "name": "xl",
+        "value": "1280px"
       }
     ]
   },
@@ -942,172 +941,157 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one filled action per view: neon pulse, obsidian text, the action drop.",
-      "html": "<button class=\"ds-btn ds-btn-primary\">Loaded, next pallet <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button>",
-      "css": ".ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:var(--radius-md, 6px); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; white-space:nowrap; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, border-color 200ms ease; } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--color-sage-ink, #1b8a57); outline-offset:3px; } .ds-btn-primary { background:var(--color-accent, #3ddc91); color:var(--color-on-accent, #132322); box-shadow:0 4px 20px 0 rgb(19 35 34 / 0.18); } .ds-btn-primary:hover { background:color-mix(in srgb, var(--color-accent, #3ddc91) 88%, var(--color-ink, #132322)); }"
+      "description": "The one gradient-stroked green pill per view; green rises through it on hover and press.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Open the demo <svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button>",
+      "css": ".ds-btn { position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0 1.4rem; border-radius: 9999px; font-family: var(--font-sans); font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; cursor: pointer; transition: transform 120ms ease-out, color 300ms cubic-bezier(0.16,1,0.3,1); } .ds-btn svg { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary { border: 1.5px solid transparent; background: linear-gradient(var(--color-accent-soft), var(--color-accent-soft)) padding-box, linear-gradient(114.41deg, #0ae448 20.74%, #abff84 65.5%) border-box; color: var(--color-ink); } .ds-btn-primary::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: linear-gradient(114.41deg, #0ae448 20.74%, #abff84 65.5%); transform: translateY(102%); transition: transform 480ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:hover::before, .ds-btn-primary:active::before { transform: translateY(0); } .ds-btn-primary:hover, .ds-btn-primary:active { color: var(--color-on-accent); } .ds-btn:hover svg { transform: translateX(3px); } .ds-btn:active { transform: scale(0.97); } .ds-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Every other action: white on a fog hairline, flat, 6px.",
-      "html": "<button class=\"ds-btn ds-btn-secondary\">How it scores</button>",
-      "css": ".ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:var(--radius-md, 6px); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; white-space:nowrap; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, border-color 200ms ease; } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--color-sage-ink, #1b8a57); outline-offset:3px; } .ds-btn-secondary { background:var(--color-surface, #ffffff); border-color:var(--color-hairline, #d0d3d3); color:var(--color-ink, #132322); } .ds-btn-secondary:hover { background:var(--color-paper-sunk, #f2f8f6); border-color:color-mix(in srgb, var(--color-ink, #132322) 25%, var(--color-hairline, #d0d3d3)); }"
-    },
-    {
-      "name": "Hazard Button",
-      "kind": "button",
-      "refersTo": "button-hazard",
-      "description": "Reporting an issue and critical decisions only.",
-      "html": "<button class=\"ds-btn ds-btn-hazard\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg> Report issue</button>",
-      "css": ".ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:var(--radius-md, 6px); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; white-space:nowrap; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, border-color 200ms ease; } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--color-sage-ink, #1b8a57); outline-offset:3px; } .ds-btn-hazard { background:var(--color-hazard, #a4291f); color:#ffffff; } .ds-btn-hazard:hover { background:var(--color-hazard-deep, #912018); }"
+      "description": "A cream hairline pill for every other action.",
+      "html": "<button class=\"ds-btn-secondary\">How it scores</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; min-height: 48px; padding: 0 1.4rem; border-radius: 9999px; border: 1px solid color-mix(in srgb, var(--color-ink) 55%, transparent); background: transparent; color: var(--color-ink); font-family: var(--font-sans); font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; cursor: pointer; transition: border-color 250ms ease, background-color 250ms ease, transform 120ms ease-out; } .ds-btn-secondary:hover { border-color: var(--color-ink); background: color-mix(in srgb, var(--color-ink) 7%, transparent); } .ds-btn-secondary:active { transform: scale(0.97); background: color-mix(in srgb, var(--color-ink) 12%, transparent); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }"
     },
     {
       "name": "Field",
       "kind": "input",
       "refersTo": "field",
-      "description": "White, ruled, 12px; focus draws the signal-green rule and a soft halo.",
-      "html": "<label class=\"ds-field-wrap\"><span class=\"ds-field-label\">Cases counted</span><input class=\"ds-field\" type=\"text\" placeholder=\"e.g. 36\" /></label>",
-      "css": ".ds-field-wrap { display:flex; flex-direction:column; gap:8px; font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; color:var(--color-ink, #132322); } .ds-field-label { font-size:16px; font-weight:600; } .ds-field { width:100%; min-height:48px; padding:10px 14px; border-radius:var(--radius-lg, 12px); background:var(--color-surface, #ffffff); border:1px solid color-mix(in srgb, var(--color-ink, #132322) 14%, var(--color-hairline, #d0d3d3)); color:var(--color-ink, #132322); caret-color:var(--color-sage-ink, #1b8a57); font:inherit; font-size:16px; transition:border-color 200ms ease, box-shadow 200ms ease; } .ds-field::placeholder { color:var(--color-ink-mute, #56615f); } .ds-field:focus { outline:none; border-color:var(--color-sage-ink, #1b8a57); box-shadow:0 0 0 3px color-mix(in srgb, var(--color-sage-ink, #1b8a57) 18%, transparent); }"
+      "description": "Stage-black field with a 3:1 edge; focus draws the green rule and a soft halo.",
+      "html": "<input class=\"ds-field\" placeholder=\"Employee ID\" />",
+      "css": ".ds-field { width: 100%; min-height: 48px; padding: 0.625rem 0.875rem; border-radius: 8px; background: var(--color-paper); border: 1px solid var(--color-rule-strong); color: var(--color-ink); caret-color: var(--color-accent); font-family: var(--font-sans); font-size: 1rem; transition: border-color 200ms ease, box-shadow 250ms ease; } .ds-field::placeholder { color: var(--color-ink-mute); } .ds-field:hover:not(:focus) { border-color: color-mix(in srgb, var(--color-ink) 60%, var(--color-rule-strong)); } .ds-field:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 18%, transparent); }"
     },
     {
-      "name": "Filed Choice Tiles",
-      "kind": "chip",
-      "refersTo": "choice",
-      "description": "Report-type tiles led by a filing medallion (product mint, people yellow, systems sky); selected is mint whisper with a 2px signal-green rule.",
-      "html": "<div class=\"ds-choices\"><button class=\"ds-choice ds-file-product\"><span class=\"ds-medallion\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z\"/></svg></span><span><span class=\"ds-choice-name\">Temperature Deviation</span><span class=\"ds-choice-sub\">6 situations</span></span></button><button class=\"ds-choice ds-file-people\" aria-pressed=\"true\"><span class=\"ds-medallion\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/></svg></span><span><span class=\"ds-choice-name\">Safety Incident</span><span class=\"ds-choice-sub\">11 situations</span></span></button><button class=\"ds-choice ds-file-systems\"><span class=\"ds-medallion\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z\"/></svg></span><span><span class=\"ds-choice-name\">Equipment Failure</span><span class=\"ds-choice-sub\">14 situations</span></span></button></div>",
-      "css": ".ds-choices { display:grid; grid-template-columns:1fr; gap:8px; font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-choice { display:flex; align-items:center; gap:12px; min-height:80px; padding:10px 16px; border:0; border-radius:var(--radius-lg, 12px); background:var(--color-surface, #ffffff); box-shadow:inset 0 0 0 1px var(--color-hairline, #d0d3d3); color:var(--color-ink, #132322); font:inherit; text-align:left; font-weight:500; cursor:pointer; transition:transform 120ms ease-out, background-color 200ms ease, box-shadow 200ms ease; } .ds-choice:hover { background:var(--color-paper, #edf7f5); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--color-ink, #132322) 22%, var(--color-hairline, #d0d3d3)); } .ds-choice:active { transform:translateY(1px); } .ds-choice:focus-visible { outline:2px solid var(--color-sage-ink, #1b8a57); outline-offset:3px; } .ds-choice[aria-pressed='true'] { background:var(--color-accent-soft, #dff5ea); box-shadow:inset 0 0 0 2px var(--color-sage-ink, #1b8a57); font-weight:600; } .ds-choice-name { display:block; font-size:20px; } .ds-choice-sub { font-size:14px; font-weight:400; color:var(--color-ink-mute, #56615f); } .ds-medallion { display:inline-grid; place-items:center; flex-shrink:0; width:44px; height:44px; border-radius:var(--radius-lg, 12px); color:var(--file, var(--color-accent-ink, #146c47)); background:var(--file-soft, var(--color-accent-soft, #dff5ea)); } .ds-file-product { --file:var(--color-teal, #0a6d78); --file-soft:var(--color-teal-soft, #e6f8f5); } .ds-file-people { --file:var(--color-signal-ink, #6b5000); --file-soft:var(--color-signal-soft, #fff4d1); } .ds-file-systems { --file:var(--color-indigo, #00679e); --file-soft:var(--color-indigo-soft, #e5f5fc); }"
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Night rail with a bracketed role; hover slides a quiet bar in, the current place is a solid green highlighter block.",
+      "html": "<nav class=\"ds-rail\"><p class=\"ds-bracket\">Supervisor · Zone A</p><a class=\"ds-nav\" aria-current=\"page\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg> Floor</a><a class=\"ds-nav\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M10 13H8M16 17H8\"/></svg> Issue log</a></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; gap: 2px; width: 17.5rem; padding: 1.25rem 0.75rem; background: var(--color-night); border-right: 1px solid var(--color-hairline); font-family: var(--font-sans); } .ds-bracket { display: inline-flex; align-items: center; gap: 0.45em; margin: 0 0 0.75rem 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--color-ink-mute); } .ds-bracket::before, .ds-bracket::after { font-weight: 300; font-size: 2.1em; line-height: 0.7; color: var(--color-ink-soft); } .ds-bracket::before { content: '{'; } .ds-bracket::after { content: '}'; } .ds-nav { position: relative; isolation: isolate; display: flex; align-items: center; gap: 0.75rem; min-height: 44px; padding: 0.625rem 1rem; border-radius: 8px; font-size: 1rem; font-weight: 500; color: var(--color-ink-soft); text-decoration: none; transition: color 250ms ease; } .ds-nav::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--color-paper-sunk); transform: scaleX(0); transform-origin: left; transition: transform 420ms cubic-bezier(0.16,1,0.3,1); } .ds-nav:hover { color: var(--color-ink); } .ds-nav:hover::before { transform: scaleX(1); } .ds-nav[aria-current='page'] { color: var(--color-on-accent); font-weight: 600; } .ds-nav[aria-current='page']::before { background: var(--color-accent); transform: scaleX(1); } .ds-nav:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }"
     },
     {
-      "name": "Tags, Severity and Simulated Mark",
+      "name": "Tags and Simulated Mark",
       "kind": "chip",
+      "refersTo": "pill-tag",
+      "description": "Status pills, and the square-cornered orange block that marks simulated data.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-pill ds-plain\">Open</span><span class=\"ds-pill ds-ok\">Resolved</span><span class=\"ds-pill ds-sim\">Simulated data</span></div>",
+      "css": ".ds-row { display: flex; gap: 0.5rem; flex-wrap: wrap; font-family: var(--font-sans); } .ds-pill { display: inline-flex; align-items: center; min-height: 1.75rem; padding: 0 0.7rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; white-space: nowrap; } .ds-plain { background: var(--color-paper-sunk); color: var(--color-ink-soft); } .ds-ok { background: var(--color-green-soft); color: var(--color-green); } .ds-sim { background: var(--color-orangey); color: var(--color-on-accent); border-radius: 4px; }"
+    },
+    {
+      "name": "Severity Badges",
+      "kind": "custom",
       "refersTo": "severity-critical",
-      "description": "Pills carry word + shape + colour; the dashed signal-yellow tag marks simulated data.",
-      "html": "<div class=\"ds-tags\"><span class=\"ds-sev ds-sev-critical\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M7 1.2 13.3 12.6H0.7Z\" fill=\"currentColor\"/></svg>Critical</span><span class=\"ds-sev ds-sev-high\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M7 0.6 13.4 7 7 13.4 0.6 7Z\" fill=\"currentColor\"/></svg>High</span><span class=\"ds-sev ds-sev-medium\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><rect x=\"1.5\" y=\"1.5\" width=\"11\" height=\"11\" rx=\"2.5\" fill=\"currentColor\"/></svg>Medium</span><span class=\"ds-sev ds-sev-low\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"7\" r=\"5.25\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>Low</span><span class=\"ds-pill ds-pill-ink\">Escalated</span><span class=\"ds-pill ds-pill-accent\">Short</span><span class=\"ds-pill ds-pill-sim\">Simulated data</span></div>",
-      "css": ".ds-tags { display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-sev, .ds-pill { display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:0 10px; border-radius:40px; font-size:14px; white-space:nowrap; } .ds-sev { font-weight:600; } .ds-sev-critical { background:var(--color-hazard, #a4291f); color:#ffffff; } .ds-sev-high { background:var(--color-orange-soft, #fdf1dc); color:var(--color-orange, #8a5a10); } .ds-sev-medium { background:var(--color-amber-soft, #f3f5d8); color:var(--color-amber, #515c0b); } .ds-sev-low { background:var(--color-paper-sunk, #f2f8f6); color:var(--color-ink-mute, #56615f); } .ds-pill { font-weight:500; } .ds-pill-ink { background:var(--color-ink, #132322); color:var(--color-paper, #edf7f5); } .ds-pill-accent { background:var(--color-accent-soft, #dff5ea); color:var(--color-accent-ink, #146c47); } .ds-pill-sim { border:1px dashed color-mix(in srgb, var(--color-signal-ink, #6b5000) 45%, transparent); background:var(--color-signal-soft, #fff4d1); color:var(--color-signal-ink, #6b5000); }"
+      "description": "Severity as a word, a shape and a colour; only critical is a solid red capsule.",
+      "html": "<div class=\"ds-sev-row\"><span class=\"ds-sev ds-crit\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M7 1.2 13.3 12.6H0.7Z\" fill=\"currentColor\"/></svg>Critical</span><span class=\"ds-sev ds-high\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M7 0.6 13.4 7 7 13.4 0.6 7Z\" fill=\"currentColor\"/></svg>High</span><span class=\"ds-sev ds-med\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><rect x=\"1.5\" y=\"1.5\" width=\"11\" height=\"11\" rx=\"2.5\" fill=\"currentColor\"/></svg>Medium</span><span class=\"ds-sev ds-low\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"7\" r=\"5.25\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>Low</span></div>",
+      "css": ".ds-sev-row { display: flex; gap: 0.5rem; flex-wrap: wrap; font-family: var(--font-sans); } .ds-sev { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2rem; padding: 0 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; letter-spacing: -0.025em; } .ds-crit { background: var(--color-hazard); color: var(--color-white); } .ds-high { background: var(--color-orange-soft); color: var(--color-orange); } .ds-med { background: var(--color-amber-soft); color: var(--color-amber); } .ds-low { background: var(--color-paper-sunk); color: var(--color-ink-mute); }"
     },
     {
-      "name": "Fact Strip",
-      "kind": "card",
-      "refersTo": "fact-strip-cell",
-      "description": "The order's facts as one 20px ruled frame split into cells by 1px fog gaps; the job cell leads with its green file dot.",
-      "html": "<dl class=\"ds-facts\"><div><dt>Job</dt><dd class=\"ds-strong\"><span class=\"ds-dot\"></span>Loading</dd></div><div><dt>Customer</dt><dd class=\"ds-strong\">Crestline Markets <span class=\"ds-muted\">· Tier 1</span></dd></div><div><dt>Order</dt><dd class=\"ds-mono\">SO-24117</dd></div><div><dt>Trailer</dt><dd class=\"ds-mono\">TRL-TG-8842</dd></div><div><dt>BOL</dt><dd class=\"ds-mono\">BOL-55120</dd></div><div><dt>Carrier</dt><dd class=\"ds-strong\">Polar Freight</dd></div></dl>",
-      "css": ".ds-facts { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:1px; margin:0; overflow:hidden; border:1px solid var(--color-hairline, #d0d3d3); border-radius:var(--radius-xl, 20px); background:var(--color-hairline, #d0d3d3); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; color:var(--color-ink, #132322); } .ds-facts > div { background:var(--color-surface, #ffffff); padding:12px 16px; } .ds-facts dt { font-family:var(--font-caption, 'Hanken Grotesk Variable', 'Hanken Grotesk', sans-serif); letter-spacing:0; font-size:14px; font-weight:500; color:var(--color-ink-mute, #56615f); } .ds-facts dd { margin:4px 0 0; display:flex; align-items:center; gap:8px; } .ds-strong { font-weight:600; } .ds-muted { font-weight:400; color:var(--color-ink-mute, #56615f); } .ds-mono { font-family:var(--font-mono, 'Geist Mono Variable', 'Geist Mono', monospace); font-weight:500; font-variant-numeric:tabular-nums slashed-zero; letter-spacing:-0.005em; } .ds-dot { display:inline-block; width:10px; height:10px; border-radius:9999px; background:var(--color-accent-ink, #146c47); }"
-    },
-    {
-      "name": "Card with Stat",
+      "name": "Card with Filing",
       "kind": "card",
       "refersTo": "card",
-      "description": "White on mint frost, 20px, a fog hairline and no shadow; the critical stat is solid brick.",
-      "html": "<div class=\"ds-stats\"><div class=\"ds-card ds-stat\"><p class=\"ds-stat-label\">Needs you</p><p class=\"ds-stat-num\">11</p><p class=\"ds-stat-sub\">Escalated or critical</p></div><div class=\"ds-stat ds-stat-alert\"><p class=\"ds-stat-label\">Critical</p><p class=\"ds-stat-num\">5</p><p class=\"ds-stat-sub\">Open, in any state</p></div></div>",
-      "css": ".ds-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px; background:var(--color-paper, #edf7f5); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-card { background:var(--color-surface, #ffffff); border:1px solid var(--color-hairline, #d0d3d3); border-radius:var(--radius-xl, 20px); color:var(--color-ink, #132322); transition:border-color 200ms ease; } .ds-card:hover { border-color:color-mix(in srgb, var(--color-ink, #132322) 30%, var(--color-hairline, #d0d3d3)); } .ds-stat { display:flex; flex-direction:column; gap:8px; padding:16px; } .ds-stat p { margin:0; } .ds-stat-label { font-size:14px; font-weight:600; color:var(--color-ink-mute, #56615f); } .ds-stat-num { font-size:48px; line-height:1; font-weight:600; letter-spacing:-0.035em; font-variant-numeric:lining-nums tabular-nums; } .ds-stat-sub { font-size:14px; color:var(--color-ink-mute, #56615f); } .ds-stat-alert { background:var(--color-hazard, #a4291f); color:#ffffff; border-radius:var(--radius-xl, 20px); } .ds-stat-alert .ds-stat-label, .ds-stat-alert .ds-stat-sub { color:#ffffff; }"
+      "description": "A surface step with a hairline and no shadow; on hover it rises and its rule lights in its filing colour.",
+      "html": "<article class=\"ds-card\" tabindex=\"0\"><span class=\"ds-medallion\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z\"/><path d=\"m3.3 7 8.7 5 8.7-5M12 22V12\"/></svg></span><div><p class=\"ds-card-title\">2 · Load the trailer</p><p class=\"ds-card-sub\">Load plan, scanning and sign-off</p></div></article>",
+      "css": ".ds-card { --file: var(--color-blue); display: flex; gap: 1rem; align-items: center; padding: 1.25rem; background: var(--color-surface); border: 1px solid var(--color-hairline); border-radius: 10px; color: var(--color-ink); font-family: var(--font-sans); cursor: pointer; transition: transform 450ms cubic-bezier(0.16,1,0.3,1), border-color 250ms ease, background-color 250ms ease; } .ds-card:hover { transform: translateY(-2px); border-color: var(--file); background-color: color-mix(in srgb, var(--color-surface) 88%, var(--file)); } .ds-card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; } .ds-medallion { display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 8px; color: var(--color-blue-ink); background: var(--color-blue-soft); transition: transform 450ms cubic-bezier(0.16,1,0.3,1); } .ds-card:hover .ds-medallion { transform: rotate(-8deg) scale(1.06); } .ds-card-title { margin: 0; font-size: 1.1875rem; font-weight: 600; letter-spacing: -0.015em; } .ds-card-sub { margin: 0.25rem 0 0; font-size: 1rem; color: var(--color-ink-mute); }"
     },
     {
-      "name": "Obsidian Rail",
-      "kind": "nav",
-      "refersTo": "nav-item-active",
-      "description": "The desktop rail: obsidian with re-scoped tokens, the neon wordmark disc, the neon active item with obsidian text, the person card on deep abyss.",
-      "html": "<nav class=\"ds-rail\"><div class=\"ds-wordmark\"><span class=\"ds-disc\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z\"/><path d=\"M6 18h12\"/><path d=\"M6 14h12\"/><rect width=\"12\" height=\"12\" x=\"6\" y=\"10\"/></svg></span><span class=\"ds-word\">Dock<span class=\"ds-iq\">IQ</span></span></div><p class=\"ds-rail-role\">Supervisor · Zone A</p><a class=\"ds-nav-item ds-active\" href=\"#\">Floor</a><a class=\"ds-nav-item\" href=\"#\">Issue log</a><a class=\"ds-nav-item\" href=\"#\">Analytics</a><div class=\"ds-person\"><span class=\"ds-avatar\">SM</span><span><span class=\"ds-person-name\">Sarah Mitchell</span><span class=\"ds-person-id\">SUP-001</span></span></div></nav>",
-      "css": ".ds-rail { --color-surface:#0e1a19; --color-paper-sunk:#1b3230; --color-paper-deep:#24403d; --color-hairline:#24403d; --color-ink:#ffffff; --color-ink-soft:#d0d3d3; --color-ink-mute:#b2b6b4; display:flex; flex-direction:column; gap:2px; width:280px; padding:24px 12px; background:var(--color-night, #132322); color:var(--color-ink); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; } .ds-wordmark { display:flex; align-items:center; gap:10px; padding:0 8px; } .ds-disc { display:grid; place-items:center; width:40px; height:40px; border-radius:9999px; background:var(--color-accent, #3ddc91); color:var(--color-on-accent, #132322); } .ds-word { font-family:var(--font-display, 'Geist Variable', 'Geist', 'Inter Variable', ui-sans-serif, sans-serif); font-size:24px; font-weight:400; letter-spacing:-0.02em; } .ds-iq { font-weight:600; letter-spacing:0; color:var(--color-ink-soft); } .ds-rail-role { margin:12px 8px; font-family:var(--font-caption, 'Hanken Grotesk Variable', 'Hanken Grotesk', sans-serif); letter-spacing:0; font-size:14px; font-weight:500; color:var(--color-ink-mute); } .ds-nav-item { display:flex; align-items:center; min-height:44px; padding:10px 16px; border-radius:var(--radius-md, 6px); font-size:16px; font-weight:500; color:var(--color-ink-soft); text-decoration:none; transition:background-color 300ms ease, color 300ms ease; } .ds-nav-item:hover { background:var(--color-paper-sunk); color:var(--color-ink); } .ds-nav-item:focus-visible { outline:2px solid var(--color-sage-ink, #1b8a57); outline-offset:3px; } .ds-nav-item.ds-active { background:var(--color-accent, #3ddc91); color:var(--color-on-accent, #132322); font-weight:600; } .ds-person { display:flex; align-items:center; gap:12px; margin-top:24px; padding:10px; border-radius:var(--radius-lg, 12px); background:var(--color-surface); } .ds-avatar { display:grid; place-items:center; width:40px; height:40px; border-radius:9999px; background:var(--color-paper-deep); color:var(--color-ink-soft); font-size:14px; font-weight:600; } .ds-person-name { display:block; font-weight:600; } .ds-person-id { font-family:var(--font-mono, 'Geist Mono Variable', 'Geist Mono', monospace); font-weight:500; font-variant-numeric:tabular-nums slashed-zero; letter-spacing:-0.005em; font-size:14px; color:var(--color-ink-mute); }"
+      "name": "Page Header",
+      "kind": "custom",
+      "refersTo": "display",
+      "description": "Carved Host Grotesk title that wipes up, with a bracket note under it.",
+      "html": "<header class=\"ds-head\"><h1 class=\"ds-display\">Dock 1</h1><p class=\"ds-note\">Good morning, Mike</p></header>",
+      "css": ".ds-head { font-family: var(--font-sans); color: var(--color-ink); } .ds-display { margin: 0; font-size: 4.125rem; font-weight: 600; letter-spacing: -0.035em; line-height: 0.98; animation: ds-wipe 0.9s cubic-bezier(0.16,1,0.3,1) both; } @keyframes ds-wipe { from { clip-path: inset(0 0 100% 0); transform: translateY(0.35em); } to { clip-path: inset(0 0 -0.2em 0); } } .ds-note { display: inline-flex; align-items: center; gap: 0.45em; margin: 1rem 0 0; font-size: 0.875rem; color: var(--color-ink-soft); } .ds-note::before, .ds-note::after { font-weight: 300; font-size: 2.1em; line-height: 0.7; color: var(--color-ink-soft); } .ds-note::before { content: '{'; } .ds-note::after { content: '}'; }"
     },
     {
       "name": "Announcement Strip",
       "kind": "custom",
-      "refersTo": "rail",
-      "description": "Obsidian into deep abyss with a neon dot: the data is simulated.",
+      "refersTo": "accent",
+      "description": "The full-width green gradient bar that states the data is simulated.",
       "html": "<p class=\"ds-strip\">Prototype on simulated data: every trailer, person and pallet here is fictional.</p>",
-      "css": ".ds-strip { margin:0; padding:6px 16px; text-align:center; background:linear-gradient(89.97deg, var(--color-night, #132322) 0%, var(--color-night-raised, #0e1a19) 100%); color:#ffffff; font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; font-size:14px; font-weight:500; } .ds-strip::before { content:''; display:inline-block; width:8px; height:8px; margin-right:8px; border-radius:9999px; background:var(--color-accent, #3ddc91); vertical-align:0.05em; }"
-    },
-    {
-      "name": "Assistant Conversation",
-      "kind": "custom",
-      "refersTo": "chat-bubble-own",
-      "description": "The user's neon bubble with obsidian text, a white answer card, mint whisper suggestion chips.",
-      "html": "<div class=\"ds-chat\"><p class=\"ds-q\">Is door 3 still over temperature?</p><div class=\"ds-a\">Room F read 41°F at 10:42; the limit is 38°F. Hold the pallets and call Quality.</div><div class=\"ds-chips\"><button class=\"ds-chip\">What does the SOP say?</button><button class=\"ds-chip\">Who is on door 3?</button></div></div>",
-      "css": ".ds-chat { display:flex; flex-direction:column; gap:12px; padding:16px; background:var(--color-paper, #edf7f5); font-family:var(--font-sans, 'Inter Variable', Inter, sans-serif); letter-spacing:-0.018em; font-feature-settings:'ss01','cv11'; color:var(--color-ink, #132322); } .ds-q { align-self:flex-end; max-width:80%; margin:0; padding:10px 16px; border-radius:20px 20px 6px 20px; background:var(--color-accent, #3ddc91); color:var(--color-on-accent, #132322); font-size:20px; } .ds-a { align-self:flex-start; max-width:80%; padding:12px 16px; border:1px solid var(--color-hairline, #d0d3d3); border-radius:20px; background:var(--color-surface, #ffffff); font-size:20px; line-height:1.6; } .ds-chips { display:flex; flex-wrap:wrap; gap:8px; } .ds-chip { min-height:44px; padding:0 16px; border:1px solid var(--color-accent-line, #97ddbc); border-radius:40px; background:var(--color-accent-soft, #dff5ea); color:var(--color-ink, #132322); font:inherit; font-size:16px; font-weight:500; cursor:pointer; transition:background-color 200ms ease; } .ds-chip:hover { background:color-mix(in srgb, var(--color-accent-line, #97ddbc) 45%, var(--color-accent-soft, #dff5ea)); } .ds-chip:focus-visible { outline:2px solid var(--color-sage-ink, #1b8a57); outline-offset:3px; }"
+      "css": ".ds-strip { margin: 0; padding: 0.375rem 1rem; text-align: center; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; background: linear-gradient(114.41deg, #0ae448 20.74%, #abff84 65.5%); color: var(--color-on-accent); } .ds-strip::before { content: ''; display: inline-block; width: 0.5rem; height: 0.5rem; margin-right: 0.5rem; border-radius: 9999px; background: var(--color-on-accent); }"
     }
   ],
   "narrative": {
-    "northStar": "The Engineering Blueprint on Mint Frost",
-    "overview": "**Creative North Star: \"The Engineering Blueprint on Mint Frost\"**\n\nDockIQ keeps Grafbase's structure and holds the dock's safety rules above it, now in the owner's own palette. The page is a pale mint-frost table. White sheets sit on it, each edged with a 1px fog hairline and no shadow. Obsidian, a green-black, sets all the text. The desktop rail is a solid obsidian column, and the announcement strip above everything runs from obsidian into deep abyss. One neon green pulse lights the thing to do and the place you are: the single filled action, the selected rail item, your own messages to the assistant. Mint whisper washes mark selection and highlights, signal yellow punctuates the diagrams and the simulated mark, and filing medallions colour-code what kind of thing an item is. The world is light only. There is no dark mode.\n\nThe type follows the owner's spec in place of Grafbase's single family. Titles are an editorial serif at 400, tight and compressed. Inter, tracked slightly tight, carries everything read at work. Hanken Grotesk sets the small captions. Geist Mono sets the telemetry. Everything is read at arm's length on a forklift tablet, with gloves, glare and dim light. So density is moderate, targets are generous (44px minimum, 48px buttons), the type floor is 14px, and nothing moves on an alert.\n\nThe palette gives way to the dock in four places. Severity keeps brick red, saffron and olive, always with a word and a shape. Neon never carries white text: obsidian sits on it. The pale greens and yellow are washes and marks, and deeper `-ink` variants carry any words. Slate grey never sets small text.",
+    "northStar": "The Chalkboard on the Dock",
+    "overview": "DockIQ is the owner's GSAP reference, an animated chalkboard in a design studio, brought onto a cold-storage loading dock. One near-black stage carries everything. On it: cream type carved tight at display sizes, hairline rules instead of boxes, outlined pills to press, and a small set of highlighters that file the work. Green is DockIQ itself and the thing to do next. Pink, blue and lilac file zones, report groups, inspection sections and cold rooms. Orange marks data as simulated. Nothing is coloured to decorate an operating screen: a colour either files something or raises an alarm.\n\nThe dock outranks the reference wherever the two disagree. Severity keeps its own red, amber and citron, always as a word plus a shape. The type floor is 14px, control edges pass 3:1, every target is at least 44px, nothing moves on an alert, and the barcode stays black on white. The interface is dark only. It is read at arm's length through gloves and glare, so the carving stays at page-title scale and the working surfaces stay calm, legible and dense enough for a tablet on a forklift.\n\nMotion is the reference's signature and is spent where it explains. Titles wipe up out of their own baseline. Screens rise out of a blur on a stagger. Green rises up through the primary pill when it is hovered or pressed. A quiet bar slides in behind a hovered nav item, and cards rise while their rule lights in their filing colour. The landing page adds words that light as they scroll, a highlighter montage, and soft 3D shapes that drift slowly. None of it touches a critical surface, and reduced motion turns it all off.",
     "keyCharacteristics": [
-      "A mint-frost canvas (`paper`) under white cards with a 1px fog `hairline`, 20px corners and no shadow.",
-      "Obsidian (`ink`) for every word; an obsidian rail and an obsidian-to-abyss strip frame the app.",
-      "One neon pulse (`accent`) with obsidian text: the filled action, the selected place, your own chat bubbles.",
-      "Mint whisper washes for selection, signal yellow for marks and the simulated tag, filing medallions for kind.",
-      "Four typefaces, one per job: Geist 600 for titles, Inter for UI and body, Hanken Grotesk for labels, Geist Mono for telemetry.",
-      "Squared 6px buttons, 12px fields, panels and medallions, 20px cards, 40px pills.",
-      "Light only."
+      "One near-black stage with surfaces one step lifted; cream ink, never pure white text.",
+      "Hairline rules and surface steps for depth; no drop shadows on cards.",
+      "100px pills for everything pressed; a single gradient-stroked green primary per view.",
+      "Five highlighters that file; severity has a separate red/amber/citron channel with shapes.",
+      "Three type voices: Host Grotesk for everything, Source Serif 4 for editorial titles, Geist Mono for telemetry.",
+      "`{ bracket }` notes beside or under titles as the reference's annotation."
     ],
     "rules": [
       {
-        "name": "The Neon Means Now Rule",
-        "body": "Neon marks the action to take, where you are, and what you said. It is never a status, a chart hue, a filing colour or text, and it always carries obsidian, never white.",
-        "section": "colors"
-      },
-      {
         "name": "The Filing Rule",
-        "body": "A medallion or a file dot says what kind of thing an item is (product, people, systems, the job). Filing colours never signal severity, and severity colours never file.",
+        "body": "Colour files things or raises an alarm; it never decorates an operating screen. Pink, blue and lilac always name a zone, group, section or room. A filing colour never signals urgency.",
         "section": "colors"
       },
       {
-        "name": "The Brick Is Critical Rule",
-        "body": "`hazard` appears only for critical severity, critical door tiles, the critical stat, alert notices and the report or destructive action. It is never a chart hue, and no status colour is ever a chart hue.",
+        "name": "The One Green Rule",
+        "body": "Green means DockIQ and the thing to do: the primary stroke, your place in the nav, your own words, focus. Inside the app the only green fills are the current nav item, the primary pill's rise, the person's chat bubble, meters and the brand disc; everywhere else green is a wash or a rule.",
         "section": "colors"
       },
       {
-        "name": "The Graphic-Only Rule",
-        "body": "Neon, signal yellow, slate, `sage-ink` and the `-bright` severity tones fail as small text. They draw fills, edges, bars, lamps and marks. The base, `-ink` and `-deep` tones carry the words.",
+        "name": "The Simulated Orange Rule",
+        "body": "Inside the product, the orange highlighter block means simulated data and nothing else. Keep it on every surface that shows fictional data.",
         "section": "colors"
       },
       {
-        "name": "The Four Jobs Rule",
-        "body": "Each face has one job. Geist names places (page titles, section headings, the wordmark). Inter carries every sentence, control and headline number. Hanken sets captions. Geist Mono sets data a person copies, compares or reads off. Never set a sentence in mono.",
+        "name": "The Severity Channel Rule",
+        "body": "Red, amber and citron are reserved for severity. Every level pairs its colour with a word and a shape (▲ critical, ◆ high, ■ medium, ○ low). Red is never a chart hue and never a filing colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three Voices Rule",
+        "body": "Host Grotesk for everything read and every control, Source Serif 4 only for editorial titles, Geist Mono only for telemetry. There is no fourth face.",
         "section": "typography"
       },
       {
-        "name": "The Upright IQ Rule",
-        "body": "The wordmark sets \"IQ\" upright at 600 in `ink-soft`, so it never reads as \"Dock12\". Beside it sits a 40px neon disc carrying the warehouse icon.",
+        "name": "The Serif Floor Rule",
+        "body": "The serif sets titles at 400 and never below 20px. It is never used for body text, labels or controls.",
         "section": "typography"
       },
       {
-        "name": "The No Accent Words Rule",
-        "body": "Emphasis inside a title keeps the title's own voice: no italic and no colour change.",
+        "name": "The 14px Floor Rule",
+        "body": "No text is smaller than 14px (text-xs and text-sm are both 14px). Captions step down in colour, never below 14px.",
         "section": "typography"
       },
       {
-        "name": "The Single Drop Rule",
-        "body": "In the page flow, only the primary action casts a shadow. Everything else sits flat on its hairline.",
-        "section": "elevation"
+        "name": "The Telemetry Rule",
+        "body": "Anything a person reads off and matches (an ID, a count, a time, a temperature) is set in Geist Mono with tabular, slashed figures.",
+        "section": "typography"
       },
       {
-        "name": "The Rule Answers Rule",
-        "body": "Interactive cards answer hover by darkening their hairline toward obsidian (30%). They never jump. Critical tiles do not respond.",
+        "name": "The Surface Step Rule",
+        "body": "A card is lifted by one surface step and a hairline, never by a shadow. If something needs to feel higher, it must actually float.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "**Do** use neon (`accent`) with obsidian text for exactly one filled primary action per view, plus the selected place and the user's own chat bubbles. Everything else is secondary, pill or hazard.",
-      "**Do** draw structure with the 1px fog `hairline` on white, and leave cards without a shadow.",
-      "**Do** set titles in Geist 600 at -0.035em, UI and body in Inter at -0.018em with `ss01`/`cv11`, captions in Hanken Grotesk, and every ID, code, time and count in Geist Mono.",
-      "**Do** show severity as word, shape and colour together, and confidence as labelled signal bars.",
-      "**Do** file items by kind with a medallion or file dot in the product, people, systems or green family.",
-      "**Do** keep the cool triad and the chart slots inside product content (zones, loads, rooms, chart series), in their fixed order.",
-      "**Do** keep targets at least 44px (48px buttons and fields) and text at 14px or larger.",
-      "**Do** mark simulated data with the announcement strip and the signal-yellow Simulated tag.",
-      "**Do** re-scope tokens through the rail rather than hard-coding dark values inside it.",
-      "**Do** keep motion to the 60ms staggered rise on load, rule-darkening on hover and the load guide's explanatory loops. All of it is disabled under reduced motion."
+      "**Do** keep every screen on the near-black stage (#0e100f) with cream ink (#fffce1). The system is dark only.",
+      "**Do** build depth from the surface step (#171917) and a 1px hairline, and save the float shadow for layers that actually float.",
+      "**Do** make every button and tag a full pill, and keep one gradient-stroked green primary per view.",
+      "**Do** file zones, groups, sections and rooms with pink, blue and lilac on their dark washes, using the `-ink` step for small text.",
+      "**Do** mark every surface that shows fictional data with the orange simulated block.",
+      "**Do** pair every severity colour with its word and its shape.",
+      "**Do** set every ID, count, time and temperature in Geist Mono with tabular, slashed figures.",
+      "**Do** keep text at 14px or larger, targets at 44px or larger (48px for buttons and fields), and control edges at 3:1.",
+      "**Do** put `{ bracket }` notes under or beside the title they annotate.",
+      "**Do** honour reduced motion, reduced transparency and more-contrast, which the stylesheet already handles."
     ],
     "donts": [
-      "**Don't** put white text on neon, or set any text in neon, signal yellow, slate, `sage-ink` or a `-bright` tone.",
-      "**Don't** use neon for status, filing, charts or decoration.",
-      "**Don't** use `hazard` or any status colour as a chart hue, a filing colour or decoration.",
-      "**Don't** add texture, glass or translucency over badges, readings or alerts.",
-      "**Don't** animate, lift or pulse anything critical.",
-      "**Don't** use italic accent words in titles, or set a sentence in mono.",
-      "**Don't** make action buttons pills. Pills are for tags, badges, suggestion chips and the sign-in pill.",
-      "**Don't** add a dark mode, or reach for Tailwind's default palette, radii or shadows. They are wiped, and every value is a token in `frontend/src/styles/app.css`.",
-      "**Don't** recolour the barcode. It stays black on white."
+      "**Don't** build a light SaaS dashboard: no white cards, no filled grey buttons, no theme toggle.",
+      "**Don't** put a drop shadow on a card.",
+      "**Don't** colour anything in an operating screen for decoration. If a colour doesn't file or alarm, it goes.",
+      "**Don't** fill anything in the app green except the current nav item, the primary pill's rise, the person's chat bubble, meters and the brand disc.",
+      "**Don't** use red, amber or citron for anything but severity, and never use red as a chart hue.",
+      "**Don't** stack a bracket note above a title as an eyebrow.",
+      "**Don't** set the serif below 20px or use it for body text, labels or controls.",
+      "**Don't** use sage (#7c7c6f) for text. It fails for small type on a card.",
+      "**Don't** animate a critical door, an alert, or a severity mark.",
+      "**Don't** put soft 3D shapes inside the app. They belong to the landing page.",
+      "**Don't** write hex or arbitrary Tailwind values in components. Add a named class or token to `frontend/src/styles/app.css`."
     ]
   }
 }

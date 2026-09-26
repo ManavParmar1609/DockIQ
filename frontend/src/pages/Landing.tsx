@@ -1,10 +1,13 @@
 /**
- * The landing page, in Grafbase's composition: the announcement strip, a white ruled nav, a 50/50
- * hero with a 90px display headline and the product preview panel, then full-width bands alternating
- * drafting gray and white. Every preview is a real DockIQ component rendering sample data, labelled.
+ * The landing page, in the owner's GSAP reference: the green announcement bar, a carved two-line
+ * headline with soft shapes drifting through it, a bracketed note beside the gradient-stroked CTA, a
+ * statement that lights word by word as it scrolls, a highlighter montage, then the tool rows — each
+ * with its shape, its category word in its own hue, and a real DockIQ component rendering sample
+ * data. A cream terminator closes the page.
  */
 import {
   ArrowRight,
+  ArrowUpRight,
   BarChart3,
   ClipboardList,
   LayoutGrid,
@@ -13,13 +16,27 @@ import {
   Repeat2,
   Warehouse,
 } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import type { Severity } from '../api/types';
 import { LoadPlanView } from '../components/LoadPlanView';
 import { SeverityBadge } from '../components/Severity';
 import { SAMPLE_PLAN } from './landing/samplePlan';
+import {
+  Clover,
+  ColdDrop,
+  Diamond,
+  DockDoor,
+  Dome,
+  DoorGrid,
+  Hourglass,
+  PalletStack,
+  Probe,
+  Ring,
+  Spark,
+  Squiggle,
+} from './landing/Shapes';
 
 /** Adds `.in` to each `.enter` element as it scrolls into view. */
 function useReveal() {
@@ -51,15 +68,26 @@ function Primary({ children = CTA }: { children?: ReactNode }) {
   return (
     <Link to="/login" className="btn btn-primary">
       {children}
-      <ArrowRight size={16} aria-hidden="true" />
+      <ArrowRight size={17} aria-hidden="true" />
     </Link>
   );
 }
 
-function Wordmark() {
+function Explore({ children }: { children: ReactNode }) {
   return (
-    <span className="flex items-center gap-2 font-semibold tracking-tight">
-      <Warehouse size={20} aria-hidden="true" />
+    <Link to="/login" className="btn btn-secondary">
+      {children}
+      <ArrowUpRight size={17} aria-hidden="true" />
+    </Link>
+  );
+}
+
+function Wordmark({ size = 'text-xl' }: { size?: string }) {
+  return (
+    <span className={`flex items-center gap-2 font-bold tracking-tight ${size}`}>
+      <span className="mark-green grid h-8 w-8 place-items-center rounded-full" aria-hidden="true">
+        <Warehouse size={16} strokeWidth={2.2} />
+      </span>
       <span>
         Dock<span className="wordmark-iq">IQ</span>
       </span>
@@ -103,19 +131,19 @@ const PREVIEW_NAV: { icon: typeof Warehouse; label: string }[] = [
 /** The product preview panel: the supervisor's floor, sidebar and all, in sample data. */
 function ProductPreview() {
   return (
-    <figure className="overflow-hidden rounded-xl border border-hairline bg-surface text-left shadow-float">
+    <figure className="overflow-hidden rounded-xl border border-rule bg-surface text-left shadow-float">
       <div className="flex items-center justify-between border-b border-hairline px-4 py-2.5">
         <span className="flex items-center gap-2 text-sm font-semibold">
           <Warehouse size={16} aria-hidden="true" /> DockIQ · Zone A
         </span>
-        <span className="label">Sample data</span>
+        <span className="pill sim-tag">Sample data</span>
       </div>
       <div className="flex">
         <ul className="hidden shrink-0 border-r border-hairline p-2 sm:block" aria-hidden="true">
           {PREVIEW_NAV.map(({ icon: Icon, label }, index) => (
             <li
               key={label}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${index === 0 ? 'bg-paper-sunk font-medium text-ink' : 'text-ink-soft'}`}
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${index === 0 ? 'bg-accent font-semibold text-on-accent' : 'text-ink-soft'}`}
             >
               <Icon size={15} /> {label}
             </li>
@@ -160,8 +188,8 @@ function Derivation() {
   return (
     <div className="card p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="heading text-xl">Frozen seafood, dock five</p>
-        <span className="label">Sample data</span>
+        <p className="serif-title text-2xl">Frozen seafood, dock five</p>
+        <span className="pill sim-tag">Sample data</span>
       </div>
       <dl className="mt-4">
         {DERIVATION.map(([factor, value]) => (
@@ -182,24 +210,108 @@ function Derivation() {
   );
 }
 
-const ROLES: { who: string; line: string; detail: string }[] = [
+/** A sentence that lights word by word as it scrolls into place; `green` words light in green. */
+function Statement({ words }: { words: { text: string; green?: boolean }[] }) {
+  let index = 0;
+  return (
+    <p className="statement">
+      {words.map((word, group) =>
+        word.text.split(' ').map((part) => {
+          const style = { '--w': index++ } as CSSProperties;
+          return (
+            <span
+              key={`${String(group)}-${String(index)}`}
+              className={`scroll-word ${word.green ? 'scroll-word-green' : ''}`}
+              style={style}
+            >
+              {part}{' '}
+            </span>
+          );
+        }),
+      )}
+    </p>
+  );
+}
+
+type Tool = {
+  id?: string;
+  explore: string;
+  file: string;
+  hue: string;
+  name: string;
+  line: string;
+  body: string;
+  shape: ReactNode;
+  proof?: ReactNode;
+};
+
+const TOOLS: Tool[] = [
   {
-    who: 'The operator',
+    id: 'load-plans',
+    file: 'file-people',
+    hue: 'text-pink',
+    name: 'Load plans',
+    explore: 'Explore load plans',
+    line: 'The load, drawn before it is lifted.',
+    body: 'Stack height, heavy on the bottom, slip sheets, pinwheel or straight. DockIQ lays out every pallet of the order by that customer’s rules and walks the operator through it, from the dock door.',
+    shape: <PalletStack className="tool-shape" />,
+    proof: (
+      <div className="mt-8 rounded-xl border border-hairline bg-surface p-3 sm:p-6">
+        <p className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="pill sim-tag">Sample data</span>
+          <span className="label">Crestline Markets, outbound</span>
+        </p>
+        <LoadPlanView plan={SAMPLE_PLAN} persist={false} />
+      </div>
+    ),
+  },
+  {
+    id: 'scoring',
+    file: 'file-orange',
+    hue: 'text-orangey',
+    name: 'Scoring',
+    explore: 'Explore scoring',
+    line: 'A formula you can read.',
+    body: 'Severity is a weighted score, not a model’s guess. Issue type, product risk and customer tier multiply; temperature, shortage, allergens and trailer dwell add. Every issue shows its working, and an injury is always critical.',
+    shape: <Probe className="tool-shape" />,
+    proof: (
+      <div className="mt-8 max-w-xl">
+        <Derivation />
+      </div>
+    ),
+  },
+  {
+    id: 'roles',
+    file: 'file-green',
+    hue: 'text-accent-ink',
+    name: 'The operator',
+    explore: 'Sign in as an operator',
     line: 'A tablet at the door, and a calm answer.',
-    detail:
-      'Scan a case and a wrong product stops the load before it ships. Report a problem by voice or photo, get the procedure for this product and customer, and close it yourself when you can.',
+    body: 'Scan a case and a wrong product stops the load before it ships. Report a problem by voice or photo, get the procedure for this product and customer, and close it yourself when you can.',
+    shape: <DockDoor className="tool-shape" />,
   },
   {
-    who: 'The supervisor',
+    file: 'file-product',
+    hue: 'text-blue-ink',
+    name: 'The supervisor',
+    explore: 'Sign in as a supervisor',
     line: 'Their own queue, worst first.',
-    detail:
-      'Every escalation with what the operator already tried, and one tap to say “on my way” so nobody waits in silence.',
+    body: 'Every escalation with what the operator already tried, and one tap to say “on my way” so nobody waits in silence.',
+    shape: <DoorGrid className="tool-shape" />,
+    proof: (
+      <div className="mt-8 max-w-2xl">
+        <ProductPreview />
+      </div>
+    ),
   },
   {
-    who: 'Quality',
+    file: 'file-systems',
+    hue: 'text-lilac-ink',
+    name: 'Quality',
+    explore: 'Sign in as Quality',
     line: 'Every cold-chain break, as it happens.',
-    detail:
-      'Temperature, product and lot issues from every zone, the moment they are raised — with the pallets already on hold.',
+    body: 'Temperature, product and lot issues from every zone, the moment they are raised — with the pallets already on hold.',
+    shape: <ColdDrop className="tool-shape" />,
   },
 ];
 
@@ -212,35 +324,38 @@ const NAV_LINKS: [string, string][] = [
 export default function Landing() {
   const root = useReveal();
   return (
-    <div ref={root} className="min-h-dvh bg-paper text-ink">
+    <div ref={root} className="min-h-dvh overflow-x-clip bg-paper text-ink">
       <p className="signal-strip px-4 py-2.5 text-center text-sm font-medium">
         DockIQ is a prototype on simulated data — every company, trailer, person and pallet is fictional.{' '}
-        <Link to="/login" className="inline-flex items-center gap-1 underline">
+        <Link to="/login" className="inline-flex items-center gap-1 font-semibold underline">
           Open the demo <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </p>
 
-      <header className="sticky top-0 z-20 border-b border-hairline bg-surface">
+      <header className="material sticky top-0 z-20 border-b border-hairline">
         <nav
           aria-label="Site"
           className="mx-auto flex h-16 max-w-page items-center justify-between gap-6 px-6"
         >
-          <Link to="/" className="flex items-center text-lg">
+          <Link to="/" className="flex items-center">
             <Wordmark />
           </Link>
-          <div className="hidden items-center gap-6 md:flex">
+          <div className="hidden items-center gap-7 md:flex">
             {NAV_LINKS.map(([href, label]) => (
               <a
                 key={href}
                 href={href}
-                className="flex items-center text-sm font-medium text-ink hover:text-ink-soft"
+                className="link-draw flex items-center text-base text-ink-soft hover:text-ink"
               >
                 {label}
               </a>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/login" className="btn btn-pill hidden sm:inline-flex">
+            <Link
+              to="/login"
+              className="link-draw hidden items-center px-2 text-base text-ink-soft hover:text-ink sm:flex"
+            >
               Sign in
             </Link>
             <Primary>Get started</Primary>
@@ -249,119 +364,162 @@ export default function Landing() {
       </header>
 
       <main>
-        {/* Hero: a 50/50 split — the claim and the actions, then the product preview panel */}
-        <section className="mx-auto grid max-w-page items-center gap-12 px-6 py-20 lg:grid-cols-2">
-          <div className="enter in">
-            <h1 className="display text-5xl leading-none sm:text-6xl">Every dock door, triaged.</h1>
-            <p className="mt-6 max-w-lg text-lg text-ink-soft">
-              Operators get the right procedure in seconds, supervisors see the worst problem first, and
-              Quality hears about cold-chain breaks as they happen.
+        {/* Hero: the carved two-line claim, shapes drifting through it, the note and the action */}
+        <section className="relative mx-auto max-w-page px-6 pt-14 pb-20 sm:pt-20">
+          <Clover className="shape hero-clover" />
+          <Squiggle className="shape hero-squiggle" />
+          <Spark className="shape hero-spark" />
+          <h1 className="hero-display relative">
+            <span className="hero-line" style={{ '--i': 0 } as CSSProperties}>
+              Every dock
+            </span>
+            <span className="hero-line hero-indent" style={{ '--i': 1 } as CSSProperties}>
+              door, triaged.
+            </span>
+          </h1>
+          <div className="enter in mt-14 flex flex-wrap items-center justify-between gap-8">
+            <p className="bracket max-w-md text-lg text-ink-soft">
+              Operators get the right procedure in seconds; supervisors see the worst problem first.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Primary />
               <a href="#scoring" className="btn btn-secondary">
                 How it scores
               </a>
             </div>
           </div>
-          <div className="enter in">
-            <ProductPreview />
-          </div>
         </section>
 
-        {/* Load plans — a white band */}
-        <section id="load-plans" className="border-y border-hairline bg-surface py-20">
-          <div className="mx-auto max-w-page px-6">
-            <div className="enter max-w-2xl">
-              <h2 className="section-heading text-3xl">The load, drawn before it is lifted.</h2>
-              <p className="mt-4 text-lg text-ink-soft">
-                Stack height, heavy on the bottom, slip sheets, pinwheel or straight. DockIQ lays out every
-                pallet of the order by that customer&apos;s rules and walks the operator through it, from the
-                dock door.
-              </p>
-            </div>
-            <div className="enter mt-10 rounded-xl border border-hairline bg-paper p-3 shadow-float sm:p-6">
-              <p className="label mb-4">Sample data · Crestline Markets, outbound</p>
-              <LoadPlanView plan={SAMPLE_PLAN} persist={false} />
-            </div>
-          </div>
-        </section>
-
-        {/* Scoring — the drafting-gray band */}
-        <section id="scoring" className="py-20">
-          <div className="mx-auto grid max-w-page items-center gap-12 px-6 lg:grid-cols-2">
-            <div className="enter">
-              <h2 className="section-heading text-3xl">A formula you can read.</h2>
-              <p className="mt-4 text-lg text-ink-soft">
-                Severity is a weighted score, not a model&apos;s guess. Issue type, product risk and customer
-                tier multiply; temperature, shortage, allergens and trailer dwell add. Every issue shows its
-                working, and an injury is always critical.
-              </p>
-            </div>
-            <div className="enter">
-              <Derivation />
+        {/* Why: the statement lights as it scrolls */}
+        <section className="relative mx-auto max-w-page border-t border-rule px-6 py-24">
+          <div className="grid gap-8 lg:grid-cols-4">
+            <p className="bracket hidden self-start text-sm text-ink-soft lg:inline-flex">Why DockIQ</p>
+            <div className="relative lg:col-span-3">
+              <Statement
+                words={[
+                  { text: 'Operators get the right procedure' },
+                  { text: 'in seconds,', green: true },
+                  {
+                    text: 'supervisors see the worst problem first, and Quality hears about cold-chain breaks as they happen.',
+                  },
+                ]}
+              />
+              <Ring className="shape why-ring" />
             </div>
           </div>
         </section>
 
-        {/* Roles — a white band with three feature cards */}
-        <section id="roles" className="border-y border-hairline bg-surface py-20">
-          <div className="mx-auto max-w-page px-6">
-            <h2 className="enter section-heading text-3xl">Three people, one floor.</h2>
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
-              {ROLES.map((role) => (
-                <article key={role.who} className="enter card p-7">
-                  <p className="label">{role.who}</p>
-                  <h3 className="heading mt-2 text-xl">{role.line}</h3>
-                  <p className="mt-3 text-base text-ink-soft">{role.detail}</p>
-                </article>
-              ))}
-            </div>
+        {/* The montage: highlighter blocks among the shapes */}
+        <section className="relative mx-auto max-w-page px-6 pt-8 pb-28" aria-label="Score, route, close">
+          <div className="enter relative min-h-96">
+            <p className="montage display text-5xl sm:text-6xl">
+              <span className="montage-word hl hl-pink" style={{ '--i': 0 } as CSSProperties}>
+                Score it
+              </span>
+              <br />
+              <span
+                className="montage-word montage-offset hl hl-orange"
+                style={{ '--i': 1 } as CSSProperties}
+              >
+                route it
+              </span>
+              <br />
+              <span className="montage-word hl hl-green" style={{ '--i': 2 } as CSSProperties}>
+                close it.
+              </span>
+            </p>
+            <Dome className="shape montage-dome" />
+            <Clover className="shape montage-clover" />
+            <Diamond className="shape montage-diamond" />
+            <Hourglass className="shape montage-hourglass" />
+            <p className="relative mt-14 max-w-sm text-lg text-ink-soft">
+              A crushed pallet, a seal that does not match, a probe reading over the limit: DockIQ has the
+              procedure, and the right person gets the call.
+            </p>
           </div>
         </section>
 
-        {/* Close — the drafting-gray band */}
-        <section className="py-20">
-          <div className="enter mx-auto flex max-w-page flex-wrap items-end justify-between gap-8 px-6">
-            <div className="max-w-2xl">
-              <h2 className="section-heading text-3xl">Walk the floor at your own pace.</h2>
-              <p className="mt-4 text-lg text-ink-soft">
+        {/* The tools: one row each, the shape, the word in its hue, the claim and the proof */}
+        <section className="mx-auto max-w-page px-6 pb-24" aria-label="DockIQ at work">
+          <div>
+            {TOOLS.map((tool) => (
+              <article key={tool.name} id={tool.id} className={`tool-row enter ${tool.file}`}>
+                <div className="tool-shape-cell">{tool.shape}</div>
+                <div className="min-w-0">
+                  <h3 className={`display text-4xl sm:text-5xl ${tool.hue}`}>{tool.name}</h3>
+                  <p className="serif-title mt-4 text-2xl sm:text-3xl">{tool.line}</p>
+                  <p className="mt-4 max-w-2xl text-lg text-ink-soft">{tool.body}</p>
+                  <div className="mt-6">
+                    <Explore>{tool.explore}</Explore>
+                  </div>
+                  {tool.proof}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Close */}
+        <section className="relative mx-auto max-w-page px-6 pt-8 pb-28">
+          <div className="enter flex flex-wrap items-end justify-between gap-10">
+            <h2 className="display max-w-4xl text-5xl sm:text-6xl">Walk the floor at your own pace.</h2>
+            <div className="flex flex-col items-start gap-4">
+              <Primary />
+              <p className="max-w-xs text-base text-ink-mute">
                 Sign in as an operator, a supervisor or Quality. Every company, product and person is
                 fictional.
               </p>
             </div>
-            <Primary />
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-hairline bg-surface">
-        <div className="mx-auto grid max-w-page gap-10 px-6 py-12 sm:grid-cols-4">
-          <div className="sm:col-span-2">
-            <Wordmark />
-            <p className="mt-3 text-sm text-ink-soft">© 2026 DockIQ. Prototype on fictional data.</p>
+      <footer>
+        <div className="border-t border-rule bg-night-raised">
+          <div className="mx-auto grid max-w-page grid-cols-2 gap-10 px-6 py-14 sm:grid-cols-4">
+            <div>
+              <p className="text-sm font-semibold text-accent-ink">DockIQ</p>
+              <ul className="mt-3 flex flex-col">
+                {NAV_LINKS.map(([href, label]) => (
+                  <li key={href}>
+                    <a
+                      href={href}
+                      className="link-draw inline-flex items-center text-base text-ink-soft hover:text-ink"
+                    >
+                      {label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-pink">Operators</p>
+              <p className="mt-3 text-base text-ink-soft">Load, receive, inspect, report</p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-blue-ink">Supervisors</p>
+              <p className="mt-3 text-base text-ink-soft">Triage, decide, hand off</p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-lilac-ink">Quality</p>
+              <p className="mt-3 text-base text-ink-soft">Hold, release, trace</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold">Product</p>
-            <ul className="mt-3 flex flex-col">
-              {NAV_LINKS.map(([href, label]) => (
-                <li key={href}>
-                  <a href={href} className="flex items-center text-sm text-ink hover:text-ink-soft">
-                    {label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-sm font-semibold">Demo</p>
-            <ul className="mt-3 flex flex-col">
-              <li>
-                <Link to="/login" className="flex items-center text-sm text-ink hover:text-ink-soft">
-                  Sign in
-                </Link>
-              </li>
-            </ul>
+        </div>
+        <div className="footer-cream">
+          <div className="mx-auto flex max-w-page flex-wrap items-end justify-between gap-8 px-6 py-14">
+            <div>
+              <p className="serif-title max-w-md text-3xl">
+                A prototype on fictional data, built to be read.
+              </p>
+              <Link
+                to="/login"
+                className="link-draw mt-5 inline-flex items-center gap-1.5 text-base font-semibold"
+              >
+                Sign in to the demo <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+            <p className="text-sm">© 2026 DockIQ. Every company, trailer, person and pallet is fictional.</p>
           </div>
         </div>
       </footer>

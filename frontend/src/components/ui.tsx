@@ -1,7 +1,7 @@
 /**
- * The shared kit, in Apple's grouped style: large titles, white cards on the gray page, capsule tags,
- * tabular numbers. Every data view renders through <QueryBoundary> so a failed request shows an
- * error with a retry — never an endless spinner.
+ * The shared kit, on the dark stage: carved titles with a bracketed note, surface cards, serif panel
+ * titles, pill tags, tabular numbers. Every data view renders through <QueryBoundary> so a failed
+ * request shows an error with a retry — never an endless spinner.
  */
 import type { UseQueryResult } from '@tanstack/react-query';
 import { AlertTriangle, Check, RotateCw } from 'lucide-react';
@@ -31,14 +31,16 @@ export function PageHeader({
   return (
     <header className="pt-2">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className={`display ${size === 'lg' ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
+        <h1
+          className={`display title-reveal ${size === 'lg' ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
+        >
           {title}
         </h1>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
       {(kicker ?? meta) && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-base text-ink-mute">
-          {kicker && <span className="text-ink-soft">{kicker}</span>}
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-base text-ink-mute">
+          {kicker && <span className="bracket text-sm text-ink-soft">{kicker}</span>}
           {meta}
         </div>
       )}
@@ -46,7 +48,7 @@ export function PageHeader({
   );
 }
 
-/** A grouped card with an optional title row. `index` staggers the load reveal. */
+/** A section on the stage under a rule, with an optional serif title row. `index` staggers the reveal. */
 export function Panel({
   title,
   aside,
@@ -63,15 +65,12 @@ export function Panel({
   flush?: boolean;
 }) {
   const style = index === undefined ? undefined : ({ '--i': index } as CSSProperties);
-  const body = flush ? (title ? 'pt-2' : '') : title ? 'px-5 pt-3 pb-5' : 'p-5';
+  const body = flush ? (title ? 'pt-2' : '') : title ? 'pt-3 pb-2' : 'py-4';
   return (
-    <section
-      className={`card overflow-hidden ${index === undefined ? '' : 'reveal'} ${className}`}
-      style={style}
-    >
+    <section className={`panel ${index === undefined ? '' : 'reveal'} ${className}`} style={style}>
       {title && (
-        <div className="flex min-h-12 items-center justify-between gap-3 px-5 pt-4">
-          <h2 className="heading text-lg">{title}</h2>
+        <div className="flex min-h-12 items-center justify-between gap-3 pt-5">
+          <h2 className="serif-title text-xl">{title}</h2>
           {aside}
         </div>
       )}
@@ -95,10 +94,10 @@ export function Stat({
   index?: number;
 }) {
   const style = index === undefined ? undefined : ({ '--i': index } as CSSProperties);
-  const surface = alert ? 'rounded-xl border border-hazard-line bg-hazard-soft' : 'card';
+  const surface = alert ? 'rounded-xl border border-hazard-line bg-hazard-soft p-4' : 'stat-cell pt-4 pb-2';
   return (
     <div
-      className={`flex flex-col justify-between gap-2 p-4 ${surface} ${index === undefined ? '' : 'reveal'}`}
+      className={`flex flex-col justify-between gap-2 ${surface} ${index === undefined ? '' : 'reveal'}`}
       style={style}
     >
       <p className={`text-sm font-semibold ${alert ? 'text-hazard-deep' : 'text-ink-mute'}`}>{label}</p>
@@ -228,7 +227,7 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <p className="heading text-xl">{title}</p>
+      <p className="serif-title text-2xl">{title}</p>
       {children && <div className="max-w-md text-base text-ink-mute">{children}</div>}
     </div>
   );

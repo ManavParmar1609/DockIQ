@@ -1,6 +1,5 @@
-import '@fontsource-variable/inter/index.css';
-import '@fontsource-variable/geist/index.css';
-import '@fontsource-variable/hanken-grotesk/index.css';
+import '@fontsource-variable/host-grotesk/index.css';
+import '@fontsource-variable/source-serif-4/opsz.css';
 import '@fontsource-variable/geist-mono/index.css';
 import './styles/app.css';
 

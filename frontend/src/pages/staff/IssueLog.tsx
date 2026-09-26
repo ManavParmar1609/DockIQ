@@ -11,6 +11,7 @@ import {
   type IssueFilters,
 } from '../../api/hooks';
 import type { Issue, IssueStatus, Severity } from '../../api/types';
+import { IssueTypeLabel } from '../../components/IssueGroup';
 import { SeverityBadge, severityLabel } from '../../components/Severity';
 import {
   EmptyState,
@@ -369,7 +370,9 @@ export default function IssueLog() {
                           {issue.issue_subtype ?? issue.issue_type}
                           {issue.simulated && <SimulatedTag compact />}
                         </span>
-                        <span className="text-sm text-ink-mute">{issue.issue_type}</span>
+                        <span className="text-sm">
+                          <IssueTypeLabel issueType={issue.issue_type} />
+                        </span>
                       </td>
                       <td className="telemetry px-3 py-3">{issue.door_number ?? '—'}</td>
                       <td className="px-3 py-3">{issue.operator_name ?? '—'}</td>

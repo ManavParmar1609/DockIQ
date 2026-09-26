@@ -8,6 +8,7 @@ import type { Dock, Issue, OrderDetail } from '../api/types';
 import { elapsed, formatNumber, percent, timeAgo } from '../lib/format';
 import { useNow } from '../lib/useNow';
 import { bySeverityThenAge, DOCK_STATUS, LIFECYCLE } from '../lib/vocab';
+import { IssueGroupDot } from './IssueGroup';
 import { SeverityBadge } from './Severity';
 import { Definition, EmptyState, IssueStatusTag, Notice, QueryBoundary, SimulatedTag, Tag } from './ui';
 
@@ -323,6 +324,7 @@ function IssueRow({ issue, now }: { issue: Issue; now: number }) {
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex flex-wrap items-center gap-2">
             <SeverityBadge severity={issue.severity} size="sm" />
+            <IssueGroupDot issueType={issue.issue_type} />
             <span className="heading text-base">{issue.issue_subtype ?? issue.issue_type}</span>
             {issue.simulated && <SimulatedTag compact />}
           </span>

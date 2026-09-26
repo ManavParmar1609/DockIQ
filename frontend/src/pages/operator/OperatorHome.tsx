@@ -203,7 +203,7 @@ export default function OperatorHome() {
           aside={<span className="label">{timeAgo(handoff.created_at)}</span>}
           index={0}
         >
-          <p className="text-lg">{handoff.notes}</p>
+          <p className="max-w-prose text-base">{handoff.notes}</p>
           <p className="label mt-3">Handed off by {handoff.supervisor_name}</p>
         </Panel>
       )}

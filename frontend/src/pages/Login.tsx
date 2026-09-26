@@ -136,10 +136,7 @@ export default function Login() {
 
       <main className="mx-auto mt-6 max-w-md sm:mt-12">
         <div className="reveal flex flex-col items-center text-center">
-          <span
-            className="grid h-20 w-20 place-items-center rounded-2xl bg-accent text-on-accent"
-            aria-hidden="true"
-          >
+          <span className="mark-green grid h-20 w-20 place-items-center rounded-full" aria-hidden="true">
             <Warehouse size={42} strokeWidth={2} />
           </span>
           <h1 className="display mt-6 text-3xl">Sign in to DockIQ</h1>

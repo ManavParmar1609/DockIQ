@@ -1,154 +1,164 @@
 ---
 name: DockIQ
-description: Dock-door intelligence for cold-storage warehouses, drawn as an engineering blueprint on mint frost with an obsidian rail and one neon pulse.
+description: Dock-door intelligence for cold-storage warehouses, drawn on a near-black chalkboard stage in carved cream type, with highlighters that file the work and severity that never whispers.
 colors:
-  paper: "#edf7f5"
-  surface: "#ffffff"
-  paper-sunk: "#f2f8f6"
-  paper-deep: "#d0d3d3"
-  hairline: "#d0d3d3"
-  ink: "#132322"
-  ink-soft: "#424f4f"
-  ink-mute: "#56615f"
-  accent: "#3ddc91"
-  on-accent: "#132322"
-  accent-ink: "#146c47"
-  accent-soft: "#dff5ea"
-  accent-line: "#97ddbc"
-  sage: "#828786"
-  sage-ink: "#1b8a57"
-  signal: "#ffcd48"
-  terracotta: "#ffcd48"
-  signal-soft: "#fff4d1"
-  signal-ink: "#6b5000"
-  night: "#132322"
-  night-raised: "#0e1a19"
-  rail-sunk: "#1b3230"
-  rail-rule: "#24403d"
-  rail-ink-soft: "#d0d3d3"
-  rail-ink-mute: "#b2b6b4"
-  hazard: "#a4291f"
-  hazard-bright: "#c23a2c"
-  hazard-deep: "#912018"
-  hazard-soft: "#fbf1ef"
-  orange: "#8a5a10"
-  orange-soft: "#fdf1dc"
-  orange-bright: "#d4891f"
-  amber: "#515c0b"
-  amber-soft: "#f3f5d8"
-  amber-bright: "#aebd2a"
-  green: "#2f6b1c"
-  green-soft: "#eaf6e2"
-  teal: "#0a6d78"
-  teal-soft: "#e6f8f5"
-  indigo: "#00679e"
-  indigo-soft: "#e5f5fc"
-  mint: "#456d18"
-  mint-soft: "#eef7e2"
-  purple: "#1d6b52"
-  purple-soft: "#e3f4ea"
-  brown: "#1b1b1b"
-  brown-soft: "#f0f0f1"
-  chart-1: "#007096"
-  chart-2: "#679725"
-  chart-3: "#6a78cd"
-  chart-4: "#007d65"
+  paper: "#0e100f"
+  surface: "#171917"
+  paper-sunk: "#1f211e"
+  paper-deep: "#2c2e2a"
+  night: "#0b0c0b"
+  night-raised: "#191919"
+  ink: "#fffce1"
+  ink-soft: "#d3d0b9"
+  ink-mute: "#a3a292"
+  hairline: "#34352f"
+  rule: "#42433d"
+  rule-strong: "#6d6e63"
+  sage: "#7c7c6f"
+  white: "#ffffff"
+  black: "#000000"
+  accent: "#0ae448"
+  accent-light: "#abff84"
+  on-accent: "#0e100f"
+  accent-ink: "#3df06f"
+  accent-soft: "#12281a"
+  accent-line: "#1f5a32"
+  pink: "#fec5fb"
+  pink-soft: "#2c1b2b"
+  blue: "#00bae2"
+  blue-ink: "#4fd3ef"
+  blue-soft: "#0b2329"
+  lilac: "#9d95ff"
+  lilac-ink: "#b4aeff"
+  lilac-soft: "#1c1a33"
+  orangey: "#ff8709"
+  signal-ink: "#ffa24a"
+  signal-soft: "#2d1a07"
+  hazard: "#c9372c"
+  hazard-bright: "#ff5a4f"
+  hazard-deep: "#ff9b90"
+  hazard-soft: "#2b1311"
+  hazard-line: "#6e2a23"
+  orange: "#ffc062"
+  orange-bright: "#ffab2e"
+  orange-soft: "#2c1f0b"
+  amber: "#e3e37d"
+  amber-bright: "#d4d64a"
+  amber-soft: "#23240f"
+  green: "#6ff09a"
+  green-soft: "#10261a"
+  chart-1: "#00b320"
+  chart-2: "#7a71cf"
+  chart-3: "#dc7100"
+  chart-4: "#0096b9"
 typography:
-  display:
-    fontFamily: "'Geist Variable', 'Geist', 'Inter Variable', ui-sans-serif, sans-serif"
-    fontSize: "5.625rem"
-    fontWeight: 400
-    lineHeight: 0.95
-    letterSpacing: "-0.02em"
-  headline:
-    fontFamily: "'Geist Variable', 'Geist', 'Inter Variable', ui-sans-serif, sans-serif"
-    fontSize: "2.5rem"
-    fontWeight: 400
-    lineHeight: 0.95
-    letterSpacing: "-0.02em"
-  title:
-    fontFamily: "'Inter Variable', 'Inter', ui-sans-serif, sans-serif"
-    fontSize: "1.25rem"
+  hero:
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
+    fontSize: "clamp(3.5rem, 12.5vw, 11.5rem)"
     fontWeight: 600
-    lineHeight: 1.3
+    lineHeight: 0.9
+    letterSpacing: "-0.045em"
+  display:
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
+    fontSize: "4.125rem"
+    fontWeight: 600
+    lineHeight: 0.98
+    letterSpacing: "-0.035em"
+  statement:
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
+    fontSize: "clamp(1.75rem, 3.6vw, 2.75rem)"
+    fontWeight: 400
+    lineHeight: 1.18
+    letterSpacing: "-0.02em"
+  serif-title:
+    fontFamily: "'Source Serif 4 Variable', 'Source Serif 4', Georgia, serif"
+    fontSize: "1.4375rem"
+    fontWeight: 400
+    lineHeight: 1.08
+    letterSpacing: "-0.025em"
+    fontVariation: "font-optical-sizing: auto"
+  heading:
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 600
+    lineHeight: 1.25
     letterSpacing: "-0.015em"
-    fontFeature: "'ss01', 'cv11'"
   body:
-    fontFamily: "'Inter Variable', 'Inter', ui-sans-serif, sans-serif"
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
-    letterSpacing: "-0.018em"
-    fontFeature: "'ss01', 'cv11'"
+    letterSpacing: "-0.01em"
+  body-reading:
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 400
+    lineHeight: 1.6
   label:
-    fontFamily: "'Hanken Grotesk Variable', 'Hanken Grotesk', 'Inter Variable', ui-sans-serif, sans-serif"
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 500
     lineHeight: 1.4
-    letterSpacing: "0"
-  number:
-    fontFamily: "'Inter Variable', 'Inter', ui-sans-serif, sans-serif"
-    fontSize: "3rem"
-    fontWeight: 600
-    lineHeight: 1
-    letterSpacing: "-0.035em"
-    fontFeature: "'lnum', 'tnum'"
+    letterSpacing: "-0.005em"
   telemetry:
     fontFamily: "'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace"
-    fontSize: "0.875rem"
+    fontSize: "1rem"
     fontWeight: 500
-    letterSpacing: "-0.005em"
+    letterSpacing: "-0.01em"
     fontFeature: "'tnum', 'lnum', 'zero'"
+  num:
+    fontFamily: "'Host Grotesk Variable', 'Host Grotesk', ui-sans-serif, sans-serif"
+    fontSize: "2.75rem"
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: "-0.04em"
+    fontFeature: "'lnum', 'tnum'"
 rounded:
   sm: "4px"
   md: "6px"
-  lg: "12px"
-  xl: "20px"
-  full: "40px"
+  lg: "8px"
+  xl: "10px"
+  2xl: "12px"
+  3xl: "16px"
+  full: "9999px"
 spacing:
-  1: "4px"
-  2: "8px"
-  3: "12px"
-  4: "16px"
-  5: "20px"
-  6: "24px"
-  8: "32px"
-  10: "40px"
-  20: "80px"
+  "1": "4px"
+  "2": "8px"
+  "3": "12px"
+  "4": "16px"
+  "5": "20px"
+  "6": "24px"
+  "10": "40px"
+  "14": "56px"
+  "24": "96px"
 components:
   button-primary:
-    backgroundColor: "{colors.accent}"
-    textColor: "{colors.on-accent}"
-    rounded: "{rounded.md}"
-    padding: "0 20px"
-    height: "48px"
-  button-secondary:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "0 20px"
-    height: "48px"
-  button-secondary-hover:
-    backgroundColor: "{colors.paper-sunk}"
-  button-pill:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.accent-soft}"
     textColor: "{colors.ink}"
     rounded: "{rounded.full}"
-    padding: "0 20px"
+    padding: "0 22.4px"
+    height: "48px"
+  button-primary-hover:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.on-accent}"
+  button-secondary:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.full}"
+    padding: "0 22.4px"
     height: "48px"
   button-hazard:
     backgroundColor: "{colors.hazard}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.md}"
-    padding: "0 20px"
+    textColor: "{colors.white}"
+    rounded: "{rounded.full}"
+    padding: "0 22.4px"
     height: "48px"
-  button-hazard-hover:
-    backgroundColor: "{colors.hazard-deep}"
   button-disabled:
-    backgroundColor: "{colors.paper-sunk}"
+    backgroundColor: "transparent"
     textColor: "{colors.ink-mute}"
+    rounded: "{rounded.full}"
   field:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     rounded: "{rounded.lg}"
     padding: "10px 14px"
@@ -164,59 +174,25 @@ components:
     textColor: "{colors.ink}"
   card:
     backgroundColor: "{colors.surface}"
-    rounded: "{rounded.xl}"
-    padding: "20px"
-  fact-strip-cell:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    padding: "12px 16px"
-  notice:
-    backgroundColor: "{colors.paper-sunk}"
     textColor: "{colors.ink}"
     rounded: "{rounded.xl}"
     padding: "16px"
-  medallion:
-    backgroundColor: "{colors.accent-soft}"
-    textColor: "{colors.accent-ink}"
-    rounded: "{rounded.lg}"
-    size: "44px"
-  medallion-product:
-    backgroundColor: "{colors.teal-soft}"
-    textColor: "{colors.teal}"
-  medallion-people:
-    backgroundColor: "{colors.signal-soft}"
-    textColor: "{colors.signal-ink}"
-  medallion-systems:
-    backgroundColor: "{colors.indigo-soft}"
-    textColor: "{colors.indigo}"
-  tag:
+  pill-tag:
     backgroundColor: "{colors.paper-sunk}"
     textColor: "{colors.ink-soft}"
+    typography: "{typography.label}"
     rounded: "{rounded.full}"
-    padding: "0 10px"
+    padding: "0 11.2px"
     height: "28px"
-  tag-accent:
-    backgroundColor: "{colors.accent-soft}"
-    textColor: "{colors.accent-ink}"
-  tag-simulated:
-    backgroundColor: "{colors.signal-soft}"
-    textColor: "{colors.signal-ink}"
-    rounded: "{rounded.full}"
-    height: "28px"
-  chip-suggest:
-    backgroundColor: "{colors.accent-soft}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
-    padding: "0 16px"
-    height: "44px"
-  chat-bubble-own:
-    backgroundColor: "{colors.accent}"
+  sim-tag:
+    backgroundColor: "{colors.orangey}"
     textColor: "{colors.on-accent}"
-    rounded: "{rounded.xl}"
-    padding: "10px 16px"
+    rounded: "{rounded.sm}"
+    padding: "0 11.2px"
+    height: "28px"
   severity-critical:
     backgroundColor: "{colors.hazard}"
-    textColor: "{colors.surface}"
+    textColor: "{colors.white}"
     rounded: "{rounded.full}"
   severity-high:
     backgroundColor: "{colors.orange-soft}"
@@ -230,226 +206,221 @@ components:
     backgroundColor: "{colors.paper-sunk}"
     textColor: "{colors.ink-mute}"
     rounded: "{rounded.full}"
-  rail:
-    backgroundColor: "{colors.night}"
-    textColor: "{colors.surface}"
-    width: "280px"
-  nav-item-active:
+  nav-item:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-soft}"
+    rounded: "{rounded.lg}"
+    padding: "10px 16px"
+  nav-item-current:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.on-accent}"
-    rounded: "{rounded.md}"
+  rail:
+    backgroundColor: "{colors.night}"
+    width: "280px"
+  bubble-user:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.on-accent}"
     padding: "10px 16px"
-  nav-item-hover:
-    backgroundColor: "{colors.rail-sunk}"
-    textColor: "{colors.surface}"
+  medallion:
+    backgroundColor: "{colors.accent-soft}"
+    textColor: "{colors.accent-ink}"
+    rounded: "{rounded.lg}"
+    size: "44px"
 ---
 
 # Design System: DockIQ
 
 ## Overview
 
-**Creative North Star: "The Engineering Blueprint on Mint Frost"**
+**Creative North Star: "The Chalkboard on the Dock"**
 
-DockIQ keeps Grafbase's structure and holds the dock's safety rules above it, now in the owner's own palette. The page is a pale mint-frost table. White sheets sit on it, each edged with a 1px fog hairline and no shadow. Obsidian, a green-black, sets all the text. The desktop rail is a solid obsidian column, and the announcement strip above everything runs from obsidian into deep abyss. One neon green pulse lights the thing to do and the place you are: the single filled action, the selected rail item, your own messages to the assistant. Mint whisper washes mark selection and highlights, signal yellow punctuates the diagrams and the simulated mark, and filing medallions colour-code what kind of thing an item is. The world is light only. There is no dark mode.
+DockIQ is the owner's GSAP reference, an animated chalkboard in a design studio, brought onto a cold-storage loading dock. One near-black stage carries everything. On it: cream type carved tight at display sizes, hairline rules instead of boxes, outlined pills to press, and a small set of highlighters that file the work. Green is DockIQ itself and the thing to do next. Pink, blue and lilac file zones, report groups, inspection sections and cold rooms. Orange marks data as simulated. Nothing is coloured to decorate an operating screen: a colour either files something or raises an alarm.
 
-The type follows the owner's spec in place of Grafbase's single family. Titles are an editorial serif at 400, tight and compressed. Inter, tracked slightly tight, carries everything read at work. Hanken Grotesk sets the small captions. Geist Mono sets the telemetry. Everything is read at arm's length on a forklift tablet, with gloves, glare and dim light. So density is moderate, targets are generous (44px minimum, 48px buttons), the type floor is 14px, and nothing moves on an alert.
+The dock outranks the reference wherever the two disagree. Severity keeps its own red, amber and citron, always as a word plus a shape. The type floor is 14px, control edges pass 3:1, every target is at least 44px, nothing moves on an alert, and the barcode stays black on white. The interface is dark only. It is read at arm's length through gloves and glare, so the carving stays at page-title scale and the working surfaces stay calm, legible and dense enough for a tablet on a forklift.
 
-The palette gives way to the dock in four places. Severity keeps brick red, saffron and olive, always with a word and a shape. Neon never carries white text: obsidian sits on it. The pale greens and yellow are washes and marks, and deeper `-ink` variants carry any words. Slate grey never sets small text.
+Motion is the reference's signature and is spent where it explains. Titles wipe up out of their own baseline. Screens rise out of a blur on a stagger. Green rises up through the primary pill when it is hovered or pressed. A quiet bar slides in behind a hovered nav item, and cards rise while their rule lights in their filing colour. The landing page adds words that light as they scroll, a highlighter montage, and soft 3D shapes that drift slowly. None of it touches a critical surface, and reduced motion turns it all off.
 
 **Key Characteristics:**
-- A mint-frost canvas (`paper`) under white cards with a 1px fog `hairline`, 20px corners and no shadow.
-- Obsidian (`ink`) for every word; an obsidian rail and an obsidian-to-abyss strip frame the app.
-- One neon pulse (`accent`) with obsidian text: the filled action, the selected place, your own chat bubbles.
-- Mint whisper washes for selection, signal yellow for marks and the simulated tag, filing medallions for kind.
-- Four typefaces, one per job: Geist 600 for titles, Inter for UI and body, Hanken Grotesk for labels, Geist Mono for telemetry.
-- Squared 6px buttons, 12px fields, panels and medallions, 20px cards, 40px pills.
-- Light only.
+- One near-black stage with surfaces one step lifted; cream ink, never pure white text.
+- Hairline rules and surface steps for depth; no drop shadows on cards.
+- 100px pills for everything pressed; a single gradient-stroked green primary per view.
+- Five highlighters that file; severity has a separate red/amber/citron channel with shapes.
+- Three type voices: Host Grotesk for everything, Source Serif 4 for editorial titles, Geist Mono for telemetry.
+- `{ bracket }` notes beside or under titles as the reference's annotation.
 
 ## Colors
 
-A cool mint-and-obsidian ground with one neon pulse. Colour carries meaning in four separate channels: the action and place (neon), filing (medallion families), content (the cool triad and chart slots) and severity.
+A near-black stage with cream ink, one electric green that means DockIQ and "do this", four filing highlighters, and a severity palette that sits outside the reference entirely.
 
 ### Primary
-- **Obsidian Shell** (`ink`): all primary text (16.2:1 on white), the escalated tag's fill, and the rail and strip as `night`.
-- **Neon Pulse** (`accent`): the one filled primary action, the selected rail item, the report step bar's completed segments, the user's own chat bubbles, the wordmark's disc, the floating request button and the load guide's step pin. Always under obsidian text (`on-accent`, 8.6:1). Never text itself.
-- **Deep Green** (`accent-ink`): links, green text, the tab bar's active item, "waiting on" lines and the default medallion ink (6.4:1 on white).
-- **Signal Green** (`sage-ink`): meter fills, the focus ring and outline, the caret, the selected choice's inset rule. 4.4:1 on white, so it is a graphic mark, never small text.
+- **Shockingly Green** (accent): The brand and the next action. It strokes the primary pill (as the 114° gradient into **Lime Light**, accent-light), fills the current nav item, carries the person's own chat words, and draws focus rings, the caret, meters and selection. **Green Ink** (accent-ink) is its text step, **Green Wash** (accent-soft) its surface, **Green Rule** (accent-line) its line. **On-Green** (on-accent), the stage colour, is the only ink allowed on a green fill.
 
 ### Secondary
-- **Mint Whisper** (`accent-soft` wash, `accent-line` rule): text selection, selected choice tiles, supervisor notes and highlight panels in the load guide, accent tags, the suggestion chips (`accent-line` is their border).
-- **Signal Yellow** (`signal`, also the `terracotta` alias used by trailer lamps): warm punctuation in diagrams. Its wash and ink (`signal-soft`, `signal-ink`, 7.1:1) make the dashed simulated tag and the People filing colour.
-- **Deep Abyss** (`night-raised`): the strip's far stop and the rail's person card. Inside the rail the tokens are re-scoped: surface becomes `night-raised`, hover fills become `rail-sunk`, rules become `rail-rule`, secondary text becomes `rail-ink-soft` and captions `rail-ink-mute` (8.1:1 on obsidian), and ink turns white.
-- **Severity ramp** (a departure from the reference, which has no status colour):
-  - Brick (`hazard`): the critical fill, 6.5:1 under white. `hazard-deep` sets critical text on `hazard-soft` (7.5:1). `hazard-bright` is for graphic marks only.
-  - Saffron (`orange` on `orange-soft`, 5.6:1): high. `orange-bright` is for marks, issue rings and the cold-room alarm line.
-  - Olive (`amber` on `amber-soft`, 6.6:1): medium. `amber-bright` is for marks only.
-  - Low: quiet `paper-sunk` with the caption grey.
-- **Resolved Green** (`green` on `green-soft`, 6.5:1): resolved issues and the live-connection dot.
+- **Highlighter Pink** (pink, wash pink-soft): Files Zone A, the People report group and the Operators column.
+- **Highlighter Blue** (blue, text blue-ink, wash blue-soft): Files Zone B, the Product report group, the frozen cold room and the heatmap ramp.
+- **Highlighter Lilac** (lilac, text lilac-ink, wash lilac-soft): Files Zone C, the Systems report group and Quality.
 
 ### Tertiary
-- **Filing families**, each an ink on its pale wash, drawn as a 44px medallion or a small dot beside a heading:
-  - Product: deep mint (`teal` / `teal-soft`).
-  - People: signal yellow (`signal-ink` / `signal-soft`).
-  - Systems: sky (`indigo` / `indigo-soft`).
-  - Green: the job itself and the core check (`accent-ink` / `accent-soft`).
-  - Report groups, inspection sections and the order's job cell file under these.
-- **The cool triad**, for product content: mint (`teal`), sky (`indigo`), moss (`mint`), with forest (`purple`) and graphite (`brown`) extending the set for load-plan products and cold rooms. The dock wall files zone A under moss, zone B under mint and zone C under sky. The token names are historical; use the names and trust the values.
-- **Chart slots:** Sky (`chart-1`), Moss (`chart-2`), Blue (`chart-3`) and Mint (`chart-4`). Always in this order, never cycled, validated for colour-blind adjacency, each at least 3:1 on white. The heatmap is one hue (sky), mixed toward white in four steps.
+- **Orangey** (orangey, text signal-ink, wash signal-soft): The simulated mark, a square-cornered orange highlighter block reading "Simulated data" or "Sample data". Also trailer lamps in the door bays.
+
+### Severity (a departure from the reference)
+- **Critical Red** (hazard): The one solid capsule, with white text. **Hazard Bright** is used for graphic marks and the critical edge, **Hazard Deep** for critical text on its wash, **Hazard Soft** for the critical wash and **Hazard Line** for the rule around it.
+- **High Amber** (orange, orange-bright, orange-soft): Tinted capsule and amber ring on a door tile. Also the dashed alarm limit on cold-room traces.
+- **Medium Citron** (amber, amber-bright, amber-soft): Tinted capsule.
+- **Resolved Green** (green, green-soft): Resolved status and the live dot. This is a status green, distinct from the brand green.
 
 ### Neutral
-- **Mint Frost** (`paper`): the canvas.
-- **White** (`surface`): cards, the mobile top bar and tab bar, fields, sheets, fact cells.
-- **Frost Hover** (`paper-sunk`): hover, quiet fills, card footers, notices, the low severity badge, tracks.
-- **Fog** (`paper-deep`, `hairline`): every 1px border and structural rule, empty meter cells, trailer floors, the avatar disc.
-- **Graphite Fill** (`ink-soft`): secondary text (8.9:1 on white).
-- **Caption Grey** (`ink-mute`): captions, metadata and placeholders (6.4:1 on white, about 5.9:1 on the canvas).
-- **Slate** (`sage`): decorative strokes and icons. Never text.
+- **Just Black** (paper): The stage behind everything, and also the fill of a text field.
+- **Lifted Black** (surface): Cards, panels, bars, the composer and sheets.
+- **Quiet Step** (paper-sunk): Hover fills, quiet tags, notices and low severity.
+- **Deep Step** (paper-deep): Meter tracks, empty cells, trailer floors and answer tokens.
+- **Night** (night) and **Off Black** (night-raised): The rail, and the landing footer band.
+- **Surface Cream** (ink): All primary text. It also fills the cream footer terminator.
+- **Soft Cream** (ink-soft): Secondary text and bracket glyphs.
+- **Mute Cream** (ink-mute): Captions and metadata, the lowest step allowed for small text.
+- **Hairline** (hairline): Card edges and the rail divider. **Rule** (rule) is for dividers that must read. **Rule Strong** (rule-strong) is for control edges at 3:1.
+- **Sage** (sage): The reference's grey, kept for decorative strokes and icons only.
+
+### Charts
+Four categorical slots in fixed order: chart-1 green, chart-2 lilac, chart-3 orange, chart-4 blue. They are the highlighters stepped down into a dark chart band so marks sit on a card without glowing. Never cycle them. The heatmap is one hue (chart-4) in four steps mixed up from the surface.
 
 ### Named Rules
-**The Neon Means Now Rule.** Neon marks the action to take, where you are, and what you said. It is never a status, a chart hue, a filing colour or text, and it always carries obsidian, never white.
+**The Filing Rule.** Colour files things or raises an alarm; it never decorates an operating screen. Pink, blue and lilac always name a zone, group, section or room. A filing colour never signals urgency.
 
-**The Filing Rule.** A medallion or a file dot says what kind of thing an item is (product, people, systems, the job). Filing colours never signal severity, and severity colours never file.
+**The One Green Rule.** Green means DockIQ and the thing to do: the primary stroke, your place in the nav, your own words, focus. Inside the app the only green fills are the current nav item, the primary pill's rise, the person's chat bubble, meters and the brand disc; everywhere else green is a wash or a rule.
 
-**The Brick Is Critical Rule.** `hazard` appears only for critical severity, critical door tiles, the critical stat, alert notices and the report or destructive action. It is never a chart hue, and no status colour is ever a chart hue.
+**The Simulated Orange Rule.** Inside the product, the orange highlighter block means simulated data and nothing else. Keep it on every surface that shows fictional data.
 
-**The Graphic-Only Rule.** Neon, signal yellow, slate, `sage-ink` and the `-bright` severity tones fail as small text. They draw fills, edges, bars, lamps and marks. The base, `-ink` and `-deep` tones carry the words.
+**The Severity Channel Rule.** Red, amber and citron are reserved for severity. Every level pairs its colour with a word and a shape (▲ critical, ◆ high, ■ medium, ○ low). Red is never a chart hue and never a filing colour.
 
 ## Typography
 
-**Display Font:** Geist Variable (with Geist, Inter Variable, ui-sans-serif, sans-serif), a product-grade sans in one family with the mono
-**Body Font:** Inter Variable (with Inter, ui-sans-serif, sans-serif), stylistic sets `ss01` and `cv11`, tracked -0.018em
-**Label Font:** Hanken Grotesk Variable (with Hanken Grotesk, Inter), the free stand-in for Aktiv Grotesk
-**Mono Font:** Geist Mono Variable (with Geist Mono, ui-monospace, monospace)
+**Display Font:** Host Grotesk Variable (with ui-sans-serif)
+**Body Font:** Host Grotesk Variable (with ui-sans-serif)
+**Editorial Font:** Source Serif 4 Variable, optical size axis (with Georgia)
+**Label/Mono Font:** Geist Mono Variable (with ui-monospace)
 
-**Character:** An editorial serif headline set tight over an engineered, slightly compressed sans. The serif names the place, Inter does the work, and the mono states the facts.
+**Character:** Host Grotesk stands in for the reference's Mori and Messina. It is carved tight at 600 for titles and plain at 16px for work. Source Serif 4 at its display optical size stands in for Untitled Serif and gives panel titles a quiet editorial voice. Geist Mono sets every ID, count, time and temperature, with tabular figures and a slashed zero.
 
 ### Hierarchy
-- **Display** (Geist 600, 64 to 90px, 1.05, -0.035em): the landing hero. Balanced wrap.
-- **Headline** (Geist 600, 40 to 48px, 1.05, -0.035em): every app page title and the landing section headings (at 1.0 line-height). Record screens whose title is data drop to 28 to 40px.
-- **Title** (Inter 600, 16 to 24px, 1.3, -0.015em): card, panel, notice, empty-state and filed group titles (24px beside a file dot).
-- **Body** (Inter 400, 16px, 1.5, -0.018em): running text and values. Chat messages run at 20px. Landing prose runs at 20px, capped near 32rem.
-- **Label** (Hanken Grotesk 500, 14px, 1.4, no tracking, caption grey): captions, metadata, table headers and fact-cell terms, in sentence case. 14px is the floor.
-- **Number** (Inter 600, -0.035em, lining tabular): stat values, door plates and headline figures, from 20 to 64px.
-- **Telemetry** (Geist Mono 500, tabular, lining, slashed zero): every ID, code, time, count, temperature and money value.
+- **Hero** (600, clamp 56px to 184px, 0.9): Landing headline only, two lines with the second indented 18%.
+- **Display** (600, 44px to 66px, 0.98, -0.035em): Page titles, wiping up on load. Record screens whose title is data use 34px to 44px. Section titles on the landing page use the same voice, and the wordmark uses it at 20px to 23px.
+- **Statement** (400, clamp 28px to 44px, 1.18): The landing paragraph whose words light as they scroll.
+- **Serif Title** (400, 23px in panels, 28px to 34px on landing, 1.08, -0.025em): Panel titles, empty states, editorial lines and the footer note. Assistant answer headings use 22px.
+- **Heading** (600, 16px to 19px, 1.25, -0.015em): Card and notice titles, row titles in queues.
+- **Body** (400, 16px, 1.5, -0.01em): All working text. Assistant answers use 17px at 1.6 with a 68ch measure.
+- **Label** (500, 14px, 1.4): Captions, metadata, definition terms and table headers, in mute cream.
+- **Telemetry** (Geist Mono 500, tabular + lining + slashed zero): IDs, order numbers, SKUs, times, money, temperatures.
+- **Num** (600, 44px, -0.04em, tabular): Headline metrics and scores.
 
 ### Named Rules
-**The Four Jobs Rule.** Each face has one job. Geist names places (page titles, section headings, the wordmark). Inter carries every sentence, control and headline number. Hanken sets captions. Geist Mono sets data a person copies, compares or reads off. Never set a sentence in mono.
+**The Three Voices Rule.** Host Grotesk for everything read and every control, Source Serif 4 only for editorial titles, Geist Mono only for telemetry. There is no fourth face.
 
-**The Upright IQ Rule.** The wordmark sets "IQ" upright at 600 in `ink-soft`, so it never reads as "Dock12". Beside it sits a 40px neon disc carrying the warehouse icon.
+**The Serif Floor Rule.** The serif sets titles at 400 and never below 20px. It is never used for body text, labels or controls.
 
-**The No Accent Words Rule.** Emphasis inside a title keeps the title's own voice: no italic and no colour change.
+**The 14px Floor Rule.** No text is smaller than 14px (text-xs and text-sm are both 14px). Captions step down in colour, never below 14px.
+
+**The Telemetry Rule.** Anything a person reads off and matches (an ID, a count, a time, a temperature) is set in Geist Mono with tabular, slashed figures.
 
 ## Layout
 
-On desktop (64rem and up) the shell has two columns. On the left is a 17.5rem obsidian rail, full height and sticky. It holds the wordmark, the role and zone, navigation, the live status and alerts bell, the simulated tag and the person card on deep abyss. The content column beside it is capped at 80rem, with 40px side padding. Below 64rem the rail becomes a white top bar with a fog hairline underneath, plus a fixed white bottom tab bar (56px targets, safe-area padding). The content gains bottom padding so nothing hides under the tabs. The announcement strip sits above everything at every width.
+The app is a two-column shell from 1024px up: a 280px night rail (wordmark, bracketed role, nav, live indicator, simulated tag, user card) beside a content column capped at 1280px. Content padding is 16px on phones, 24px from 640px and 40px from 1024px. Below 1024px the rail becomes a blurred top bar and a fixed bottom tab bar with safe-area padding, and content gets 128px of bottom padding to clear it.
 
-Each page opens with the serif title and a single line of secondary metadata, then the task's primary object (load guide, queue, board) before any stats. An order opens with the fact strip: a ruled grid of cells, two across on phones, three from 40rem and six from 80rem. Spacing runs on a 4px grid: 8 and 12px gaps inside components, 12 to 24px between cards, 20px card padding. Stat tiles run two across on tablets and four on desktop. Working screens use straight rows. Filed groups (report types) sit under a title row ruled underneath, their tiles in one, two or three columns.
+Panels sit directly on the stage under a single rule, with no box around them. Cards and tiles use 16px to 20px internal padding. Grids use gaps of 8px to 12px, stat grids run 2 columns and then 4, and fact strips run 2, 3 and then 6 columns with 1px hairline gaps. Sheets are `min(36rem, 100% - 2rem)`. The dock-detail sheet rises from the bottom on phones and slides in from the right, 544px wide, from 768px up. Wide diagrams keep a 736px minimum and scroll inside their frame on narrow screens.
 
-The landing page follows Grafbase's composition: the strip, a sticky white nav 64px tall, a 50/50 hero on a 75rem container (`container-page`), then full-width bands at 80px vertical rhythm.
-
-Diagrams keep a legible minimum width (46rem) and scroll within their frame on narrow screens. Detail sheets rise from the bottom on phones and slide in from the right (34rem) from 48rem up.
+The landing page is a 1280px column with 24px gutters and generous vertical rhythm (80px to 112px section padding). Tool rows are separated by rules and use a 256px shape column beside the content from 1024px up.
 
 ## Elevation & Depth
 
-Flat by default: the hairline does all the structural work. Cards, the rail, the nav bars and door tiles cast no shadow, and depth comes from white sitting on mint frost, and from the obsidian rail beside both. A single soft, obsidian-tinted drop marks the one primary action, and a slightly lighter one marks things that genuinely float. Surfaces are opaque, with no glass or texture, so nothing translucent ever sits over a badge, a reading or an alert.
+Depth is tonal. The stage is the lowest layer, cards and panels are one surface step lifted and edged with a hairline, and quiet fills sit one step higher. Cards carry no shadow at all. The only shadow is the float: a faint cream ring plus a long dark fall. It is reserved for layers that actually float over content: dialogs, alert toasts, the assistant composer and the landing product preview. Top and bottom bars are the stage itself at 92% opacity with a 14px blur. When transparency is reduced they fall back to an opaque surface. Dialog backdrops are near-black at 72% with a 4px blur.
 
 ### Shadow Vocabulary
-- **Action drop** (`box-shadow: 0 4px 20px 0 rgb(19 35 34 / 0.18)`): the primary button.
-- **Float** (`box-shadow: 0 4px 20px 0 rgb(19 35 34 / 0.15)`): overlays and previews: the landing product preview panel and load-plan frame, dialogs, detail sheets, alert toasts, chart tooltips and the floating request button.
-- **Focus halo** (`box-shadow: 0 0 0 3px` signal green at 18%): fields on focus.
+- **Float** (`box-shadow: 0 0 0 1px rgb(255 252 225 / 0.06), 0 18px 48px -12px rgb(0 0 0 / 0.7)`): Dialogs, toasts, the composer, the product preview. Never on a card.
+- **Focus halo** (`box-shadow: 0 0 0 4px color-mix(in srgb, #0ae448 18%, transparent)`): Around a focused field, and at 14% around the focused composer.
+- **Inset rule** (`box-shadow: inset 0 0 0 1px` rule, or `2px` accent when selected): The edge of a choice tile. On door tiles it is `2px` orange-bright for issues and `1px` hazard-bright for critical.
 
 ### Named Rules
-**The Single Drop Rule.** In the page flow, only the primary action casts a shadow. Everything else sits flat on its hairline.
-
-**The Rule Answers Rule.** Interactive cards answer hover by darkening their hairline toward obsidian (30%). They never jump. Critical tiles do not respond.
+**The Surface Step Rule.** A card is lifted by one surface step and a hairline, never by a shadow. If something needs to feel higher, it must actually float.
 
 ## Shapes
 
-The corners step up with the size of the thing:
-- Buttons, nav items and door plates: 6px.
-- Fields, choice tiles, panels inside cards, highlight notes and filing medallions: 12px.
-- Cards, notices, the fact strip, door tiles, sheets and dialogs: 20px.
-- Tags, severity badges, suggestion chips, meters, avatars and the landing sign-in button: 40px pills. Chat bubbles are 20px with the speaker's corner tucked to 6px.
+Anything you press is a pill: buttons, tags, severity capsules, suggestion chips and the live dot (9999px). Fields, choice tiles, nav items and medallions use 8px. Cards, panels, fact strips, starters and the dock sheet use 10px. Floating layers (dialogs, toasts, the composer) and door tiles use 12px. The zone apron that holds a row of doors uses 16px. Two things break the pill: the simulated mark is a square-cornered highlighter block (4px), and the highlighter spans (`.hl`) round only 0.12em, like a marker stroke. The user's chat bubble is 12px with a 4px tail corner toward them. Data bars are square at the baseline with a 4px rounded data end.
 
-Every container edge is a 1px fog hairline. Selection is drawn as an inset 2px signal-green rule over a mint whisper wash, not as a fill change alone. Data bars are square at the baseline and have a 4px rounded end. Icons are Lucide at a thin 1.6 stroke. Severity has its own shape channel: a triangle for critical, a diamond for high, a square for medium and an open circle for low.
+Edges are 1px hairlines. The primary pill has a 1.5px gradient stroke. Icons are lucide, drawn at a 1.6 stroke. Landing shapes are soft 3D forms lit from within by radial gradients (clover, dome, squiggle, ring, spark, pallet stack, probe, drop). They appear on the landing page only and are always hidden from assistive technology.
 
 ## Components
 
 ### Buttons
-Squared, sentence case, and answered at once.
-- **Shape:** 6px, 48px tall, 20px side padding, Inter 500 at 14px, 8px icon gap.
-- **Primary:** neon fill, obsidian text, the action drop. Hover mixes 12% obsidian into the neon.
-- **Secondary:** white with a fog hairline. Hover sinks to frost and darkens the rule.
-- **Pill:** the landing "Sign in". White, hairline, 40px radius. Softer than the squared buttons because it asks for less commitment.
-- **Hazard:** brick fill with white text. Hover deepens to `hazard-deep`. Used for "Report issue" and critical decisions.
-- **Press / Disabled:** press is instant (1px down, 120ms). Disabled drops to frost with a hairline, caption-grey text and no shadow.
+Pressed things are pills, set in Host Grotesk 600 at 16px.
+- **Shape:** Full pill (9999px), 48px minimum height, 22.4px side padding, 8px icon gap.
+- **Primary:** A green-wash fill inside a 1.5px green gradient stroke, with cream text. On hover (pointer devices) and on press, the gradient rises up through the pill over 480ms and the text turns stage-black. A trailing arrow nudges 3px right.
+- **Secondary:** Transparent, with a cream hairline at 55% and cream text. Hover brings the border to full cream and adds a 7% cream wash; press deepens the wash to 12%.
+- **Hazard:** A solid critical-red fill with white text, for destructive and critical decisions only.
+- **Press / Disabled:** Every press scales to 0.97. Disabled buttons drop to a transparent fill with a hairline and mute text, and the primary loses its gradient.
 
 ### Chips
-- **Tags:** 40px pill, 28px tall, 14px Inter 500. Tones: plain (frost with graphite fill text), ink (obsidian fill with mint-frost text) for escalated, accent (mint whisper with deep green) for flags such as "Short" or "Late", hazard, and green with a check icon for resolved.
-- **Simulated tag:** a signal-yellow wash with signal ink and a dashed rule, reading "Simulated data" or "Sim".
-- **Suggestion chips:** the assistant's suggested questions. Mint whisper pills with an `accent-line` border, obsidian text at 16px, 44px tall; hover deepens the wash toward the rule.
+- **Tag pill:** 28px tall, 14px semibold, full pill. Plain tags are quiet step on soft cream, ink tags are cream on stage, accent tags are green wash on green ink, and resolved tags are green-soft on green with a check.
+- **Suggestion chip:** A transparent pill with a rule border in soft cream. On hover it warms to a green border, green wash and cream text, and it scales to 0.97 on press. Chips scroll in a rail that fades out at the right edge.
+- **Simulated mark:** An orange highlighter block (4px corners) with dark ink, reading "Simulated data", "Sim" or "Sample data".
 
 ### Cards / Containers
-- **Corner Style:** 20px.
-- **Background:** white on mint frost.
-- **Shadow Strategy:** none (see Elevation). Hover darkens the rule on interactive cards; linked card bodies sink to frost.
-- **Border:** 1px fog hairline.
-- **Internal Padding:** 20px. Titled panels put an Inter 600 title in a 48px row. Card actions sit in a frost footer ruled above.
-- **Stat tile:** a caption label, a large tabular Inter number and a sub-line. The alert variant is a solid brick tile with white text.
-- **Notice:** frost, 20px, 16px padding. The alert tone is `hazard-soft` with a 1px brick ring and a triangle icon.
-- **Fact strip:** one 20px ruled frame split into cells by 1px fog gaps; each cell is white, 12px by 16px, a caption term over an Inter 600 or mono value. The job cell leads with its green file dot.
-
-### Filing Medallion
-A 44px, 12px-cornered square that holds a Lucide icon in its family's ink on the family's wash. It opens every report-type tile and every inspection section title; the default (no family) is deep green on mint whisper. A 10px file dot in the family ink stands in beside group headings and in the fact strip.
+- **Corner Style:** 10px.
+- **Background:** Lifted black (surface) with a 1px hairline.
+- **Shadow Strategy:** None (see The Surface Step Rule).
+- **Interactive cards:** On hover they rise 2px, the border lights in the card's filing colour (green by default), and the fill takes a 12% tint of that colour. Their medallion tilts -8° and scales to 1.06. Critical door tiles never move.
+- **Panel:** Not a card. It is a rule on the stage with a serif title row, and it reveals on a 70ms stagger.
+- **Alert notice:** A 12px hazard wash with a hazard-line border, a warning icon and a title in hazard-deep text.
 
 ### Inputs / Fields
-- **Style:** white, 12px radius, 48px tall. The hairline is darkened 14% toward obsidian. Text is 16px, with a caption-grey placeholder and a signal-green caret.
-- **Focus:** the border turns signal green, with a 3px halo at 18%. Keyboard focus elsewhere is a 2px signal-green outline offset 3px.
-- **Choice tiles:** 52px ruled tiles; hover fills with mint frost. Selected is mint whisper with a 2px inset signal-green rule and weight 600.
+- **Style:** Stage-black fill, 1px rule-strong edge (3:1), 8px corners, 48px tall, 16px text, mute placeholder, green caret.
+- **Hover:** The edge warms toward cream.
+- **Focus:** The edge turns green and a 4px green halo appears at 18%. The global focus ring for everything else is a 2px green outline with a 3px offset.
+- **Choice tiles:** A surface-filled tile with an inset rule, 52px tall and 8px corners. Selected tiles take the green wash and a 2px green inset, and their weight steps from 500 to 600.
 
 ### Navigation
-- **Rail (desktop):** obsidian, Inter 500 at 16px with 20px icons, 6px items in `rail-ink-soft`. The active item is a neon fill with obsidian text at 600. Hover fills with `rail-sunk` and turns the text white. The person card sits on deep abyss.
-- **Tab bar (tablet and phone):** white with a fog top rule. 24px icons over 14px labels. Active is deep green (`accent-ink`), inactive is caption grey.
-- **Live indicator:** the word comes first ("Live", "Reconnecting", "Offline"). The coloured dot only repeats it.
-- **Announcement strip:** a full-width band, obsidian into deep abyss at 89.97deg, white 14px text, led by an 8px neon dot. It says the data is simulated.
+- **Rail (1024px and up):** A night column with the gradient-disc wordmark (*IQ* upright in green) and a bracketed role label. Nav items are 16px medium soft cream on 8px corners. On hover a quiet-step bar scales in from the left and the icon nudges and tilts -6°. The current item is a solid green highlighter block with stage-black 600 text.
+- **Tab bar (below 1024px):** Blurred stage with a top hairline. Tabs are at least 56px tall with a 24px icon and a 14px label. The current tab's icon and label turn green, and the icon pops once.
+- **Top bar (below 1024px):** Blurred stage with a bottom hairline, the compact wordmark, the live indicator, alerts and sign-out.
+- **Announcement strip:** The full-width green gradient bar with stage-black text and a dot, stating that the data is simulated. It sits above every app screen and the landing page.
 
-### Assistant Conversation
-The user's own questions are neon bubbles with obsidian 20px text, right-aligned, the bottom-right corner tucked. The assistant answers in white ruled cards, citing its source under a hairline. Suggested questions sit as mint whisper chips along the input.
+### Severity Badge (signature)
+A pill capsule that always holds a shape glyph and a word. Critical is solid red with white text and ▲. High is an amber wash with amber text and ◆. Medium is a citron wash with citron text and ■. Low is the quiet step with mute text and ○. It comes in three sizes: sm (28px), md (32px) and lg (44px). Critical queue rows take the hazard wash, and their dock plate turns solid red. Match confidence is a separate channel of three cream signal bars with a "Match:" label, and it never borrows severity colour.
 
-### Severity Badge
-A pill that carries shape, word and colour together. Critical is a solid brick capsule with white text and a triangle. High, medium and low are tinted. Confidence is a separate channel: three signal bars, labelled, never in severity colours.
+### Bracket Note (signature)
+The reference's annotation: a short note held between tall `{ }` glyphs in light Host Grotesk at 2.1em. It sits under or beside a page title (greeting, scope, context), beside the rail wordmark (role and zone), or at the left of a landing statement. In assistant answers the same braces hold an aside instead of a box.
 
-### Door Tile (the dock wall)
-One 20px white tile per door, grouped on a zone apron washed with the zone's triad tint.
-- A zone-tinted door plate carries the number in tabular Inter.
-- An SVG bay shows the opening, bumpers, leveler, signal-yellow lamps and the trailer. The trailer's load takes the zone tint, and the trailer backs in when it arrives.
-- Below that sit the crew avatar, the company, and a thin progress track in the zone ink.
-- Idle doors recede into frost. Doors with an issue ring in saffron. Critical doors turn solid brick with white marks, and nothing on them moves.
+### Door Tile and Dock Wall (signature)
+Door tiles are 12px surface tiles grouped on a zone apron tinted with the zone's highlighter. Each has a dock plate in the zone colour with stage-black type, a trailer drawn backing into its bay, and a progress bar in the zone colour. Idle doors recede to half a surface step. Doors with an issue get a 2px amber inset ring. A critical door takes the hazard wash with a bright-red rule and a solid red plate, and nothing on it animates.
 
-### Loading Guide
-The load plan, drawn from the dock door. It shows a perspective trailer interior and outlines the spot to fill in a dashed box that breathes. A dashed arrow flows toward that spot, beside a neon numbered step pin, with a plan view "from above". Each product takes a triad hue plus a fill pattern, which is the non-colour channel. Highlight notes sit on mint whisper. The primary "Loaded, next pallet" action spans the row.
+### Fact Strip
+A ruled grid of cells with 1px hairline gutters inside a 10px frame. It runs 2, 3 and then 6 columns. Each cell has a label over a value set in the body voice or telemetry, and its fill steps to the quiet step on hover.
+
+### Assistant Turn
+A 36px gradient disc sits in a gutter beside the answer. The answer is prose at 17px with 68ch lines, green list markers and mono-numbered ordered lists. Codes in the answer sit on the deep step in mono. What the assistant checked is shown as a trace with a green left rule. The person's own words sit in a solid green bubble with stage-black text that rises in from the bottom right. The composer is the one floating surface on the page, and its rule turns green on focus.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** use neon (`accent`) with obsidian text for exactly one filled primary action per view, plus the selected place and the user's own chat bubbles. Everything else is secondary, pill or hazard.
-- **Do** draw structure with the 1px fog `hairline` on white, and leave cards without a shadow.
-- **Do** set titles in Geist 600 at -0.035em, UI and body in Inter at -0.018em with `ss01`/`cv11`, captions in Hanken Grotesk, and every ID, code, time and count in Geist Mono.
-- **Do** show severity as word, shape and colour together, and confidence as labelled signal bars.
-- **Do** file items by kind with a medallion or file dot in the product, people, systems or green family.
-- **Do** keep the cool triad and the chart slots inside product content (zones, loads, rooms, chart series), in their fixed order.
-- **Do** keep targets at least 44px (48px buttons and fields) and text at 14px or larger.
-- **Do** mark simulated data with the announcement strip and the signal-yellow Simulated tag.
-- **Do** re-scope tokens through the rail rather than hard-coding dark values inside it.
-- **Do** keep motion to the 60ms staggered rise on load, rule-darkening on hover and the load guide's explanatory loops. All of it is disabled under reduced motion.
+- **Do** keep every screen on the near-black stage (#0e100f) with cream ink (#fffce1). The system is dark only.
+- **Do** build depth from the surface step (#171917) and a 1px hairline, and save the float shadow for layers that actually float.
+- **Do** make every button and tag a full pill, and keep one gradient-stroked green primary per view.
+- **Do** file zones, groups, sections and rooms with pink, blue and lilac on their dark washes, using the `-ink` step for small text.
+- **Do** mark every surface that shows fictional data with the orange simulated block.
+- **Do** pair every severity colour with its word and its shape.
+- **Do** set every ID, count, time and temperature in Geist Mono with tabular, slashed figures.
+- **Do** keep text at 14px or larger, targets at 44px or larger (48px for buttons and fields), and control edges at 3:1.
+- **Do** put `{ bracket }` notes under or beside the title they annotate.
+- **Do** honour reduced motion, reduced transparency and more-contrast, which the stylesheet already handles.
 
 ### Don't:
-- **Don't** put white text on neon, or set any text in neon, signal yellow, slate, `sage-ink` or a `-bright` tone.
-- **Don't** use neon for status, filing, charts or decoration.
-- **Don't** use `hazard` or any status colour as a chart hue, a filing colour or decoration.
-- **Don't** add texture, glass or translucency over badges, readings or alerts.
-- **Don't** animate, lift or pulse anything critical.
-- **Don't** use italic accent words in titles, or set a sentence in mono.
-- **Don't** make action buttons pills. Pills are for tags, badges, suggestion chips and the sign-in pill.
-- **Don't** add a dark mode, or reach for Tailwind's default palette, radii or shadows. They are wiped, and every value is a token in `frontend/src/styles/app.css`.
-- **Don't** recolour the barcode. It stays black on white.
+- **Don't** build a light SaaS dashboard: no white cards, no filled grey buttons, no theme toggle.
+- **Don't** put a drop shadow on a card.
+- **Don't** colour anything in an operating screen for decoration. If a colour doesn't file or alarm, it goes.
+- **Don't** fill anything in the app green except the current nav item, the primary pill's rise, the person's chat bubble, meters and the brand disc.
+- **Don't** use red, amber or citron for anything but severity, and never use red as a chart hue.
+- **Don't** stack a bracket note above a title as an eyebrow.
+- **Don't** set the serif below 20px or use it for body text, labels or controls.
+- **Don't** use sage (#7c7c6f) for text. It fails for small type on a card.
+- **Don't** animate a critical door, an alert, or a severity mark.
+- **Don't** put soft 3D shapes inside the app. They belong to the landing page.
+- **Don't** write hex or arbitrary Tailwind values in components. Add a named class or token to `frontend/src/styles/app.css`.

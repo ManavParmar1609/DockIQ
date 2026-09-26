@@ -24,48 +24,49 @@ to a CRITICAL alert, a temperature, a count or a severity badge.
 
 ---
 
-## 2. The design system — Grafbase, exactly *(since 2026-09-25)*
+## 2. The design system — the GSAP reference, dark *(since 2026-09-26)*
 
-The owner's pinned reference: Grafbase's "engineering blueprint on cool marble", light only, with
-the owner's own type spec. Tokens live only in `frontend/src/styles/app.css`; Tailwind's default
-palette, radii and shadows are **removed**. Built record: `DESIGN.md`; product truth: `PRODUCT.md`.
+The owner's pinned reference: GSAP's "animated chalkboard in a design studio" (video in
+`DocumentsforProj/`), dark only, with the owner's serif request. Tokens live only in
+`frontend/src/styles/app.css`; Tailwind's default palette, radii and shadows are **removed**. Built
+record: `DESIGN.md`; product truth: `PRODUCT.md`.
 
 | Token | Value | Use |
 |---|---|---|
-| `paper` | `#EDF7F5` mint frost | The canvas |
-| `surface` | `#FFFFFF` | Cards (20px, 1px hairline, **no shadow**), panels, fields |
-| `paper-sunk` / `paper-deep` | `#F2F8F6` / `#D0D3D3` fog | Quiet fills, hover, footers of cards / empty cells |
-| `ink` / `ink-soft` / `ink-mute` | `#132322` obsidian / `#424F4F` graphite fill / `#56615F` | Text (16.2 / 8.9 / 6.4:1); slate `#828786` decorates only (it fails AA for small text) |
-| `hairline` | `#D0D3D3` fog border | The structural rule |
-| `accent` + `on-accent` | `#3DDC91` neon pulse + obsidian (8.6:1) | The one filled action, the selected navigation item, the chat's own messages |
-| `accent-ink` / `accent-soft` / `accent-line` | `#146C47` / `#DFF5EA` / `#97DDBC` mint whisper | Green text / selection and highlight washes / highlight rules and chips |
-| `sage-ink` | `#1B8A57` | Meters, focus rings, the wordmark's IQ (graphic marks) |
-| `signal` + `-soft` / `-ink` | `#FFCD48` signal yellow | Lamps and marks in diagrams; the simulated tag; the People filing colour |
-| `night` / `night-raised` | `#132322` obsidian / `#0E1A19` deep abyss | The app rail (tokens re-scoped by `.rail`) and the announcement strip |
-| `hazard` / `orange` / `amber` | brick `#A4291F` (critical surfaces take its `#FBF1EF` wash and `#EEC6C0` rule; the solid fill is kept for badges, chips and plates) / saffron `#8A5A10` / olive `#515C0B` | **Severity only**, always with a word and a shape |
-| `teal`/`indigo`/`mint`/`purple` + `-soft` | deep mint `#0A6D78`, sky `#00679E`, moss `#456D18`, forest — on pale tints | Product content and filing: zones (A moss, B mint, C sky), report groups (Product mint, People yellow, Systems sky), inspection sections |
-| `chart-1…4` | `#007096` `#679725` `#6A78CD` `#007D65` | Categorical data, fixed order; dataviz checks pass |
+| `paper` | `#0E100F` just black | The stage |
+| `surface` | `#171917` | Cards (10px, 1px hairline, **no shadow**), panels, bars |
+| `paper-sunk` / `paper-deep` | `#1F211E` / `#2C2E2A` | Quiet fills, hover / tracks and empty cells |
+| `ink` / `ink-soft` / `ink-mute` | `#FFFCE1` cream / `#D3D0B9` / `#A3A292` | Text (17 / 11.4 / 6.9:1 on a card); the reference's `#7C7C6F` decorates only (4.2:1) |
+| `hairline` / `rule` / `rule-strong` | `#34352F` / `#42433D` / `#6D6E63` | Card edges / dividers that must read / control edges (3.2:1) |
+| `accent` + `on-accent` | `#0AE448` green + `#0E100F` (11:1) | The gradient stroke of the primary pill, your place (active nav, selected tab, your chat words), focus, meters |
+| `accent-ink` / `accent-soft` / `accent-line` | `#3DF06F` / `#12281A` / `#1F5A32` | Green text / green washes / green rules |
+| `pink` / `blue` + `-ink` / `lilac` + `-ink` (+ `-soft`) | `#FEC5FB` / `#00BAE2` `#4FD3EF` / `#9D95FF` `#B4AEFF` on dark washes | Filing: zones (A pink, B blue, C lilac), report groups (Product blue, People pink, Systems lilac), inspection sections, cold rooms |
+| `orangey` / `signal` | `#FF8709` | The simulated mark (an orange highlighter block), trailer lamps |
+| `hazard` / `orange` / `amber` | red `#C9372C` (white 5.2:1; marks `#FF5A4F`, text `#FF9B90` on `#2B1311`) / amber `#FFC062` / citron `#E3E37D` | **Severity only**, always with a word and a shape |
+| `chart-1…4` | `#00B320` `#7A71CF` `#DC7100` `#0096B9` | Categorical data, fixed order; the highlighters stepped into the dark chart band; dataviz checks pass |
 
-- **Type:** Geist 600 for display and section headings, tight (−0.035em, line-height ~1.05) — a
-  product-grade sans, one family with the mono (the owner replaced the editorial serif); Inter for everything read at
-  work, tightened (−0.018em) with `ss01`/`cv11`; Hanken Grotesk for captions and labels — the stand-in
-  for Aktiv Grotesk; Geist Mono for telemetry (IDs, codes, times, counts). 14px floor (Grafbase's 13px
-  captions would fail the dock). Wordmark: *IQ* upright in steel.
-- **Shape:** 6px buttons and nav items, 12px panels and fields, 20px cards, 40px pills (tags and the
-  sign-in pill). Icons 1.6 stroke.
-- **Colour:** the forest-to-deep-teal announcement strip is the only colour in the chrome — it says
-  the data is simulated; its stops run one step deeper than the reference so white text passes AA.
-- **Surfaces:** no texture, no glass, no dark mode.
-- **Motion:** a short staggered rise; hovers darken the rule; press is instant. Purposeful
-  micro-interactions that explain (load guide, bays, sheets). Never on an alert.
+- **Type:** Host Grotesk (the free stand-in for Mori and Messina Sans) for everything: page titles
+  at 44–66px, 600, −0.035em (`.display`), body 16px, labels, controls. Source Serif 4 at its display
+  optical size (for Untitled Serif) sets panel, section and editorial titles, 400, never below 20px
+  (`.serif-title`, `.section-heading`). Geist Mono for telemetry. 14px floor. Wordmark: *IQ* upright
+  in green.
+- **Shape:** 100px pills for every button and tag; 8px fields and tiles; 10px cards and sheets. Icons
+  1.6 stroke.
+- **Signatures:** `{ bracket }` notes beside titles (never stacked above one); highlighter blocks
+  (`.hl-*`) for your place and the simulated mark; the green announcement bar; soft 3D gradient
+  shapes on the landing page only.
+- **Motion:** titles wipe up; screens rise out of a blur, staggered; the green rises through the
+  primary pill on hover and press; nav items slide a bar in; cards rise and light their rule in their
+  filing colour. On the landing page, words light as they scroll and shapes drift. Never on an alert;
+  reduced motion is honoured.
 
 ### 2.1 The severity and confidence channels
 
 | Level | Shape | Badge |
 |---|---|---|
-| Critical | ▲ | Solid brick capsule, white text; brick-tinted rows and a brick edge in queues |
-| High | ◆ | Saffron tint, saffron text |
-| Medium | ■ | Olive tint, olive text |
+| Critical | ▲ | Solid red capsule, white text; red-washed rows and a red edge in queues |
+| High | ◆ | Amber text on its dark wash |
+| Medium | ■ | Citron text on its dark wash |
 | Low | ○ | Quiet tint, muted text |
 
 **Match confidence** is a separate channel: three ink signal bars labelled `Match: high|medium|low`.
@@ -101,7 +102,7 @@ quality         /app/log · /app/analytics
 | **Report** | Type (grouped Product / People / Systems) → subtype, product, type-specific readings, tags, description with dictation, photos → scored result with procedure → resolve or escalate |
 | **My issues** | Open / closed / all, with supervisor outcomes |
 | **Issue detail** | Everything reported, severity derivation, recurrence, procedure, photos, timeline; the supervisor's decision panel or the operator's close-out, by role and status |
-| **Floor** (supervisor) | Team priority queue (critical first, then oldest, live waiting clocks), work in progress, requests, broadcast, and the **dock wall**: each zone a row of door bays on a zone-tinted apron (A sage, B slate, C clay — quiet tint families mixed toward the paper). Each bay is drawn: a trailer being worked has its doors open and the load face moves with its progress (toward you as it loads, away as it unloads); a waiting trailer shows closed doors; an empty door shows the open bay. Tiles carry the door plate, status chip (word + icon), operator initials, customer, phase · % with a progress bar, and time at the door; critical is the one solid brick tile and nothing on it moves; a newly arrived trailer backs in. Tapping a dock opens its **dock sheet** (`?dock=N`): who is working it, trailer, time at the door, the order with a cases meter and per-line progress, sign-off blockers, open issues |
+| **Floor** (supervisor) | Team priority queue (critical first, then oldest, live waiting clocks), work in progress, requests, broadcast, and the **dock wall**: each zone a row of door bays on a zone-washed apron (A pink, B blue, C lilac — the filing highlighters on dark washes). Each bay is drawn: a trailer being worked has its doors open and the load face moves with its progress (toward you as it loads, away as it unloads); a waiting trailer shows closed doors; an empty door shows the open bay. Tiles carry the door plate, status chip (word + icon), operator initials, customer, phase · % with a progress bar, and time at the door; critical is the one red-ruled tile and nothing on it moves; a newly arrived trailer backs in. Tapping a dock opens its **dock sheet** (`?dock=N`): who is working it, trailer, time at the door, the order with a cases meter and per-line progress, sign-off blockers, open issues |
 | **Simulator** (staff) | Clock, speed, scenarios; shift KPIs (on time, turn time, door use, detention); yard board with door or yard spot, booked vs arrived, reefer set-point, dwell and detention; event feed |
 | **Quality** | Facility-wide open quality issues and exposure |
 | **Issue log** | Search + severity/status/type filters; rows open the detail |

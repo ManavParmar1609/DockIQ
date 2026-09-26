@@ -49,10 +49,7 @@ function useDismissedBroadcast(): [number | null, (id: number) => void] {
 function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
-      <span
-        className="grid h-10 w-10 place-items-center rounded-full bg-accent text-on-accent shadow-card"
-        aria-hidden="true"
-      >
+      <span className="mark-green grid h-10 w-10 place-items-center rounded-full" aria-hidden="true">
         <Warehouse size={20} strokeWidth={2.2} />
       </span>
       <span className={`display ${compact ? 'text-xl' : 'text-2xl'}`}>
@@ -184,22 +181,15 @@ function SignedInShell({
         Prototype on simulated data: every trailer, person and pallet here is fictional.
       </p>
       <div className="shell-grid min-h-dvh">
-        {/* Sidebar — desktop, as on iPad */}
+        {/* Rail — desktop */}
         <aside className="rail sticky top-0 hidden h-dvh flex-col lg:flex">
           <div className="px-5 pt-6 pb-4">
             <Wordmark />
-            <p className="label mt-3">{zone ? `${ROLE_LABEL[role]} · ${zone}` : ROLE_LABEL[role]}</p>
+            <p className="bracket label mt-3">{zone ? `${ROLE_LABEL[role]} · ${zone}` : ROLE_LABEL[role]}</p>
           </div>
           <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
             {items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-md px-4 py-2.5 text-base font-medium transition-colors duration-300 ${isActive ? 'bg-accent font-semibold text-on-accent' : 'text-ink-soft hover:bg-paper-sunk hover:text-ink'}`
-                }
-              >
+              <NavLink key={item.to} to={item.to} end={item.end} className="nav-item">
                 <item.icon size={20} aria-hidden="true" />
                 {item.label}
               </NavLink>
@@ -213,7 +203,7 @@ function SignedInShell({
             <div>
               <SimulatedTag />
             </div>
-            <div className="flex items-center gap-3 rounded-lg bg-surface p-2.5 shadow-card">
+            <div className="flex items-center gap-3 rounded-xl border border-hairline bg-surface p-2.5">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-paper-deep text-sm font-semibold text-ink-soft">
                 {initials(name)}
               </span>
@@ -227,7 +217,7 @@ function SignedInShell({
         </aside>
 
         <div className="flex min-w-0 flex-col">
-          {/* Navigation bar — tablet and phone: translucent, content scrolls under it */}
+          {/* Navigation bar — tablet and phone: the stage, blurred, content scrolls under it */}
           <header className="material sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-hairline px-4 py-1.5 lg:hidden">
             <Wordmark compact />
             <div className="flex items-center gap-2">
@@ -255,7 +245,7 @@ function SignedInShell({
             </div>
           </main>
 
-          {/* Tab bar — tablet and phone: translucent, the selected tab in blue */}
+          {/* Tab bar — tablet and phone: the stage, blurred, the selected tab in green */}
           <nav
             aria-label="Main"
             className="material tabbar-safe fixed inset-x-0 bottom-0 z-20 grid border-t border-hairline lg:hidden"
@@ -266,9 +256,7 @@ function SignedInShell({
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={({ isActive }) =>
-                  `flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 transition-colors ${isActive ? 'text-accent-ink' : 'text-ink-mute'}`
-                }
+                className="tab-item flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-ink-mute transition-colors"
               >
                 <item.icon size={24} aria-hidden="true" />
                 <span className="text-xs font-medium leading-tight">{item.short ?? item.label}</span>
