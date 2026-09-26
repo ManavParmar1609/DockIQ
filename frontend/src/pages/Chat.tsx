@@ -1,5 +1,5 @@
-import { BookOpen, Check, CircleAlert, LoaderCircle, Send } from 'lucide-react';
-import { Fragment, useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { ArrowUpRight, BookOpen, Check, CircleAlert, LoaderCircle, Send, Warehouse } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 
 import { useAssistant, type Exchange, type Step } from '../api/assistant';
 import { useActiveOrder, useChatHistory, useOrder } from '../api/hooks';
@@ -7,81 +7,87 @@ import type { ChatMessage, Role } from '../api/types';
 import { useUser } from '../auth/AuthProvider';
 import { AgentActionView, AgentCardView } from '../components/AssistantCards';
 import { VoiceButton } from '../components/Evidence';
+import { Inline, RichAnswer } from '../components/RichAnswer';
 import { PageHeader, QueryBoundary } from '../components/ui';
-
-/** Only **bold** is interpreted. Model output is text to display, never HTML (security rules §4). */
-function RichText({ text }: { text: string }) {
-  return (
-    <>
-      {text.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
-        part.startsWith('**') && part.endsWith('**') ? (
-          <strong key={index} className="font-extrabold">
-            {part.slice(2, -2)}
-          </strong>
-        ) : (
-          <Fragment key={index}>{part}</Fragment>
-        ),
-      )}
-    </>
-  );
-}
 
 function Question({ text }: { text: string }) {
   return (
     <li className="flex justify-end">
-      <p className="max-w-2xl rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-lg text-on-accent">
-        {text}
-      </p>
+      <p className="bubble-user">{text}</p>
     </li>
   );
 }
 
-function Source({ source }: { source: string }) {
+function Mark() {
   return (
-    <p className="flex items-center gap-2 text-sm">
-      <BookOpen size={16} aria-hidden="true" />
-      <span className="font-semibold">{source}</span>
-    </p>
+    <span className="turn-mark" aria-hidden="true">
+      <Warehouse size={18} strokeWidth={2.2} />
+    </span>
   );
 }
 
-/** A past turn from history: text only. */
-function PastAnswer({ message }: { message: ChatMessage }) {
+/** One assistant turn: the DockIQ mark in a gutter, the answer beside it, the source underneath. */
+function Turn({
+  source,
+  busy,
+  live,
+  children,
+}: {
+  source?: string | null;
+  busy?: boolean;
+  live?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <li className="flex justify-start">
-      <div className="max-w-2xl card px-4 py-3">
-        <p className="whitespace-pre-wrap text-lg leading-relaxed">
-          <RichText text={message.message} />
-        </p>
-        {message.source_reference && (
-          <div className="mt-3 border-t border-hairline pt-2">
-            <Source source={message.source_reference} />
-          </div>
+    <li className="turn" aria-live={live ? 'polite' : undefined} aria-busy={busy}>
+      <Mark />
+      <div className="flex min-w-0 flex-col gap-3">
+        <p className="turn-name">DockIQ</p>
+        {children}
+        {source && (
+          <p className="label flex items-center gap-1.5">
+            <BookOpen size={14} aria-hidden="true" />
+            {source}
+          </p>
         )}
       </div>
     </li>
   );
 }
 
+/** A past turn from history: text only. */
+function PastAnswer({ message }: { message: ChatMessage }) {
+  return (
+    <Turn source={message.source_reference}>
+      <RichAnswer text={message.message} />
+    </Turn>
+  );
+}
+
 function StepList({ steps }: { steps: Step[] }) {
   return (
-    <ol className="flex flex-col gap-1" aria-label="What the assistant checked">
+    <ol className="trace" aria-label="What the assistant checked">
       {steps.map((step, index) => (
-        <li key={`${step.tool}-${String(index)}`} className="flex items-start gap-2 text-base">
+        <li key={`${step.tool}-${String(index)}`} className="flex items-start gap-2">
           {step.state === 'running' ? (
             <LoaderCircle
-              size={18}
+              size={16}
               aria-label="Working"
-              className="mt-0.5 shrink-0 motion-safe:animate-spin"
+              className="mt-0.5 shrink-0 text-sage-ink motion-safe:animate-spin"
             />
           ) : step.state === 'done' ? (
-            <Check size={18} aria-label="Done" className="mt-0.5 shrink-0" />
+            <Check size={16} aria-label="Done" className="mt-0.5 shrink-0 text-sage-ink" />
           ) : (
-            <CircleAlert size={18} aria-label="Could not" className="mt-0.5 shrink-0" />
+            <CircleAlert size={16} aria-label="Could not" className="mt-0.5 shrink-0 text-hazard" />
           )}
           <span>
-            <span className="font-semibold">{step.label}</span>
-            {step.summary && <span className="text-ink-soft"> · {step.summary}</span>}
+            <span className="font-semibold text-ink">{step.label}</span>
+            {step.summary && (
+              <>
+                {' · '}
+                <Inline text={step.summary} />
+              </>
+            )}
           </span>
         </li>
       ))}
@@ -92,21 +98,17 @@ function StepList({ steps }: { steps: Step[] }) {
 function Answer({ exchange }: { exchange: Exchange }) {
   const waiting = exchange.status === 'streaming' && exchange.steps.length === 0 && !exchange.text;
   return (
-    <li
-      className="flex flex-col gap-3 border-t border-hairline pt-4"
-      aria-live="polite"
-      aria-busy={exchange.status === 'streaming'}
+    <Turn
+      live
+      busy={exchange.status === 'streaming'}
+      source={exchange.status === 'done' ? exchange.source : null}
     >
       {exchange.steps.length > 0 && <StepList steps={exchange.steps} />}
       {waiting && <p className="label">Reading your question…</p>}
       {exchange.cards.map((card, index) => (
         <AgentCardView key={`${card.kind}-${String(index)}`} card={card} />
       ))}
-      {exchange.text && (
-        <p className="max-w-3xl whitespace-pre-wrap text-lg leading-relaxed">
-          <RichText text={exchange.text.trim()} />
-        </p>
-      )}
+      {exchange.text && <RichAnswer text={exchange.text.trim()} />}
       {exchange.actions.map((action, index) => (
         <AgentActionView key={`${action.kind}-${String(index)}`} action={action} />
       ))}
@@ -115,8 +117,7 @@ function Answer({ exchange }: { exchange: Exchange }) {
           {exchange.error}
         </p>
       )}
-      {exchange.status === 'done' && exchange.source && <Source source={exchange.source} />}
-    </li>
+    </Turn>
   );
 }
 
@@ -189,9 +190,12 @@ export default function Chat() {
   };
 
   const chips = [...new Set(suggestions(user.role, order.data?.items[0]?.sku))];
+  const started =
+    exchanges.length > 0 ||
+    (history.data?.some((message) => Date.parse(message.created_at) < openedAt) ?? false);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         kicker={
           user.role === 'operator' && active.data
@@ -206,15 +210,36 @@ export default function Chat() {
         {(messages) => {
           const earlier = messages.filter((message) => Date.parse(message.created_at) < openedAt).slice(-10);
           return earlier.length === 0 && exchanges.length === 0 ? (
-            <div className="card p-6">
-              <p className="heading text-xl">Ask the way you would ask a lead.</p>
-              <p className="mt-2 max-w-2xl text-base text-ink-soft">
-                Type or dictate. It checks your live data first and shows what it checked. Anything it
-                prepares, a report or a message, waits for you to press the button.
-              </p>
-            </div>
+            <section className="flex flex-col gap-6" aria-labelledby="chat-start">
+              <div className="turn">
+                <Mark />
+                <div className="min-w-0">
+                  <h2 id="chat-start" className="display text-3xl">
+                    Ask the way you would ask a lead.
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-lg text-ink-soft">
+                    Type or dictate. It checks your live data first and shows what it checked. Anything it
+                    prepares, a report or a message, waits for you to press the button.
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {chips.slice(0, 4).map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    className="starter"
+                    disabled={busy}
+                    onClick={() => send(chip)}
+                  >
+                    <span>{chip}</span>
+                    <ArrowUpRight size={18} aria-hidden="true" className="shrink-0 text-accent-ink" />
+                  </button>
+                ))}
+              </div>
+            </section>
           ) : (
-            <ul className="flex flex-col gap-5">
+            <ul className="flex flex-col gap-8">
               {earlier.map((message) =>
                 message.role === 'user' ? (
                   <Question key={message.id} text={message.message} />
@@ -234,29 +259,31 @@ export default function Chat() {
       </QueryBoundary>
       <div ref={bottom} />
 
-      <div className="material-thick sticky bottom-20 z-10 flex flex-col gap-2 rounded-2xl p-2 shadow-float lg:bottom-4">
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Suggestions">
-          {chips.map((chip) => (
-            <button
-              key={chip}
-              type="button"
-              className="chip-suggest shrink-0 text-base disabled:opacity-60"
-              disabled={busy}
-              onClick={() => send(chip)}
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
+      <div className="composer sticky bottom-20 z-10 flex flex-col gap-2 p-2 lg:bottom-4">
+        {started && (
+          <div className="chip-rail flex gap-2 overflow-x-auto" aria-label="Suggestions">
+            {chips.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                className="chip-suggest shrink-0 text-sm disabled:opacity-60"
+                disabled={busy}
+                onClick={() => send(chip)}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Below sm, Dictate and Send sit under the input so the box keeps its width on a phone. */}
-        <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row">
+        <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label htmlFor="chat-input" className="sr-only">
             Ask the assistant
           </label>
           <input
             id="chat-input"
             ref={field}
-            className="field text-lg"
+            className="field-bare"
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Ask, or tap Dictate…"
@@ -282,7 +309,7 @@ export default function Chat() {
           </div>
         </form>
       </div>
-      <p className="text-sm text-ink-mute">
+      <p className="label">
         Figures come from DockIQ&apos;s rules and your records. Severity is never decided by the assistant.{' '}
         {FOOTER[user.role]}
       </p>

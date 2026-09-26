@@ -36,8 +36,10 @@ function CardFrame({
   return (
     <section className={`card overflow-hidden ${draft ? 'ring-2 ring-accent' : ''}`}>
       <header className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
-        <p className={`text-sm font-semibold ${draft ? 'text-accent-ink' : 'text-ink-mute'}`}>{kicker}</p>
-        {title && <p className="telemetry text-base text-ink-mute">{title}</p>}
+        <p className={`font-caption text-sm font-semibold ${draft ? 'text-accent-ink' : 'text-ink-soft'}`}>
+          {kicker}
+        </p>
+        {title && <p className="telemetry text-sm text-ink-mute">{title}</p>}
       </header>
       <div className="px-5 pt-2 pb-5">{children}</div>
     </section>

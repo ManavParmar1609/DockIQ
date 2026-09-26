@@ -107,7 +107,7 @@ quality         /app/log · /app/analytics
 | **Issue log** | Search + severity/status/type filters; rows open the detail |
 | **Analytics** | Team (supervisor) or facility (quality). *Needs you now* (open critical, open issues, cost at risk, open cold-chain breaks) · *How the team is doing* (totals + 30-day trend) · *Where the risk is* (issue type × severity heatmap, severity and resolution speed, doors open vs resolved, cost by type, repeat problems) · *People and partners*. Chart hues are the garden hues stepped for data (`app.css` "Charts": clay, slate, moss, plum, validated for colour-blind separation in both modes); every chart has a table |
 | **Handoff** | Open issues and zone docks to hand over, the note, previous notes |
-| **Assistant** | Suggested prompts, conversation, cited sources; only `**bold**` is interpreted |
+| **Assistant** | Starter tiles, then turns: the person's neon bubble; DockIQ's mark in a gutter, a ruled caption-face trace of what it checked, tool cards, the answer, the cited source. Answers are formatted by `components/RichAnswer` — headings, bullet and numbered lists, bold, italic, notes, and codes (orders, SKUs, bins, issue numbers, temperatures) in Geist Mono — as React text, never HTML |
 
 ### 4.1 The load plan
 
